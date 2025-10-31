@@ -1,6 +1,6 @@
-﻿import type { Metadata } from "next";
-
+import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/hooks/useAuth";
 
 export const metadata: Metadata = {
   title: "VC Studio",
@@ -15,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-      {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
