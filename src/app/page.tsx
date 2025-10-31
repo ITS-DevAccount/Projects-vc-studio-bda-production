@@ -124,6 +124,7 @@ export default function VCStudioLanding() {
               <a href="#info" className="hover:text-blue-400 transition">About</a>
               <a href="#blogs" className="hover:text-blue-400 transition">Resources</a>
               <a href="#enquiry" className="hover:text-blue-400 transition">Contact</a>
+              <a href="/auth/login" className="hover:text-blue-400 transition">Admin</a>
             </div>
 
             {/* Mobile Menu Button */}
@@ -142,6 +143,7 @@ export default function VCStudioLanding() {
               <a href="#info" className="block px-2 py-2 hover:bg-gray-900 rounded">About</a>
               <a href="#blogs" className="block px-2 py-2 hover:bg-gray-900 rounded">Resources</a>
               <a href="#enquiry" className="block px-2 py-2 hover:bg-gray-900 rounded">Contact</a>
+              <a href="/auth/login" className="block px-2 py-2 hover:bg-gray-900 rounded">Admin</a>
             </div>
           )}
         </div>

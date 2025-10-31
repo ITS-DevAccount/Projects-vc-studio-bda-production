@@ -1,21 +1,22 @@
-﻿import type { Metadata } from 'next'
-import './globals.css'
+﻿import type { Metadata } from "next";
+
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'VC Studio - BDA',
-  description: 'Business Domain Architecture',
-}
+  title: "VC Studio",
+  description: "Value Chain Studio - Business transformation",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <body>
-        {children}
+      {children}
       </body>
     </html>
-  )
+  );
 }
