@@ -47,9 +47,9 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-brand-background text-brand-text flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="mb-6 inline-block bg-green-900/20 border border-green-500 text-green-300 px-6 py-3 rounded-lg">
+          <div className="mb-6 inline-block bg-semantic-success-bg border border-semantic-success text-semantic-success px-6 py-3 rounded-lg">
             Account created successfully! Redirecting to login...
           </div>
         </div>
@@ -58,26 +58,39 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-brand-background text-brand-text flex items-center justify-center px-4">
       <div className="w-full max-w-md">
+        {/* Back to Home Link */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="text-brand-text-muted hover:text-accent-primary transition flex items-center gap-2 text-sm"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Home
+          </Link>
+        </div>
+
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <ChevronRight className="w-6 h-6" />
-          </div>
+          <Link href="/">
+            <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center cursor-pointer hover:scale-105 transition">
+              <ChevronRight className="w-6 h-6" />
+            </div>
+          </Link>
         </div>
 
         {/* Title */}
         <h1 className="text-3xl font-bold text-center mb-2">Create Account</h1>
-        <p className="text-gray-400 text-center mb-8">
+        <p className="text-brand-text-muted text-center mb-8">
           Sign up to start managing VC Studio
         </p>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl p-8 border border-gray-800 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-section-light rounded-xl p-8 border border-section-border space-y-5">
           {/* Error Message */}
           {error && (
-            <div className="bg-red-900/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-semantic-error-bg border border-semantic-error text-semantic-error px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -92,7 +105,7 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+                className="w-full pl-10 pr-4 py-3 bg-brand-background border border-section-border rounded-lg focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 focus:outline-none text-brand-text placeholder-brand-text-muted transition"
               />
             </div>
           </div>
@@ -107,7 +120,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+                className="w-full pl-10 pr-4 py-3 bg-brand-background border border-section-border rounded-lg focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 focus:outline-none text-brand-text placeholder-brand-text-muted transition"
               />
             </div>
           </div>
@@ -122,7 +135,7 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+                className="w-full pl-10 pr-4 py-3 bg-brand-background border border-section-border rounded-lg focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 focus:outline-none text-brand-text placeholder-brand-text-muted transition"
               />
             </div>
           </div>
@@ -137,7 +150,7 @@ export default function SignupPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+                className="w-full pl-10 pr-4 py-3 bg-brand-background border border-section-border rounded-lg focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 focus:outline-none text-brand-text placeholder-brand-text-muted transition"
               />
             </div>
           </div>
@@ -146,16 +159,16 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 mt-6"
+            className="w-full bg-accent-primary hover:bg-accent-primary-hover disabled:bg-neutral-400 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 mt-6"
           >
             {loading ? 'Creating account...' : 'Sign Up'}
             {!loading && <ChevronRight className="w-5 h-5" />}
           </button>
 
           {/* Login Link */}
-          <p className="text-center text-gray-400 text-sm">
+          <p className="text-center text-brand-text-muted text-sm">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300">
+            <Link href="/auth/login" className="text-accent-primary hover:text-accent-primary-hover">
               Sign in here
             </Link>
           </p>

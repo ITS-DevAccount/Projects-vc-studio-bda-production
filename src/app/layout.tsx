@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/lib/hooks/useAuth";
+import { AuthProviderWrapper } from "@/components/providers/AuthProviderWrapper";
 
 export const metadata: Metadata = {
   title: "VC Studio",
@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en">
-      <body>
-        <AuthProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <AuthProviderWrapper>
           {children}
-        </AuthProvider>
+        </AuthProviderWrapper>
       </body>
     </html>
   );

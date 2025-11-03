@@ -4,7 +4,7 @@ import { useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader } from 'lucide-react';
+import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 interface BlogPost {
@@ -72,7 +72,12 @@ export default function DashboardPage() {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        console.log('Initial enquiries fetch:', { data, error, count: data?.length });
+
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
         setEnquiries(data || []);
       } catch (err) {
         console.error('Error fetching enquiries:', err);
@@ -109,13 +114,53 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
+    // Navigate first, then sign out to avoid redirect race condition
+    router.replace('/');
     await signOut();
-    router.push('/');
+  };
+
+  const refreshEnquiries = async () => {
+    setLoadingEnquiries(true);
+    try {
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      console.log('Enquiries fetch result:', { data, error, count: data?.length });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      setEnquiries(data || []);
+    } catch (err) {
+      console.error('Error fetching enquiries:', err);
+    } finally {
+      setLoadingEnquiries(false);
+    }
+  };
+
+  const refreshBlogs = async () => {
+    setLoadingBlogs(true);
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBlogs(data || []);
+    } catch (err) {
+      console.error('Error fetching blogs:', err);
+    } finally {
+      setLoadingBlogs(false);
+    }
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-brand-background text-brand-text flex items-center justify-center">
         <Loader className="w-8 h-8 animate-spin" />
       </div>
     );
@@ -126,18 +171,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-brand-background text-brand-text">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+      <header className="bg-section-light border-b border-section-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div>
               <h1 className="text-2xl font-bold">VC Studio Admin</h1>
-              <p className="text-gray-400 text-sm">{user.email}</p>
+              <p className="text-brand-text-muted text-sm">{user.email}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition"
+              className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis px-4 py-2 rounded-lg transition"
             >
               <LogOut className="w-5 h-5" />
               Logout
@@ -149,13 +194,13 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-800">
+        <div className="flex gap-4 mb-8 border-b border-section-border">
           <button
             onClick={() => setActiveTab('blogs')}
             className={`px-4 py-2 font-semibold transition ${
               activeTab === 'blogs'
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-accent-primary border-b-2 border-blue-400'
+                : 'text-brand-text-muted hover:text-brand-text'
             }`}
           >
             Blog Posts ({blogs.length})
@@ -164,8 +209,8 @@ export default function DashboardPage() {
             onClick={() => setActiveTab('enquiries')}
             className={`px-4 py-2 font-semibold transition ${
               activeTab === 'enquiries'
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-accent-primary border-b-2 border-blue-400'
+                : 'text-brand-text-muted hover:text-brand-text'
             }`}
           >
             Enquiries ({enquiries.length})
@@ -177,29 +222,39 @@ export default function DashboardPage() {
           <div>
             <div className="mb-6 flex justify-between items-center">
               <h2 className="text-xl font-bold">Manage Blog Posts</h2>
-              <Link
-                href="/dashboard/blog/new"
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
-              >
-                <Plus className="w-5 h-5" />
-                New Post
-              </Link>
+              <div className="flex gap-2">
+                <button
+                  onClick={refreshBlogs}
+                  disabled={loadingBlogs}
+                  className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis disabled:bg-neutral-400 px-4 py-2 rounded-lg transition"
+                >
+                  <RefreshCw className={`w-5 h-5 ${loadingBlogs ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <Link
+                  href="/dashboard/blog/new"
+                  className="flex items-center gap-2 bg-accent-primary hover:bg-accent-primary-hover px-4 py-2 rounded-lg transition"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Post
+                </Link>
+              </div>
             </div>
 
             {loadingBlogs ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-brand-text-muted">
                 <Loader className="w-8 h-8 animate-spin mx-auto mb-4" />
                 Loading blog posts...
               </div>
             ) : blogs.length > 0 ? (
               <div className="grid gap-4">
                 {blogs.map((blog) => (
-                  <div key={blog.id} className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-blue-500 transition">
+                  <div key={blog.id} className="bg-section-light rounded-lg p-6 border border-section-border hover:border-accent-primary transition">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold mb-2">{blog.title}</h3>
-                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">{blog.excerpt}</p>
-                        <div className="flex gap-4 text-xs text-gray-500">
+                        <p className="text-brand-text-muted text-sm mb-3 line-clamp-2">{blog.excerpt}</p>
+                        <div className="flex gap-4 text-xs text-brand-text-muted">
                           <span>Status: {blog.status}</span>
                           <span>Featured: {blog.is_featured ? 'Yes' : 'No'}</span>
                           <span>{new Date(blog.created_at).toLocaleDateString()}</span>
@@ -208,13 +263,13 @@ export default function DashboardPage() {
                       <div className="flex gap-2">
                         <Link
                           href={`/dashboard/blog/${blog.id}`}
-                          className="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg transition"
+                          className="bg-section-subtle hover:bg-section-emphasis p-2 rounded-lg transition"
                         >
                           <Edit2 className="w-5 h-5" />
                         </Link>
                         <button
                           onClick={() => handleDeleteBlog(blog.id)}
-                          className="bg-red-900/20 hover:bg-red-900/40 p-2 rounded-lg transition text-red-400"
+                          className="bg-semantic-error-bg hover:bg-red-900/40 p-2 rounded-lg transition text-semantic-error"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -224,11 +279,11 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800">
-                <p className="text-gray-400 mb-4">No blog posts yet</p>
+              <div className="text-center py-12 bg-section-light rounded-lg border border-section-border">
+                <p className="text-brand-text-muted mb-4">No blog posts yet</p>
                 <Link
                   href="/dashboard/blog/new"
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
+                  className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-primary-hover px-4 py-2 rounded-lg transition"
                 >
                   <Plus className="w-5 h-5" />
                   Create First Post
@@ -241,35 +296,45 @@ export default function DashboardPage() {
         {/* Enquiries Tab */}
         {activeTab === 'enquiries' && (
           <div>
-            <h2 className="text-xl font-bold mb-6">Enquiries</h2>
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Enquiries</h2>
+              <button
+                onClick={refreshEnquiries}
+                disabled={loadingEnquiries}
+                className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis disabled:bg-neutral-400 px-4 py-2 rounded-lg transition"
+              >
+                <RefreshCw className={`w-5 h-5 ${loadingEnquiries ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
 
             {loadingEnquiries ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-brand-text-muted">
                 <Loader className="w-8 h-8 animate-spin mx-auto mb-4" />
                 Loading enquiries...
               </div>
             ) : enquiries.length > 0 ? (
               <div className="grid gap-4">
                 {enquiries.map((enquiry) => (
-                  <div key={enquiry.id} className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-blue-500 transition">
+                  <div key={enquiry.id} className="bg-section-light rounded-lg p-6 border border-section-border hover:border-accent-primary transition">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold mb-2">{enquiry.subject}</h3>
-                        <div className="space-y-2 text-sm text-gray-400 mb-3">
+                        <div className="space-y-2 text-sm text-brand-text-muted mb-3">
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4" />
                             {enquiry.email}
                           </div>
                           <div>From: {enquiry.name}</div>
-                          <div className="text-xs text-gray-500">{new Date(enquiry.created_at).toLocaleString()}</div>
+                          <div className="text-xs text-brand-text-muted">{new Date(enquiry.created_at).toLocaleString()}</div>
                         </div>
-                        <div className="inline-block px-3 py-1 bg-gray-800 rounded text-xs">
+                        <div className="inline-block px-3 py-1 bg-section-subtle rounded text-xs">
                           {enquiry.status}
                         </div>
                       </div>
                       <button
                         onClick={() => handleDeleteEnquiry(enquiry.id)}
-                        className="bg-red-900/20 hover:bg-red-900/40 p-2 rounded-lg transition text-red-400"
+                        className="bg-semantic-error-bg hover:bg-red-900/40 p-2 rounded-lg transition text-semantic-error"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -278,9 +343,9 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800">
-                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-500" />
-                <p className="text-gray-400">No enquiries yet</p>
+              <div className="text-center py-12 bg-section-light rounded-lg border border-section-border">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-brand-text-muted" />
+                <p className="text-brand-text-muted">No enquiries yet</p>
               </div>
             )}
           </div>

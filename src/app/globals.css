@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * VC Studio - Global Styles
+ *
+ * Site-wide color scheme applied:
+ * - Background: #f4f8fa (pale blue-grey)
+ * - Text: #032c60 (dark blue)
+ */
+
 * {
   margin: 0;
   padding: 0;
@@ -9,7 +17,30 @@
 }
 
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: #f4f8fa;  /* Brand background - pale blue-grey */
+  color: #032c60;             /* Brand text - dark blue */
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling to match brand colors */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f4f8fa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0369a1;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
 }
