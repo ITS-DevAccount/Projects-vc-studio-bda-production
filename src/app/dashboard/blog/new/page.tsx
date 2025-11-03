@@ -66,88 +66,88 @@ export default function NewBlogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-brand-background text-brand-text">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800">
+      <header className="bg-section-light border-b border-section-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 h-16">
-            <Link href="/dashboard" className="hover:text-blue-400 transition">
+            <Link href="/dashboard" className="hover:text-accent-primary transition text-brand-text">
               <ArrowLeft className="w-6 h-6" />
             </Link>
-            <h1 className="text-2xl font-bold">Create New Blog Post</h1>
+            <h1 className="text-2xl font-bold text-brand-text">Create New Blog Post</h1>
           </div>
         </div>
       </header>
 
       {/* Form */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl p-8 border border-gray-800 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-section-light rounded-xl p-8 border border-section-border shadow-sm space-y-6">
           {error && (
-            <div className="bg-red-900/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg">
+            <div className="bg-semantic-error-bg border border-semantic-error text-semantic-error px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Title *</label>
+            <label className="block text-sm font-semibold mb-2 text-brand-text">Title *</label>
             <input
               type="text"
               name="title"
               value={formData.title}
               onChange={handleChange}
               placeholder="Blog post title"
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+              className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
             />
           </div>
 
           {/* Excerpt */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Excerpt *</label>
+            <label className="block text-sm font-semibold mb-2 text-brand-text">Excerpt *</label>
             <textarea
               name="excerpt"
               value={formData.excerpt}
               onChange={handleChange}
               placeholder="Brief summary of the post"
               rows={3}
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition resize-none"
+              className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition resize-none"
             />
           </div>
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Content *</label>
+            <label className="block text-sm font-semibold mb-2 text-brand-text">Content *</label>
             <textarea
               name="content"
               value={formData.content}
               onChange={handleChange}
               placeholder="Full blog post content"
               rows={8}
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition resize-none"
+              className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition resize-none"
             />
           </div>
 
           {/* Featured Image URL */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Featured Image URL</label>
+            <label className="block text-sm font-semibold mb-2 text-brand-text">Featured Image URL</label>
             <input
               type="url"
               name="featured_image_url"
               value={formData.featured_image_url}
               onChange={handleChange}
               placeholder="https://example.com/image.jpg"
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white placeholder-gray-500 transition"
+              className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
             />
           </div>
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Status</label>
+            <label className="block text-sm font-semibold mb-2 text-brand-text">Status</label>
             <select
               name="status"
               value={formData.status}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none text-white transition"
+              className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text transition"
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
@@ -162,9 +162,9 @@ export default function NewBlogPage() {
               name="is_featured"
               checked={formData.is_featured}
               onChange={handleChange}
-              className="w-5 h-5 bg-black border border-gray-700 rounded cursor-pointer"
+              className="w-5 h-5 bg-section-subtle border border-section-border rounded cursor-pointer accent-accent-primary"
             />
-            <label htmlFor="featured" className="text-sm font-semibold cursor-pointer">
+            <label htmlFor="featured" className="text-sm font-semibold cursor-pointer text-brand-text">
               Featured post (display on homepage)
             </label>
           </div>
@@ -174,14 +174,14 @@ export default function NewBlogPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              className="flex-1 bg-accent-primary hover:bg-accent-primary-hover disabled:bg-neutral-400 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
               {loading && <Loader className="w-5 h-5 animate-spin" />}
               {loading ? 'Creating...' : 'Create Post'}
             </button>
             <Link
               href="/dashboard"
-              className="flex-1 bg-gray-800 hover:bg-gray-700 px-6 py-3 rounded-lg font-semibold transition text-center"
+              className="flex-1 bg-section-subtle hover:bg-section-emphasis text-brand-text px-6 py-3 rounded-lg font-semibold transition text-center border border-section-border"
             >
               Cancel
             </Link>

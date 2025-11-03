@@ -97,10 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!session?.user,
   };
 
-  return React.createElement(
-    AuthContext.Provider,
-    { value: contextValue },
-    children
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

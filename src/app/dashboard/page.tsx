@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit } from 'lucide-react';
 import Link from 'next/link';
 
 interface BlogPost {
@@ -29,7 +29,7 @@ interface Enquiry {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'blogs' | 'enquiries'>('blogs');
+  const [activeTab, setActiveTab] = useState<'blogs' | 'enquiries' | 'pages'>('blogs');
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loadingBlogs, setLoadingBlogs] = useState(true);
@@ -215,6 +215,16 @@ export default function DashboardPage() {
           >
             Enquiries ({enquiries.length})
           </button>
+          <button
+            onClick={() => setActiveTab('pages')}
+            className={`px-4 py-2 font-semibold transition ${
+              activeTab === 'pages'
+                ? 'text-accent-primary border-b-2 border-blue-400'
+                : 'text-brand-text-muted hover:text-brand-text'
+            }`}
+          >
+            Pages
+          </button>
         </div>
 
         {/* Blogs Tab */}
@@ -290,6 +300,65 @@ export default function DashboardPage() {
                 </Link>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Pages Tab */}
+        {activeTab === 'pages' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold">Manage Pages</h2>
+            </div>
+
+            <div className="grid gap-4 max-w-2xl">
+              <Link
+                href="/dashboard/pages/editor"
+                className="bg-section-light rounded-lg p-6 border border-section-border hover:border-accent-primary transition group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-accent-primary/10 p-3 rounded-lg group-hover:bg-accent-primary/20 transition">
+                      <FileEdit className="w-6 h-6 text-accent-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Front Page Editor</h3>
+                      <p className="text-sm text-brand-text-muted">
+                        Edit hero video, content sections, and image gallery
+                      </p>
+                    </div>
+                  </div>
+                  <Edit2 className="w-5 h-5 text-brand-text-muted group-hover:text-accent-primary transition" />
+                </div>
+              </Link>
+
+              <div className="bg-section-subtle rounded-lg p-6 border border-section-border opacity-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-neutral-400/10 p-3 rounded-lg">
+                      <FileEdit className="w-6 h-6 text-neutral-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1 text-brand-text-muted">About Page Editor</h3>
+                      <p className="text-sm text-brand-text-muted">Coming soon...</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-section-subtle rounded-lg p-6 border border-section-border opacity-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-neutral-400/10 p-3 rounded-lg">
+                      <FileEdit className="w-6 h-6 text-neutral-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1 text-brand-text-muted">Contact Page Editor</h3>
+                      <p className="text-sm text-brand-text-muted">Coming soon...</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

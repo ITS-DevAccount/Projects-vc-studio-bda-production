@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, ChevronRight, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
+import VideoPlayer from '@/components/media/VideoPlayer';
+import ImageGallery from '@/components/media/ImageGallery';
 
 interface BlogPost {
   id: string;
@@ -21,11 +23,42 @@ interface EnquiryForm {
   message: string;
 }
 
+interface PageSettings {
+  hero_video_url: string;
+  hero_video_public_id: string;
+  hero_title: string;
+  hero_subtitle: string;
+  hero_description: string;
+  hero_cta_primary_text: string;
+  hero_cta_secondary_text: string;
+  info_section_title: string;
+  info_block_1_title: string;
+  info_block_1_content: string;
+  info_block_2_title: string;
+  info_block_2_content: string;
+  info_highlight_text: string;
+  gallery_section_title: string;
+  gallery_section_subtitle: string;
+}
+
+interface PageImage {
+  id: string;
+  cloudinary_url: string;
+  public_id: string;
+  alt_text: string;
+  title: string;
+  caption: string;
+  display_order: number;
+  is_active: boolean;
+}
+
 type EnquiryStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export default function VCStudioLanding() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const [pageSettings, setPageSettings] = useState<PageSettings | null>(null);
+  const [galleryImages, setGalleryImages] = useState<PageImage[]>([]);
   const [enquiryForm, setEnquiryForm] = useState<EnquiryForm>({
     name: '',
     email: '',
@@ -34,11 +67,53 @@ export default function VCStudioLanding() {
   });
   const [enquiryStatus, setEnquiryStatus] = useState<EnquiryStatus>('idle');
   const [blogsLoading, setBlogsLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  // Fetch featured blog posts on mount
+  // Fetch page settings and data on mount
   useEffect(() => {
+    fetchPageSettings();
     fetchBlogs();
   }, []);
+
+  const fetchPageSettings = async () => {
+    try {
+      setPageLoading(true);
+
+      // Fetch page settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('page_settings')
+        .select('*')
+        .eq('page_name', 'home')
+        .eq('is_published', true)
+        .single();
+
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error('Error fetching page settings:', settingsError);
+      }
+
+      if (settingsData) {
+        setPageSettings(settingsData);
+
+        // Fetch gallery images
+        const { data: imagesData, error: imagesError } = await supabase
+          .from('page_images')
+          .select('*')
+          .eq('page_settings_id', settingsData.id)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (imagesError) {
+          console.error('Error fetching gallery images:', imagesError);
+        }
+
+        setGalleryImages(imagesData || []);
+      }
+    } catch (err) {
+      console.error('Error loading page settings:', err);
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   const fetchBlogs = async () => {
     try {
@@ -156,24 +231,43 @@ export default function VCStudioLanding() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section id="hero" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-section-emphasis via-section-subtle to-section-light">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-primary bg-clip-text text-transparent">
-            Value Chain Studio
+      {/* Hero Section with Video Background */}
+      <section id="hero" className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Video Background Container */}
+        <div className="absolute inset-0 z-0">
+          <VideoPlayer
+            cloudinaryUrl={pageSettings?.hero_video_url || "https://res.cloudinary.com/demo/video/upload"}
+            publicId={pageSettings?.hero_video_public_id || "dog"}
+            autoplay={true}
+            loop={true}
+            muted={true}
+            controls={false}
+            className="w-full h-full"
+            aspectRatio="16:9"
+          />
+          {/* Overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-text/80 via-brand-text/70 to-brand-text/60"></div>
+        </div>
+
+        {/* Content - now on top of video */}
+        <div className="relative z-10 max-w-7xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+            {pageSettings?.hero_title || 'Value Chain Studio'}
           </h1>
-          <p className="text-xl sm:text-2xl text-brand-text mb-8 max-w-3xl mx-auto font-semibold">
-            Systematic business transformation through Value Chain Excellence Framework
+          <p className="text-xl sm:text-2xl text-white mb-8 max-w-3xl mx-auto font-semibold drop-shadow-md">
+            {pageSettings?.hero_subtitle || 'Systematic business transformation through Value Chain Excellence Framework'}
           </p>
-          <p className="text-brand-text-muted mb-12 max-w-2xl mx-auto text-lg">
-            Map your business value creation, connect stakeholders, and deploy AI-enabled operations with proven methodology
-          </p>
+          {pageSettings?.hero_description && (
+            <p className="text-white/90 mb-12 max-w-2xl mx-auto text-lg drop-shadow-md">
+              {pageSettings.hero_description}
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button className="bg-accent-primary hover:bg-accent-primary-hover text-white px-8 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-              Get Started <ChevronRight size={20} />
+              {pageSettings?.hero_cta_primary_text || 'Get Started'} <ChevronRight size={20} />
             </button>
-            <button className="bg-section-light border-2 border-accent-primary text-accent-primary hover:bg-section-emphasis px-8 py-3 rounded-lg font-semibold transition">
-              Learn More
+            <button className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white/20 px-8 py-3 rounded-lg font-semibold transition">
+              {pageSettings?.hero_cta_secondary_text || 'Learn More'}
             </button>
           </div>
         </div>
@@ -183,35 +277,74 @@ export default function VCStudioLanding() {
       <section id="info" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-7xl mx-auto">
           <div className="bg-section-subtle rounded-xl p-8 sm:p-12 border border-section-border shadow-sm">
-            <h2 className="text-3xl font-bold mb-6 text-brand-text">What is VC Studio?</h2>
+            <h2 className="text-3xl font-bold mb-6 text-brand-text">
+              {pageSettings?.info_section_title || 'What is VC Studio?'}
+            </h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-xl font-semibold text-accent-primary mb-4">VCEF Methodology</h3>
+                <h3 className="text-xl font-semibold text-accent-primary mb-4">
+                  {pageSettings?.info_block_1_title || 'VCEF Methodology'}
+                </h3>
                 <p className="text-brand-text-light leading-relaxed">
-                  Value Chain Evolution Framework provides a systematic L0-L6 mapping of your business.
-                  Understand how value flows through your organisation from strategic vision to operational execution.
+                  {pageSettings?.info_block_1_content || 'Value Chain Evolution Framework provides a systematic L0-L6 mapping of your business. Understand how value flows through your organisation from strategic vision to operational execution.'}
                 </p>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-accent-secondary mb-4">AI-Powered Intelligence</h3>
+                <h3 className="text-xl font-semibold text-accent-secondary mb-4">
+                  {pageSettings?.info_block_2_title || 'AI-Powered Intelligence'}
+                </h3>
                 <p className="text-brand-text-light leading-relaxed">
-                  Knowledge Domain Architecture transforms business intelligence into actionable AI-enhanced operations.
-                  Deploy agents where they create measurable value while preserving human expertise.
+                  {pageSettings?.info_block_2_content || 'Knowledge Domain Architecture transforms business intelligence into actionable AI-enhanced operations. Deploy agents where they create measurable value while preserving human expertise.'}
                 </p>
               </div>
             </div>
-            <div className="mt-8 p-6 bg-semantic-info-bg rounded-lg border border-accent-primary/30">
-              <p className="text-brand-text">
-                <span className="text-accent-primary font-semibold">Stage 1 Focus:</span> Build your Value Chain Model by mapping domains, sub-domains,
-                and stakeholders within a unified knowledge infrastructure.
-              </p>
-            </div>
+            {pageSettings?.info_highlight_text && (
+              <div className="mt-8 p-6 bg-semantic-info-bg rounded-lg border border-accent-primary/30">
+                <p className="text-brand-text">
+                  <span className="text-accent-primary font-semibold">Stage 1 Focus:</span> {pageSettings.info_highlight_text}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
+      {/* Image Gallery Section */}
+      <section id="gallery" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-subtle border-t border-section-border">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold mb-2 text-brand-text">
+              {pageSettings?.gallery_section_title || 'Our Work in Action'}
+            </h2>
+            <p className="text-brand-text-muted">
+              {pageSettings?.gallery_section_subtitle || 'Showcasing value chain transformations and implementations'}
+            </p>
+          </div>
+
+          {galleryImages.length > 0 ? (
+            <ImageGallery
+              cloudinaryUrl={galleryImages[0]?.cloudinary_url || "https://res.cloudinary.com/demo/image/upload"}
+              images={galleryImages.map(img => ({
+                publicId: img.public_id,
+                alt: img.alt_text,
+                title: img.title,
+                caption: img.caption,
+              }))}
+              columns={3}
+              aspectRatio="landscape"
+              gap="md"
+              showCaptions={true}
+            />
+          ) : (
+            <div className="text-center py-12 text-brand-text-muted">
+              No gallery images available yet
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Blog Section */}
-      <section id="blogs" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-subtle border-t border-section-border">
+      <section id="blogs" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-7xl mx-auto">
           <div className="mb-12">
             <h2 className="text-3xl font-bold mb-2 text-brand-text">Latest Resources</h2>
