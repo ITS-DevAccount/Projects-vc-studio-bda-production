@@ -149,6 +149,7 @@ export default function VideoPlayer({
       <div className={`w-full ${aspectRatioMap[aspectRatio]}`}>
         {videoUrl ? (
           <video
+            key={videoUrl}
             ref={videoRef}
             className="w-full h-full object-cover"
             autoPlay={autoplay}
@@ -157,9 +158,8 @@ export default function VideoPlayer({
             playsInline
             poster={poster}
             aria-label={title}
-            onError={(e) => {
+            onError={() => {
               console.error('Video failed to load:', videoUrl);
-              console.error('Video error event:', e);
             }}
             onLoadedData={() => {
               console.log('Video loaded successfully:', videoUrl);
