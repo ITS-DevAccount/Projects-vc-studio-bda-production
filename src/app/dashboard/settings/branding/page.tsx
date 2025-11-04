@@ -6,7 +6,6 @@ import { useTheme } from '@/hooks/useTheme';
 import {
   Save,
   RefreshCw,
-  Upload,
   Image as ImageIcon,
   Palette,
   Type,

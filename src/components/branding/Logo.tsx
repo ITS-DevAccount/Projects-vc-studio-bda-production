@@ -108,7 +108,7 @@ export default function Logo({
                 maxWidth: variant === 'icon-only' ? '40px' : `${settings.logo_width}px`,
                 maxHeight: variant === 'icon-only' ? '40px' : `${settings.logo_height}px`,
               }}
-              onError={(e) => {
+              onError={() => {
                 console.error('Logo failed to load:', logoSrc);
                 console.error('Full settings:', settings);
               }}

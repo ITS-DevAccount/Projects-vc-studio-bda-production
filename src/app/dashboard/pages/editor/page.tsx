@@ -5,8 +5,6 @@ import { supabase } from '@/lib/supabase/client';
 import {
   Save,
   Eye,
-  Upload,
-  X,
   Plus,
   GripVertical,
   Trash2,
@@ -49,6 +47,10 @@ interface PageImage {
   caption: string;
   display_order: number;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  page_settings_id?: string;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';

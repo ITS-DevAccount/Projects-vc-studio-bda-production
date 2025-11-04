@@ -68,7 +68,6 @@ export default function VCStudioLanding() {
   });
   const [enquiryStatus, setEnquiryStatus] = useState<EnquiryStatus>('idle');
   const [blogsLoading, setBlogsLoading] = useState(true);
-  const [pageLoading, setPageLoading] = useState(true);
 
   // Fetch page settings and data on mount
   useEffect(() => {
@@ -78,7 +77,6 @@ export default function VCStudioLanding() {
 
   const fetchPageSettings = async () => {
     try {
-      setPageLoading(true);
 
       console.log('🔍 Fetching page settings for: home');
 
@@ -130,8 +128,6 @@ export default function VCStudioLanding() {
       }
     } catch (err) {
       console.error('Error loading page settings:', err);
-    } finally {
-      setPageLoading(false);
     }
   };
 
