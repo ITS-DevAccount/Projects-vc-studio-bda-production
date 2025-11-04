@@ -4,10 +4,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
+  const errorMsg = 'Missing Supabase environment variables! Check Vercel settings.'
+  console.error(errorMsg, {
     url: supabaseUrl ? 'present' : 'MISSING',
-    key: supabaseAnonKey ? 'present' : 'MISSING'
+    key: supabaseAnonKey ? 'present' : 'MISSING',
+    urlLength: supabaseUrl?.length || 0,
+    keyLength: supabaseAnonKey?.length || 0
   })
+
+  // Show visible error in development
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    alert('⚠️ Missing Supabase credentials! Check your .env.local file.')
+  }
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
