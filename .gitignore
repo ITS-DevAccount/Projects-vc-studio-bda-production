@@ -6,6 +6,7 @@ dist/
 .env.local
 .env.*.local
 .env
+.env.vercel
 .vscode/
 .idea/
 .DS_Store
