@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit } from 'lucide-react';
+import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit, Palette } from 'lucide-react';
 import Link from 'next/link';
 
 interface BlogPost {
@@ -307,10 +307,31 @@ export default function DashboardPage() {
         {activeTab === 'pages' && (
           <div>
             <div className="mb-6">
-              <h2 className="text-xl font-bold">Manage Pages</h2>
+              <h2 className="text-xl font-bold">Manage Pages & Settings</h2>
+              <p className="text-sm text-brand-text-muted mt-1">Configure site branding and page content</p>
             </div>
 
             <div className="grid gap-4 max-w-2xl">
+              <Link
+                href="/dashboard/settings/branding"
+                className="bg-section-light rounded-lg p-6 border border-section-border hover:border-accent-primary transition group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-accent-secondary/10 p-3 rounded-lg group-hover:bg-accent-secondary/20 transition">
+                      <Palette className="w-6 h-6 text-accent-secondary" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Branding & Theme Settings</h3>
+                      <p className="text-sm text-brand-text-muted">
+                        Configure site colors, logo, and global branding
+                      </p>
+                    </div>
+                  </div>
+                  <Edit2 className="w-5 h-5 text-brand-text-muted group-hover:text-accent-primary transition" />
+                </div>
+              </Link>
+
               <Link
                 href="/dashboard/pages/editor"
                 className="bg-section-light rounded-lg p-6 border border-section-border hover:border-accent-primary transition group"

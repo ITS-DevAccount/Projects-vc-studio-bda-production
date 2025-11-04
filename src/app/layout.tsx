@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProviderWrapper } from "@/components/providers/AuthProviderWrapper";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "VC Studio",
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AuthProviderWrapper>
-          {children}
-        </AuthProviderWrapper>
+        <ThemeProvider>
+          <AuthProviderWrapper>
+            {children}
+          </AuthProviderWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );

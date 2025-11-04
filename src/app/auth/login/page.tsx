@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Mail, Lock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import Logo from '@/components/branding/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -49,11 +50,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <Link href="/">
-            <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center cursor-pointer hover:scale-105 transition shadow-md">
-              <ChevronRight className="w-6 h-6 text-white" />
-            </div>
-          </Link>
+          <Logo variant="default" linkTo="/" />
         </div>
 
         {/* Title */}

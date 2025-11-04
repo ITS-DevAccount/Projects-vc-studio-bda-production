@@ -13,8 +13,10 @@ import {
   AlertCircle,
   CheckCircle,
   Video,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowLeft
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface PageSettings {
   id?: string;
@@ -138,8 +140,8 @@ export default function PageEditor() {
 
   const addImage = () => {
     const newImage: PageImage = {
-      cloudinary_url: 'https://res.cloudinary.com/demo/image/upload',
-      public_id: 'sample',
+      cloudinary_url: '', // Leave empty, can paste full URL in public_id
+      public_id: '', // Paste full Cloudinary URL here
       alt_text: 'New image',
       title: 'Image Title',
       caption: 'Image caption',
@@ -323,6 +325,13 @@ export default function PageEditor() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 text-sm text-brand-text-muted hover:text-accent-primary transition mb-2"
+              >
+                <ArrowLeft size={16} />
+                Back to Dashboard
+              </Link>
               <h1 className="text-2xl font-bold text-brand-text">Front Page Editor</h1>
               <p className="text-sm text-brand-text-muted">Manage hero section, content blocks, and gallery</p>
             </div>
@@ -590,21 +599,31 @@ export default function PageEditor() {
                       </div>
 
                       <div className="flex-1 space-y-3">
+                        <div className="p-2 bg-semantic-info-bg border border-accent-primary/30 rounded text-xs text-brand-text-muted mb-2">
+                          <strong>Option 1:</strong> Full URL in Public ID field (easier)<br/>
+                          <strong>Option 2:</strong> Base URL + Public ID separately
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            value={image.cloudinary_url}
-                            onChange={(e) => handleImageChange(index, 'cloudinary_url', e.target.value)}
-                            placeholder="Cloudinary URL"
-                            className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
-                          />
-                          <input
-                            type="text"
-                            value={image.public_id}
-                            onChange={(e) => handleImageChange(index, 'public_id', e.target.value)}
-                            placeholder="Public ID"
-                            className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
-                          />
+                          <div>
+                            <label className="block text-xs text-brand-text-muted mb-1">Base URL (Optional)</label>
+                            <input
+                              type="text"
+                              value={image.cloudinary_url}
+                              onChange={(e) => handleImageChange(index, 'cloudinary_url', e.target.value)}
+                              placeholder="https://res.cloudinary.com/.../upload"
+                              className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-brand-text-muted mb-1">Public ID or Full URL</label>
+                            <input
+                              type="text"
+                              value={image.public_id}
+                              onChange={(e) => handleImageChange(index, 'public_id', e.target.value)}
+                              placeholder="image_id or full Cloudinary URL"
+                              className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                            />
+                          </div>
                         </div>
                         <input
                           type="text"

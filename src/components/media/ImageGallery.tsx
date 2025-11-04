@@ -73,6 +73,19 @@ export default function ImageGallery({
       thumbnail: 'w_800,h_600,c_fill,q_auto,f_auto',
       full: 'w_1920,h_1080,c_fit,q_auto,f_auto',
     };
+
+    // Check if publicId is actually a full URL
+    if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
+      // It's a full URL, try to inject transformations
+      const urlParts = publicId.split('/upload/');
+      if (urlParts.length === 2) {
+        return `${urlParts[0]}/upload/${transforms[transformation]}/${urlParts[1]}`;
+      }
+      // Can't parse, return as is
+      return publicId;
+    }
+
+    // Normal case: construct from base URL and public ID
     return `${cloudinaryUrl}/${transforms[transformation]}/${publicId}`;
   };
 
