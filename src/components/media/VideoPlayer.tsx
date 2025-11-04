@@ -49,8 +49,39 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(muted);
   const [showControls, setShowControls] = useState(false);
 
-  // Construct the full video URL
-  const videoUrl = `${cloudinaryUrl}/q_auto,f_auto/${publicId}`;
+  // Calculate video URL from props
+  const calculateVideoUrl = (url: string, pubId: string) => {
+    const isFullVideoUrl = url.match(/\.(mp4|mov|avi|webm|mkv)$/i);
+    return isFullVideoUrl ? url : `${url}/q_auto,f_auto/${pubId}`;
+  };
+
+  // Initialize with proper URL
+  const [videoUrl, setVideoUrl] = useState(() => calculateVideoUrl(cloudinaryUrl, publicId));
+
+  // Update video URL whenever props change
+  useEffect(() => {
+    const newVideoUrl = calculateVideoUrl(cloudinaryUrl, publicId);
+
+    // Debug logging
+    console.log('VideoPlayer - Props changed:', {
+      cloudinaryUrl,
+      publicId,
+      isFullVideoUrl: !!cloudinaryUrl.match(/\.(mp4|mov|avi|webm|mkv)$/i),
+      constructedVideoUrl: newVideoUrl,
+    });
+
+    if (newVideoUrl !== videoUrl) {
+      setVideoUrl(newVideoUrl);
+
+      // Reload video when URL changes
+      if (videoRef.current) {
+        videoRef.current.load();
+        if (autoplay) {
+          videoRef.current.play().catch(err => console.log('Autoplay prevented:', err));
+        }
+      }
+    }
+  }, [cloudinaryUrl, publicId, autoplay, videoUrl]);
 
   // Aspect ratio map
   const aspectRatioMap = {
@@ -116,19 +147,32 @@ export default function VideoPlayer({
     >
       {/* Video Element */}
       <div className={`w-full ${aspectRatioMap[aspectRatio]}`}>
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          autoPlay={autoplay}
-          loop={loop}
-          muted={muted}
-          playsInline
-          poster={poster}
-          aria-label={title}
-        >
-          <source src={videoUrl} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        {videoUrl ? (
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            autoPlay={autoplay}
+            loop={loop}
+            muted={muted}
+            playsInline
+            poster={poster}
+            aria-label={title}
+            onError={(e) => {
+              console.error('Video failed to load:', videoUrl);
+              console.error('Video error event:', e);
+            }}
+            onLoadedData={() => {
+              console.log('Video loaded successfully:', videoUrl);
+            }}
+          >
+            <source src={videoUrl} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-white">
+            Loading video...
+          </div>
+        )}
       </div>
 
       {/* Custom Controls Overlay */}

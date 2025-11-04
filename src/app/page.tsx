@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronRight, Zap } from 'lucide-react';
+import { Menu, X, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import VideoPlayer from '@/components/media/VideoPlayer';
 import ImageGallery from '@/components/media/ImageGallery';
+import Logo from '@/components/branding/Logo';
 
 interface BlogPost {
   id: string;
@@ -79,6 +80,8 @@ export default function VCStudioLanding() {
     try {
       setPageLoading(true);
 
+      console.log('🔍 Fetching page settings for: home');
+
       // Fetch page settings
       const { data: settingsData, error: settingsError } = await supabase
         .from('page_settings')
@@ -87,11 +90,28 @@ export default function VCStudioLanding() {
         .eq('is_published', true)
         .single();
 
-      if (settingsError && settingsError.code !== 'PGRST116') {
-        console.error('Error fetching page settings:', settingsError);
+      console.log('📊 Page Settings Fetch Result:', {
+        hasData: !!settingsData,
+        hasError: !!settingsError,
+        errorCode: settingsError?.code,
+        errorMessage: settingsError?.message,
+        settingsData,
+        settingsError,
+        hero_video_url: settingsData?.hero_video_url,
+        hero_video_public_id: settingsData?.hero_video_public_id,
+      });
+
+      if (settingsError) {
+        console.error('❌ Error fetching page settings:', {
+          code: settingsError.code,
+          message: settingsError.message,
+          details: settingsError.details,
+          hint: settingsError.hint
+        });
       }
 
       if (settingsData) {
+        console.log('✅ Setting page settings state with data:', settingsData);
         setPageSettings(settingsData);
 
         // Fetch gallery images
@@ -193,12 +213,7 @@ export default function VCStudioLanding() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex-shrink-0 flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center shadow-md">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-brand-text">VC Studio</span>
-            </div>
+            <Logo variant="compact" linkTo="/" />
 
             {/* Desktop Menu */}
             <div className="hidden md:flex gap-8 items-center">
@@ -323,9 +338,15 @@ export default function VCStudioLanding() {
 
           {galleryImages.length > 0 ? (
             <ImageGallery
-              cloudinaryUrl={galleryImages[0]?.cloudinary_url || "https://res.cloudinary.com/demo/image/upload"}
+              cloudinaryUrl={
+                // Extract base URL from cloudinary_url (handles both base URL and full URL formats)
+                galleryImages[0]?.cloudinary_url?.includes('/upload')
+                  ? galleryImages[0].cloudinary_url.split('/upload')[0] + '/upload'
+                  : galleryImages[0]?.cloudinary_url || "https://res.cloudinary.com/demo/image/upload"
+              }
               images={galleryImages.map(img => ({
-                publicId: img.public_id,
+                // If public_id contains a full URL, use it; otherwise construct from cloudinary_url + public_id
+                publicId: img.public_id.startsWith('http') ? img.public_id : img.public_id,
                 alt: img.alt_text,
                 title: img.title,
                 caption: img.caption,
