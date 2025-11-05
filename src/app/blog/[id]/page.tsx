@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { useAppUuid } from '@/contexts/AppContext';
 import { ChevronRight, Calendar, User, ArrowLeft, Home } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,15 +24,16 @@ interface BlogPost {
 export default function BlogDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const appUuid = useAppUuid();
   const [blog, setBlog] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (params.id) {
+    if (params.id && appUuid) {
       fetchBlogPost(params.id as string);
     }
-  }, [params.id]);
+  }, [params.id, appUuid]);
 
   const fetchBlogPost = async (id: string) => {
     try {
@@ -40,6 +42,7 @@ export default function BlogDetailPage() {
         .from('blog_posts')
         .select('*')
         .eq('id', id)
+        .eq('app_uuid', appUuid)
         .single();
 
       if (error) {

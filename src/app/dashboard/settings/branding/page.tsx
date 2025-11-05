@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
+import { useApp } from '@/contexts/AppContext';
 import {
   Save,
   RefreshCw,
@@ -20,6 +21,7 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export default function BrandingSettings() {
   const { settings: currentSettings, refreshSettings } = useTheme();
+  const { site_code } = useApp();
   const [settings, setSettings] = useState(currentSettings);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -27,7 +29,7 @@ export default function BrandingSettings() {
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [site_code]);
 
   const loadSettings = async () => {
     try {
@@ -35,7 +37,7 @@ export default function BrandingSettings() {
       const { data, error } = await supabase
         .from('site_settings')
         .select('*')
-        .eq('is_active', true)
+        .eq('site_code', site_code)
         .single();
 
       if (error && error.code !== 'PGRST116') {

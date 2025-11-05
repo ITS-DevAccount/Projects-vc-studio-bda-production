@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit, Palette } from 'lucide-react';
+import { useAppUuid } from '@/contexts/AppContext';
+import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit, Palette, Users } from 'lucide-react';
 import Link from 'next/link';
 
 interface BlogPost {
@@ -26,29 +27,97 @@ interface Enquiry {
   created_at: string;
 }
 
+interface StakeholderRow {
+  id: string;
+  reference: string;
+  name: string;
+  stakeholder_type_id: string;
+  email: string | null;
+  status: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
+interface ListResponse {
+  data: StakeholderRow[];
+  count: number;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'blogs' | 'enquiries' | 'pages'>('blogs');
+  const appUuid = useAppUuid();
+  const [activeTab, setActiveTab] = useState<'blogs' | 'enquiries' | 'pages' | 'stakeholders'>(() => {
+    const tab = searchParams?.get('tab');
+    if (tab && ['blogs', 'enquiries', 'pages', 'stakeholders'].includes(tab)) {
+      return tab as 'blogs' | 'enquiries' | 'pages' | 'stakeholders';
+    }
+    return 'blogs';
+  });
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderRow[]>([]);
+  const [stakeholderCount, setStakeholderCount] = useState(0);
   const [loadingBlogs, setLoadingBlogs] = useState(true);
   const [loadingEnquiries, setLoadingEnquiries] = useState(true);
+  const [loadingStakeholders, setLoadingStakeholders] = useState(true);
+  const [stakeholderSearch, setStakeholderSearch] = useState('');
+  const [stakeholderStatusFilter, setStakeholderStatusFilter] = useState('');
+  const [stakeholderVerifiedFilter, setStakeholderVerifiedFilter] = useState('');
+  const [stakeholderPage, setStakeholderPage] = useState(1);
   
-  // Check authentication
+  // Check authentication and redirect stakeholders to their dashboard
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login');
+      return;
+    }
+    
+    // If authenticated, check if user is a stakeholder (not admin)
+    if (user && !authLoading) {
+      const checkUserType = async () => {
+        try {
+          // Check if user is in stakeholders table (not in users table)
+          const { data: userRecord } = await supabase
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single();
+          
+          // If not in users table, check if they're a stakeholder
+          if (!userRecord) {
+            const { data: stakeholderRecord } = await supabase
+              .from('stakeholders')
+              .select('id')
+              .eq('auth_user_id', user.id)
+              .single();
+            
+            // If they're a stakeholder, redirect to stakeholder dashboard
+            if (stakeholderRecord) {
+              router.replace('/dashboard/stakeholder');
+            }
+          }
+        } catch (err) {
+          // Error checking - continue with admin dashboard
+          console.error('Error checking user type:', err);
+        }
+      };
+      
+      checkUserType();
     }
   }, [user, authLoading, router]);
 
   // Fetch blogs
   useEffect(() => {
+    if (!appUuid) return;
+
     const fetchBlogs = async () => {
       try {
         const { data, error } = await supabase
           .from('blog_posts')
           .select('*')
+          .eq('app_uuid', appUuid)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -61,15 +130,18 @@ export default function DashboardPage() {
     };
 
     fetchBlogs();
-  }, []);
+  }, [appUuid]);
 
   // Fetch enquiries
   useEffect(() => {
+    if (!appUuid) return;
+
     const fetchEnquiries = async () => {
       try {
         const { data, error } = await supabase
           .from('enquiries')
           .select('*')
+          .eq('app_uuid', appUuid)
           .order('created_at', { ascending: false });
 
         console.log('Initial enquiries fetch:', { data, error, count: data?.length });
@@ -87,13 +159,57 @@ export default function DashboardPage() {
     };
 
     fetchEnquiries();
-  }, []);
+  }, [appUuid]);
+
+  // Fetch stakeholders
+  useEffect(() => {
+    if (!appUuid) return;
+
+    const fetchStakeholders = async () => {
+      setLoadingStakeholders(true);
+      try {
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const params = new URLSearchParams();
+        if (stakeholderSearch) params.set('q', stakeholderSearch);
+        if (stakeholderStatusFilter) params.set('status', stakeholderStatusFilter);
+        if (stakeholderVerifiedFilter) params.set('verified', stakeholderVerifiedFilter);
+        params.set('page', String(stakeholderPage));
+        params.set('pageSize', '50');
+
+        const res = await fetch(`/api/stakeholders?${params.toString()}`, {
+          headers: {
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+        });
+        const json: ListResponse = await res.json();
+        if (res.ok) {
+          setStakeholders(json.data || []);
+          setStakeholderCount(json.count || 0);
+        } else {
+          console.error('Error fetching stakeholders:', json);
+        }
+      } catch (err) {
+        console.error('Error fetching stakeholders:', err);
+      } finally {
+        setLoadingStakeholders(false);
+      }
+    };
+
+    fetchStakeholders();
+  }, [appUuid, stakeholderSearch, stakeholderStatusFilter, stakeholderVerifiedFilter, stakeholderPage]);
 
   const handleDeleteBlog = async (id: string) => {
     if (!confirm('Are you sure you want to delete this blog post?')) return;
 
     try {
-      const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+      const { error } = await supabase
+        .from('blog_posts')
+        .delete()
+        .eq('id', id)
+        .eq('app_uuid', appUuid); // SECURITY: Prevent cross-app deletion
       if (error) throw error;
       setBlogs(blogs.filter((b) => b.id !== id));
     } catch (err) {
@@ -105,7 +221,11 @@ export default function DashboardPage() {
     if (!confirm('Are you sure you want to delete this enquiry?')) return;
 
     try {
-      const { error } = await supabase.from('enquiries').delete().eq('id', id);
+      const { error } = await supabase
+        .from('enquiries')
+        .delete()
+        .eq('id', id)
+        .eq('app_uuid', appUuid); // SECURITY: Prevent cross-app deletion
       if (error) throw error;
       setEnquiries(enquiries.filter((e) => e.id !== id));
     } catch (err) {
@@ -125,6 +245,7 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('enquiries')
         .select('*')
+        .eq('app_uuid', appUuid)
         .order('created_at', { ascending: false });
 
       console.log('Enquiries fetch result:', { data, error, count: data?.length });
@@ -144,9 +265,10 @@ export default function DashboardPage() {
   const refreshBlogs = async () => {
     setLoadingBlogs(true);
     try {
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('blog_posts')
         .select('*')
+        .eq('app_uuid', appUuid)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -224,6 +346,16 @@ export default function DashboardPage() {
             }`}
           >
             Pages
+          </button>
+          <button
+            onClick={() => setActiveTab('stakeholders')}
+            className={`px-4 py-2 font-semibold transition ${
+              activeTab === 'stakeholders'
+                ? 'text-accent-primary border-b-2 border-blue-400'
+                : 'text-brand-text-muted hover:text-brand-text'
+            }`}
+          >
+            Stakeholders ({stakeholderCount})
           </button>
         </div>
 
@@ -436,6 +568,179 @@ export default function DashboardPage() {
               <div className="text-center py-12 bg-section-light rounded-lg border border-section-border">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 text-brand-text-muted" />
                 <p className="text-brand-text-muted">No enquiries yet</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Stakeholders Tab */}
+        {activeTab === 'stakeholders' && (
+          <div>
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Stakeholder Registry</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setStakeholderPage(1);
+                    setLoadingStakeholders(true);
+                    const params = new URLSearchParams();
+                    if (stakeholderSearch) params.set('q', stakeholderSearch);
+                    if (stakeholderStatusFilter) params.set('status', stakeholderStatusFilter);
+                    if (stakeholderVerifiedFilter) params.set('verified', stakeholderVerifiedFilter);
+                    params.set('page', '1');
+                    params.set('pageSize', '50');
+                    fetch(`/api/stakeholders?${params.toString()}`)
+                      .then(res => res.json())
+                      .then((json: ListResponse) => {
+                        setStakeholders(json.data || []);
+                        setStakeholderCount(json.count || 0);
+                        setLoadingStakeholders(false);
+                      })
+                      .catch(err => {
+                        console.error('Error refreshing stakeholders:', err);
+                        setLoadingStakeholders(false);
+                      });
+                  }}
+                  disabled={loadingStakeholders}
+                  className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis disabled:bg-neutral-400 px-4 py-2 rounded-lg transition"
+                >
+                  <RefreshCw className={`w-5 h-5 ${loadingStakeholders ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <Link
+                  href="/dashboard/admin/stakeholders/create"
+                  className="flex items-center gap-2 bg-accent-primary hover:bg-accent-primary-hover px-4 py-2 rounded-lg transition"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Stakeholder
+                </Link>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grid gap-3 mb-4 md:grid-cols-3">
+              <input
+                className="px-3 py-2 bg-section-subtle border border-section-border rounded"
+                placeholder="Search name or email"
+                value={stakeholderSearch}
+                onChange={(e) => { setStakeholderSearch(e.target.value); setStakeholderPage(1); }}
+              />
+              <select
+                className="px-3 py-2 bg-section-subtle border border-section-border rounded"
+                value={stakeholderStatusFilter}
+                onChange={(e) => { setStakeholderStatusFilter(e.target.value); setStakeholderPage(1); }}
+              >
+                <option value="">All statuses</option>
+                <option value="active">active</option>
+                <option value="pending">pending</option>
+                <option value="inactive">inactive</option>
+                <option value="suspended">suspended</option>
+              </select>
+              <select
+                className="px-3 py-2 bg-section-subtle border border-section-border rounded"
+                value={stakeholderVerifiedFilter}
+                onChange={(e) => { setStakeholderVerifiedFilter(e.target.value); setStakeholderPage(1); }}
+              >
+                <option value="">Verified: any</option>
+                <option value="true">Verified</option>
+                <option value="false">Unverified</option>
+              </select>
+            </div>
+
+            {loadingStakeholders ? (
+              <div className="text-center py-12 text-brand-text-muted">
+                <Loader className="w-8 h-8 animate-spin mx-auto mb-4" />
+                Loading stakeholders...
+              </div>
+            ) : stakeholders.length > 0 ? (
+              <div className="bg-section-light border border-section-border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-section-subtle">
+                    <tr>
+                      <th className="text-left p-3 border-b border-section-border">Reference</th>
+                      <th className="text-left p-3 border-b border-section-border">Name</th>
+                      <th className="text-left p-3 border-b border-section-border">Email</th>
+                      <th className="text-left p-3 border-b border-section-border">Status</th>
+                      <th className="text-left p-3 border-b border-section-border">Verified</th>
+                      <th className="text-left p-3 border-b border-section-border">Created</th>
+                      <th className="text-left p-3 border-b border-section-border">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stakeholders.map((s) => (
+                      <tr key={s.id} className="hover:bg-section-subtle/50">
+                        <td className="p-3 border-b border-section-border">{s.reference}</td>
+                        <td className="p-3 border-b border-section-border">{s.name}</td>
+                        <td className="p-3 border-b border-section-border">{s.email || '-'}</td>
+                        <td className="p-3 border-b border-section-border">{s.status}</td>
+                        <td className="p-3 border-b border-section-border">{s.is_verified ? 'Yes' : 'No'}</td>
+                        <td className="p-3 border-b border-section-border">{new Date(s.created_at).toLocaleDateString()}</td>
+                        <td className="p-3 border-b border-section-border">
+                          <div className="flex gap-2">
+                            <Link
+                              className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
+                              href={`/dashboard/admin/stakeholders/${s.id}/view`}
+                            >
+                              View
+                            </Link>
+                            <Link
+                              className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
+                              href={`/dashboard/admin/stakeholders/${s.id}/edit`}
+                            >
+                              Edit
+                            </Link>
+                            <Link
+                              className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
+                              href={`/dashboard/admin/stakeholders/${s.id}/roles`}
+                            >
+                              Roles
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-section-light rounded-lg border border-section-border">
+                <Users className="w-12 h-12 mx-auto mb-4 text-brand-text-muted" />
+                <p className="text-brand-text-muted mb-4">No stakeholders found</p>
+                <Link
+                  href="/dashboard/admin/stakeholders/create"
+                  className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-primary-hover px-4 py-2 rounded-lg transition"
+                >
+                  <Plus className="w-5 h-5" />
+                  Create First Stakeholder
+                </Link>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {stakeholders.length > 0 && (
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <div>
+                  Showing {(stakeholderPage - 1) * 50 + 1}–{(stakeholderPage - 1) * 50 + stakeholders.length} of {stakeholderCount}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={stakeholderPage <= 1}
+                    onClick={() => setStakeholderPage((p) => p - 1)}
+                    className="px-3 py-1 bg-section-subtle border border-section-border rounded disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="px-2 py-1">
+                    Page {stakeholderPage} / {Math.max(1, Math.ceil(stakeholderCount / 50))}
+                  </span>
+                  <button
+                    disabled={stakeholderPage >= Math.ceil(stakeholderCount / 50)}
+                    onClick={() => setStakeholderPage((p) => p + 1)}
+                    className="px-3 py-1 bg-section-subtle border border-section-border rounded disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>

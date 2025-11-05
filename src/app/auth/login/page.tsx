@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { supabase } from '@/lib/supabase/client';
+import { getUserType, getDashboardRoute } from '@/lib/utils/userType';
 import { Mail, Lock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/branding/Logo';
@@ -26,7 +28,19 @@ export default function LoginPage() {
       }
 
       await signIn(email, password);
-      router.push('/dashboard');
+      
+      // Wait a moment for session to be established
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get the current user to determine their type
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const userInfo = await getUserType(authUser);
+        const dashboardRoute = getDashboardRoute(userInfo.type);
+        router.push(dashboardRoute);
+      } else {
+        router.push('/dashboard'); // Fallback to admin dashboard
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

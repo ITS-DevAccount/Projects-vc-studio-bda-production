@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
+import { useAppUuid } from '@/contexts/AppContext';
 import { ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewBlogPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const appUuid = useAppUuid();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -45,6 +47,7 @@ export default function NewBlogPage() {
 
       const { error: insertError } = await supabase.from('blog_posts').insert([
         {
+          app_uuid: appUuid, // Assign to current app
           title: formData.title,
           excerpt: formData.excerpt,
           content: formData.content,

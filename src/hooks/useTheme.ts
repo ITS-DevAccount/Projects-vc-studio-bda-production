@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { useApp } from '@/contexts/AppContext';
 
 export interface SiteSettings {
   id: string;
@@ -74,6 +75,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
  * Fetches active site_settings and provides theme configuration
  */
 export function useTheme() {
+  const { site_code } = useApp();
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,17 +102,20 @@ export function useTheme() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [site_code]);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('site_settings')
-        .select('*')
-        .eq('is_active', true)
+      // Try to fetch with site_code first (new schema), fall back to is_active (old schema)
+      let query = supabase.from('site_settings').select('*');
+
+      // Try filtering by site_code if the field exists, otherwise use is_active
+      const { data, error: fetchError } = await query
+        .or(`site_code.eq.${site_code},is_active.eq.true`)
+        .limit(1)
         .single();
 
       if (fetchError) {

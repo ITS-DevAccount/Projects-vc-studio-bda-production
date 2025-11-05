@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { useAppUuid } from '@/contexts/AppContext';
 import {
   Save,
   Eye,
@@ -56,6 +57,7 @@ interface PageImage {
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export default function PageEditor() {
+  const appUuid = useAppUuid();
   const [settings, setSettings] = useState<PageSettings>({
     page_name: 'home',
     hero_video_url: 'https://res.cloudinary.com/demo/video/upload',
@@ -85,18 +87,20 @@ export default function PageEditor() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!appUuid) return;
     loadPageSettings();
-  }, []);
+  }, [appUuid]);
 
   const loadPageSettings = async () => {
     try {
       setLoading(true);
 
-      // Load page settings
+      // Load page settings for current app
       const { data: pageData, error: pageError } = await supabase
         .from('page_settings')
         .select('*')
         .eq('page_name', 'home')
+        .eq('app_uuid', appUuid)
         .single();
 
       if (pageError && pageError.code !== 'PGRST116') {
@@ -111,6 +115,7 @@ export default function PageEditor() {
           .from('page_images')
           .select('*')
           .eq('page_settings_id', pageData.id)
+          .eq('app_uuid', appUuid)
           .order('display_order', { ascending: true });
 
         if (imagesError) throw imagesError;
@@ -213,6 +218,7 @@ export default function PageEditor() {
             updated_at: new Date().toISOString()
           })
           .eq('id', pageSettingsId)
+          .eq('app_uuid', appUuid) // SECURITY: Prevent cross-app updates
           .select();
 
         console.log('Update result:', { updateData, updateError });
@@ -230,7 +236,10 @@ export default function PageEditor() {
         console.log('Inserting new page settings');
         const { data: insertData, error: insertError } = await supabase
           .from('page_settings')
-          .insert([settings])
+          .insert([{
+            ...settings,
+            app_uuid: appUuid // Include app_uuid on insert
+          }])
           .select()
           .single();
 
@@ -254,7 +263,8 @@ export default function PageEditor() {
         const { error: deleteError } = await supabase
           .from('page_images')
           .delete()
-          .eq('page_settings_id', pageSettingsId);
+          .eq('page_settings_id', pageSettingsId)
+          .eq('app_uuid', appUuid); // SECURITY: Prevent cross-app deletion
 
         console.log('Delete result:', { deleteError });
         if (deleteError) {

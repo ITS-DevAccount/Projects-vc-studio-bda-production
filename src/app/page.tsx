@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { useAppUuid } from '@/contexts/AppContext';
 import Link from 'next/link';
 import VideoPlayer from '@/components/media/VideoPlayer';
 import ImageGallery from '@/components/media/ImageGallery';
@@ -56,6 +57,7 @@ interface PageImage {
 type EnquiryStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export default function VCStudioLanding() {
+  const appUuid = useAppUuid();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [pageSettings, setPageSettings] = useState<PageSettings | null>(null);
@@ -71,20 +73,22 @@ export default function VCStudioLanding() {
 
   // Fetch page settings and data on mount
   useEffect(() => {
+    if (!appUuid) return;
     fetchPageSettings();
     fetchBlogs();
-  }, []);
+  }, [appUuid]);
 
   const fetchPageSettings = async () => {
     try {
 
       console.log('🔍 Fetching page settings for: home');
 
-      // Fetch page settings
+      // Fetch page settings for current app
       const { data: settingsData, error: settingsError } = await supabase
         .from('page_settings')
         .select('*')
         .eq('page_name', 'home')
+        .eq('app_uuid', appUuid)
         .eq('is_published', true)
         .single();
 
@@ -117,6 +121,7 @@ export default function VCStudioLanding() {
           .from('page_images')
           .select('*')
           .eq('page_settings_id', settingsData.id)
+          .eq('app_uuid', appUuid)
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
@@ -137,6 +142,7 @@ export default function VCStudioLanding() {
       const { data, error } = await supabase
         .from('blog_posts')
         .select('id, title, excerpt, slug, featured_image_url, published_at')
+        .eq('app_uuid', appUuid)
         .eq('status', 'published')
         .eq('is_featured', true)
         .order('published_at', { ascending: false })
@@ -180,6 +186,7 @@ export default function VCStudioLanding() {
         .from('enquiries')
         .insert([
           {
+            app_uuid: appUuid,
             name: enquiryForm.name,
             email: enquiryForm.email,
             subject: enquiryForm.subject,

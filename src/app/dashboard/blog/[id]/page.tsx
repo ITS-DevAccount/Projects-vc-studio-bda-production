@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
+import { useAppUuid } from '@/contexts/AppContext';
 import { ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 
@@ -11,6 +12,7 @@ export default function EditBlogPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
+  const appUuid = useAppUuid();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
@@ -24,7 +26,7 @@ export default function EditBlogPage() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !appUuid) return;
 
     const fetchBlog = async () => {
       try {
@@ -32,6 +34,7 @@ export default function EditBlogPage() {
           .from('blog_posts')
           .select('*')
           .eq('id', params.id)
+          .eq('app_uuid', appUuid) // Filter by current app
           .single();
 
         if (error) throw error;
@@ -54,7 +57,7 @@ export default function EditBlogPage() {
     };
 
     fetchBlog();
-  }, [user, params.id]);
+  }, [user, appUuid, params.id]);
 
   if (!user) {
     return null;
@@ -104,7 +107,8 @@ export default function EditBlogPage() {
       const { error: updateError } = await supabase
         .from('blog_posts')
         .update(updateData)
-        .eq('id', params.id);
+        .eq('id', params.id)
+        .eq('app_uuid', appUuid); // SECURITY: Prevent cross-app updates
 
       if (updateError) throw updateError;
       router.push('/dashboard');

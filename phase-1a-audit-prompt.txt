@@ -1,0 +1,177 @@
+You are a database architect auditing an existing PostgreSQL KDA baseline for multi-app compatibility.
+
+CONTEXT:
+I have deployed SQL scripts (01-core-platform.sql, 02-stakeholder-community.sql, 03-workflows-notifications-crm.sql, 04-interfaces-llm.sql) 
+in a Supabase project. The system works for a single app, but we're now expanding to support multiple independent applications 
+(T2G, G2G, OCG for ADA; VC_STUDIO for BDA; BUILDBID for PDA).
+
+EXISTING DEPLOYED TABLES:
+- site_settings (has site_code for styling config - needs app metadata)
+- enquiries (contact form - currently single app queue)
+- blog_posts (content - currently single app library)
+- stakeholders (working well, no changes needed)
+- relationships (M2M table, already flexible)
+- functions_registry (business functions - needs external API prep)
+- notifications (messages - currently no app context)
+- workflows (process automation - verify multi-app support)
+- campaigns (engagement - verify multi-app support)
+- interactions (communication log - verify multi-app support)
+- audit_log (change tracking - verify context)
+
+YOUR TASK:
+
+1. AUDIT existing deployed SQL scripts for multi-app readiness
+   - Review: 01-core-platform.sql, 02-stakeholder-community.sql, 03-workflows-notifications-crm.sql, 04-interfaces-llm.sql
+   - For each table, determine: Does it support multiple apps independently?
+   - Identify tables that MUST be amended (enquiries, blog_posts, etc.)
+   - Identify tables that need verification (workflows, campaigns, etc.)
+
+2. GENERATE COMPATIBILITY AUDIT REPORT
+   Output: PHASE-1a-COMPATIBILITY-AUDIT.md
+   
+   For EACH table, document:
+   - Table name and purpose
+   - Current schema (does it have app_code/site_code?)
+   - Multi-app readiness (YES/NO/UNKNOWN)
+   - If NO: What's broken? Why?
+   - If UNKNOWN: What queries should verify?
+   - Required amendments (if any)
+   - Breaking vs non-breaking (all should be non-breaking)
+   - Risk level (HIGH/MEDIUM/LOW)
+   - Example queries (current vs multi-app ready)
+
+3. ANALYZE WHAT NEEDS TO CHANGE
+   - enquiries: Currently no app isolation - needs app_uuid FK
+   - blog_posts: Currently no app isolation - needs app_uuid FK
+   - notifications: Currently no app context - needs app_uuid FK
+   - workflows: Verify if already multi-app ready
+   - campaigns: Verify if already multi-app ready
+   - interactions: Verify if already multi-app ready
+   - audit_log: Verify if already tracks app context
+
+4. RECOMMEND AMENDMENTS TO EXISTING CODE
+   
+   For enquiries table:
+   - Current: Likely no app_code or site_code column
+   - Amendment: Add app_uuid UUID REFERENCES site_settings(app_uuid)
+   - Backfill: Default to T2G initially (or configurable)
+   - Index: Create on app_uuid for queries
+   - Non-breaking: YES (new optional column)
+   - Existing queries: Still work (just not filtered by app)
+   - New queries: Can now filter per-app
+   
+   For blog_posts table:
+   - Current: Likely no app_code or site_code column
+   - Amendment: Add app_uuid UUID REFERENCES site_settings(app_uuid)
+   - Backfill: Default to T2G or per-post decision
+   - Index: Create on app_uuid
+   - Non-breaking: YES
+   
+   For notifications table:
+   - Current: Likely no app context
+   - Amendment: Add app_uuid UUID REFERENCES site_settings(app_uuid)
+   - Backfill: NULL (notifications can exist before multi-app era)
+   - Index: Create on app_uuid
+   - Non-breaking: YES
+   
+   For site_settings table:
+   - Current: Has site_code, styling config
+   - Amendment: Add app_uuid, domain_code, is_active_app
+   - Reason: Use as app registry instead of creating separate applications table
+
+5. GENERATE AMENDED SQL SCRIPT
+   Output: PHASE-1a-Field-Extensions.sql
+   
+   Single SQL script with:
+   
+   -- Section 1: Extend site_settings with app metadata
+   ALTER TABLE site_settings ADD COLUMN app_uuid UUID DEFAULT uuid_generate_v4();
+   ALTER TABLE site_settings ADD UNIQUE (app_uuid);
+   ALTER TABLE site_settings ADD COLUMN domain_code TEXT;
+   ALTER TABLE site_settings ADD COLUMN is_active_app BOOLEAN DEFAULT TRUE;
+   -- Indexes
+   CREATE INDEX idx_site_settings_app_code ON site_settings(site_code);
+   CREATE INDEX idx_site_settings_domain ON site_settings(domain_code);
+   
+   -- Section 2: Add user_in_application relationship type
+   INSERT INTO relationship_types (code, label, description, is_bidirectional)
+   VALUES ('user_in_application', 'User in Application', 'Stakeholder is a member of this app', false)
+   ON CONFLICT (code) DO NOTHING;
+   
+   -- Section 3: Extend functions_registry for external APIs (Phase 1e prep)
+   ALTER TABLE functions_registry ADD COLUMN is_external_api BOOLEAN DEFAULT FALSE;
+   ALTER TABLE functions_registry ADD COLUMN api_endpoint TEXT;
+   -- ... (all external API fields)
+   
+   -- Section 4: Fix enquiries for multi-app
+   ALTER TABLE enquiries ADD COLUMN app_uuid UUID REFERENCES site_settings(app_uuid);
+   CREATE INDEX idx_enquiries_app_uuid ON enquiries(app_uuid);
+   UPDATE enquiries SET app_uuid = (SELECT app_uuid FROM site_settings WHERE site_code = 'T2G' LIMIT 1) WHERE app_uuid IS NULL;
+   
+   -- Section 5: Fix blog_posts for multi-app
+   ALTER TABLE blog_posts ADD COLUMN app_uuid UUID REFERENCES site_settings(app_uuid);
+   CREATE INDEX idx_blog_posts_app_uuid ON blog_posts(app_uuid);
+   UPDATE blog_posts SET app_uuid = (SELECT app_uuid FROM site_settings WHERE site_code = 'T2G' LIMIT 1) WHERE app_uuid IS NULL;
+   
+   -- Section 6: Fix notifications for multi-app
+   ALTER TABLE notifications ADD COLUMN app_uuid UUID REFERENCES site_settings(app_uuid);
+   CREATE INDEX idx_notifications_app_uuid ON notifications(app_uuid);
+   
+   -- Section 7: Create external_api_integrations table
+   CREATE TABLE external_api_integrations (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       ...
+   );
+   
+   -- Section 8: Example weather API
+   INSERT INTO functions_registry ...
+   INSERT INTO external_api_integrations ...
+   
+   -- Section 9: Verification queries
+   SELECT ...
+
+6. PROVIDE CODE AMENDMENT RECOMMENDATIONS
+   
+   For application code that queries these tables:
+   
+   OLD QUERY (single app):
+   SELECT * FROM blog_posts WHERE status = 'published' ORDER BY published_at DESC
+   
+   NEW QUERY (multi-app):
+   SELECT * FROM blog_posts 
+   WHERE app_uuid = (SELECT app_uuid FROM site_settings WHERE site_code = $1) 
+   AND status = 'published'
+   ORDER BY published_at DESC
+   
+   Or if app_uuid already available in request context:
+   SELECT * FROM blog_posts WHERE app_uuid = $1 AND status = 'published' ORDER BY published_at DESC
+
+OUTPUT DELIVERABLES:
+
+1. PHASE-1a-COMPATIBILITY-AUDIT.md
+   - Audit findings for each table
+   - Risk assessment
+   - Verification recommendations
+   - Migration strategy
+
+2. PHASE-1a-Field-Extensions.sql
+   - Complete executable SQL (9 sections)
+   - All amendments for multi-app support
+   - Non-breaking changes only
+   - Verification queries included
+
+3. APPLICATION-CODE-AMENDMENTS.md (optional but valuable)
+   - Shows which application queries need updating
+   - Provides before/after query examples
+   - Explains app context parameter passing
+   - Documents any breaking changes to APIs
+
+REQUIREMENTS:
+- Both outputs are production-ready
+- All SQL is tested syntax (PostgreSQL 15+)
+- No data loss
+- Non-breaking (backward compatible)
+- Clear comments explaining each section
+- Idempotent where possible (IF NOT EXISTS, ON CONFLICT)
+- Verification queries to confirm success
+- Risk assessment included
