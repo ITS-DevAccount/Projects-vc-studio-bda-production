@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import type { AuthError, SupabaseClient, User } from '@supabase/supabase-js';
 
-// Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
@@ -10,7 +11,6 @@ function getAccessToken(req: NextRequest): string | undefined {
   return undefined;
 }
 
-// Server-side versions of stakeholder functions that use authenticated client
 async function listStakeholdersServer(params: {
   q?: string;
   type?: string;
@@ -35,7 +35,7 @@ async function listStakeholdersServer(params: {
 
   let query = supabase
     .from('stakeholders')
-    .select('id, reference, name, stakeholder_type_id, email, status, is_verified, created_at', { count: 'exact' });
+    .select('id, reference, name, stakeholder_type_id, primary_role_id, email, status, is_verified, created_at', { count: 'exact' });
 
   if (q) query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%`);
   if (type) query = query.eq('stakeholder_type_id', type);
@@ -53,42 +53,34 @@ async function listStakeholdersServer(params: {
   return { data: data || [], count: count || 0 };
 }
 
-async function createStakeholderServer(payload: Record<string, any>, accessToken?: string) {
-  const supabase = await createServerClient(accessToken);
-  
-  // Debug: Check if user is authenticated
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  console.log('Auth check:', { 
-    hasUser: !!user, 
-    userId: user?.id, 
-    authError: authError?.message 
-  });
-  
-  // Debug: Check if user exists in users table
-  if (user) {
-    const { data: userRecord, error: userError } = await supabase
-      .from('users')
-      .select('id, email, role')
-      .eq('auth_user_id', user.id)
-      .single();
-    console.log('User record check:', { 
-      hasRecord: !!userRecord, 
-      role: userRecord?.role,
-      userError: userError?.message 
-    });
+type AuthAdminClient = SupabaseClient['auth']['admin'];
+
+async function findAuthUserByEmail(admin: AuthAdminClient, email: string): Promise<{ user: User | null; error: AuthError | null }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const response = await admin.listUsers({ page, perPage });
+    if (response.error) {
+      return { user: null, error: response.error };
+    }
+
+    const users = response.data?.users ?? [];
+    const matchingUser = users.find((u) => (u.email ?? '').toLowerCase() === normalizedEmail);
+    if (matchingUser) {
+      return { user: matchingUser, error: null };
+    }
+
+    const nextPage = (response.data as (typeof response.data) & { nextPage?: number | null })?.nextPage ?? null;
+    if (!nextPage || nextPage <= page) {
+      break;
+    }
+
+    page = nextPage;
   }
-  
-  const { data, error } = await supabase
-    .from('stakeholders')
-    .insert([payload])
-    .select()
-    .single();
-  if (error) {
-    console.error('Error creating stakeholder:', error);
-    console.error('Payload:', payload);
-    throw error;
-  }
-  return data;
+
+  return { user: null, error: null };
 }
 
 export async function GET(req: NextRequest) {
@@ -104,7 +96,6 @@ export async function GET(req: NextRequest) {
     const page = Number(searchParams.get('page') || '1');
     const pageSize = Number(searchParams.get('pageSize') || '50');
 
-    // Stakeholders work across apps, no app_uuid filter needed
     const result = await listStakeholdersServer({
       q, type, status, verified, sort, order, page, pageSize
     }, accessToken);
@@ -118,14 +109,152 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
-    // Stakeholders work across apps, no app_uuid needed
     const body = await req.json();
-    const created = await createStakeholderServer(body, accessToken);
-    return NextResponse.json(created);
+
+    const supabase = await createServerClient(accessToken);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let createdByUserId: string | null = null;
+    if (user) {
+      const { data: creatorRecord } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+      createdByUserId = creatorRecord?.id ?? null;
+    }
+
+    const {
+      stakeholder: stakeholderInput,
+      roleCodes = [],
+      primaryRoleId = null,
+      relationships = [],
+      portalAccess = { enabled: false, email: null, temporaryPassword: null },
+    } = body && body.stakeholder ? body : {
+      stakeholder: body,
+      roleCodes: [],
+      primaryRoleId: body?.primary_role_id ?? null,
+      relationships: [],
+      portalAccess: { enabled: Boolean(body?.is_user), email: body?.invite_email ?? body?.email ?? null, temporaryPassword: null },
+    };
+
+    if (!stakeholderInput?.name || !stakeholderInput?.stakeholder_type_id) {
+      return NextResponse.json({ error: 'Stakeholder name and stakeholder_type_id are required' }, { status: 400 });
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    if (!serviceRoleKey || !supabaseUrl) {
+      console.error('Missing Supabase service role configuration for stakeholder provisioning');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    let authUserId: string | null = stakeholderInput?.auth_user_id ?? null;
+    let authEmail: string | null = portalAccess?.email ?? stakeholderInput?.invite_email ?? stakeholderInput?.email ?? null;
+    let createdAuthUser = false;
+
+    if (portalAccess?.enabled) {
+      if (!authEmail) {
+        return NextResponse.json({ error: 'Portal access requires an email address' }, { status: 400 });
+      }
+
+      const { user: existingUser, error: lookupError } = await findAuthUserByEmail(adminClient.auth.admin, authEmail);
+
+      if (lookupError) {
+        console.error('Failed to lookup auth user by email:', lookupError);
+        return NextResponse.json({ error: 'Failed to lookup auth user' }, { status: 500 });
+      }
+
+      if (existingUser) {
+        authUserId = existingUser.id;
+
+        if (portalAccess?.temporaryPassword) {
+          const { error: resetError } = await adminClient.auth.admin.updateUserById(authUserId, {
+            password: portalAccess.temporaryPassword,
+          });
+
+          if (resetError) {
+            console.error('Failed to reset password for existing auth user:', resetError);
+            return NextResponse.json({ error: resetError.message || 'Failed to reset password' }, { status: 400 });
+          }
+        }
+      } else {
+        const passwordToUse = portalAccess?.temporaryPassword;
+        if (!passwordToUse || passwordToUse.length < 8) {
+          return NextResponse.json({ error: 'Temporary password must be at least 8 characters' }, { status: 400 });
+        }
+
+        const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
+          email: authEmail,
+          password: passwordToUse,
+          email_confirm: true,
+        });
+
+        if (createUserError) {
+          console.error('Failed to create auth user:', createUserError);
+          return NextResponse.json({ error: createUserError.message || 'Failed to create auth user' }, { status: 400 });
+        }
+
+        authUserId = createdUser.user?.id ?? null;
+        if (!authUserId) {
+          return NextResponse.json({ error: 'Auth user creation did not return an ID' }, { status: 500 });
+        }
+        createdAuthUser = true;
+      }
+    }
+
+    const rpcPayload = {
+      p_stakeholder: {
+        ...stakeholderInput,
+        auth_user_id: authUserId,
+        invite_email: portalAccess?.enabled ? authEmail : stakeholderInput?.invite_email ?? null,
+        is_user: portalAccess?.enabled ? true : stakeholderInput?.is_user ?? false,
+      },
+      p_role_codes: roleCodes?.length ? roleCodes : null,
+      p_primary_role_id: primaryRoleId,
+      p_relationships: relationships?.length ? relationships : null,
+      p_auth_user_id: authUserId,
+      p_invite_email: portalAccess?.enabled ? authEmail : stakeholderInput?.invite_email ?? null,
+      p_is_user: portalAccess?.enabled ? true : stakeholderInput?.is_user ?? false,
+      p_created_by: createdByUserId,
+    };
+
+    console.log('RPC payload:', rpcPayload);
+
+    let rpcResult;
+    try {
+      const { data: result, error: rpcError } = await adminClient.rpc('provision_stakeholder_v2', rpcPayload);
+      console.log('RPC result:', { data: result, error: rpcError });
+      if (rpcError) {
+        throw rpcError;
+      }
+      rpcResult = result ?? {};
+    } catch (rpcError: any) {
+      console.error('Failed to provision stakeholder:', rpcError);
+
+      if (createdAuthUser && authUserId) {
+        await adminClient.auth.admin.deleteUser(authUserId);
+      }
+
+      return NextResponse.json({ error: rpcError.message || 'Failed to provision stakeholder' }, { status: 400 });
+    }
+
+    const stakeholderId = rpcResult?.stakeholder_out_id || stakeholderInput?.id;
+
+    if (!stakeholderId) {
+      console.error('Provision stakeholder function returned no ID');
+      return NextResponse.json({ error: 'Provisioning failed without creating a stakeholder record' }, { status: 500 });
+    }
+
+    return NextResponse.json({ id: stakeholderId, auth_user_id: authUserId, invite_email: authEmail });
   } catch (e: any) {
     console.error('API error in POST /api/stakeholders:', e);
     return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
-
 

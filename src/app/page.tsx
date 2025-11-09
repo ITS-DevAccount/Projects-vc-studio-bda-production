@@ -180,13 +180,20 @@ export default function VCStudioLanding() {
       return;
     }
 
+    if (!appUuid) {
+      console.error('App UUID is not available. Cannot submit enquiry.');
+      setEnquiryStatus('error');
+      setTimeout(() => setEnquiryStatus('idle'), 5000);
+      return;
+    }
+
     try {
       setEnquiryStatus('loading');
       const { error } = await supabase
         .from('enquiries')
         .insert([
           {
-            app_uuid: appUuid,
+            app_uuid: appUuid, // Required: Links enquiry to the current app
             name: enquiryForm.name,
             email: enquiryForm.email,
             subject: enquiryForm.subject,
@@ -197,12 +204,20 @@ export default function VCStudioLanding() {
           }
         ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error submitting enquiry:', {
+          message: (error as any).message || 'Unknown error',
+          details: (error as any).details || null,
+          hint: (error as any).hint || null,
+          code: (error as any).code || null
+        });
+        throw error;
+      }
 
       setEnquiryStatus('success');
       setEnquiryForm({ name: '', email: '', subject: '', message: '' });
       setTimeout(() => setEnquiryStatus('idle'), 5000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting enquiry:', err);
       setEnquiryStatus('error');
       setTimeout(() => setEnquiryStatus('idle'), 5000);
@@ -224,7 +239,8 @@ export default function VCStudioLanding() {
               <a href="#info" className="text-brand-text-light hover:text-accent-primary transition font-medium">About</a>
               <a href="#blogs" className="text-brand-text-light hover:text-accent-primary transition font-medium">Resources</a>
               <a href="#enquiry" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
-              <Link href="/auth/login" className="text-brand-text-light hover:text-accent-primary transition font-medium">Admin</Link>
+              <Link href="/onboarding" className="bg-accent-primary hover:bg-accent-primary-hover text-white px-4 py-2 rounded-lg transition font-medium">Register</Link>
+              <Link href="/auth/login" className="text-brand-text-light hover:text-accent-primary transition font-medium">Sign In</Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -243,7 +259,8 @@ export default function VCStudioLanding() {
               <a href="#info" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">About</a>
               <a href="#blogs" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Resources</a>
               <a href="#enquiry" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
-              <Link href="/auth/login" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Admin</Link>
+              <Link href="/onboarding" className="block px-2 py-2 bg-accent-primary text-white rounded text-center font-medium">Register</Link>
+              <Link href="/auth/login" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Sign In</Link>
             </div>
           )}
         </div>

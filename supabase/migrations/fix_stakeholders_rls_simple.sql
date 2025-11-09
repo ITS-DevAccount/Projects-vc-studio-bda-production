@@ -47,3 +47,8 @@ FROM pg_policies
 WHERE tablename = 'stakeholders'
 ORDER BY policyname;
 
+
+
+
+
+

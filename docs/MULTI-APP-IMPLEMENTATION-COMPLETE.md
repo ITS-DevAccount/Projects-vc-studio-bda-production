@@ -451,3 +451,4 @@ USING (app_uuid = current_setting('app.current_app_uuid')::uuid);
 - Review the code changes in detail
 
 **Congratulations on completing this migration!** 🎉
+  

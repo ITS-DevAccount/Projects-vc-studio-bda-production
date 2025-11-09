@@ -52,36 +52,39 @@ async function deleteStakeholderServer(id: string, accessToken?: string) {
   return true;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
-    const item = await getStakeholderServer(params.id, accessToken);
-    return NextResponse.json(item);
+    const stakeholder = await getStakeholderServer(id, accessToken);
+    return NextResponse.json(stakeholder);
   } catch (e: any) {
     console.error('API error in GET /api/stakeholders/[id]:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 404 });
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
     const body = await req.json();
-    const updated = await updateStakeholderServer(params.id, body, accessToken);
+    const updated = await updateStakeholderServer(id, body, accessToken);
     return NextResponse.json(updated);
   } catch (e: any) {
     console.error('API error in PATCH /api/stakeholders/[id]:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 400 });
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
-    await deleteStakeholderServer(params.id, accessToken);
+    await deleteStakeholderServer(id, accessToken);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('API error in DELETE /api/stakeholders/[id]:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 400 });
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }

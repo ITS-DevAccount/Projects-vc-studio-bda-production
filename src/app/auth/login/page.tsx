@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import { getUserType, getDashboardRoute } from '@/lib/utils/userType';
-import { Mail, Lock, ChevronRight } from 'lucide-react';
+import { Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/branding/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function LoginPage() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         const userInfo = await getUserType(authUser);
-        const dashboardRoute = getDashboardRoute(userInfo.type);
+        const dashboardRoute = getDashboardRoute(userInfo);
         router.push(dashboardRoute);
       } else {
         router.push('/dashboard'); // Fallback to admin dashboard
@@ -68,7 +69,7 @@ export default function LoginPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold text-center mb-2 text-brand-text">Admin Login</h1>
+        <h1 className="text-3xl font-bold text-center mb-2 text-brand-text">Studio Sign In</h1>
         <p className="text-brand-text-muted text-center mb-8">
           Sign in to manage VC Studio content
         </p>
@@ -103,12 +104,19 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 w-5 h-5 text-brand-text-muted" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 className="w-full pl-10 pr-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-brand-text-muted hover:text-brand-text transition"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

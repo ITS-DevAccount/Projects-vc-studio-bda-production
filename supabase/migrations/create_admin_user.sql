@@ -48,3 +48,8 @@ FROM users u
 LEFT JOIN auth.users au ON u.auth_user_id = au.id
 WHERE u.email = 'your-email@example.com';
 
+
+
+
+
+

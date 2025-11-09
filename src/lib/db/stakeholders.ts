@@ -28,7 +28,7 @@ export async function listStakeholders(params: ListParams) {
 
   let query = supabase
     .from('stakeholders')
-    .select('id, reference, name, stakeholder_type_id, email, status, is_verified, created_at', { count: 'exact' });
+    .select('id, reference, name, stakeholder_type_id, primary_role_id, email, status, is_verified, created_at', { count: 'exact' });
 
   // Note: Stakeholders work across apps, so no app_uuid filter
 

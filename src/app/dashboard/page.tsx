@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { useAppUuid } from '@/contexts/AppContext';
+import { useAppUuid, useApp } from '@/contexts/AppContext';
 import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit, Palette, Users } from 'lucide-react';
 import Link from 'next/link';
 
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading, signOut } = useAuth();
-  const appUuid = useAppUuid();
+  const { app_uuid: appUuid, isLoading: appContextLoading } = useApp();
   const [activeTab, setActiveTab] = useState<'blogs' | 'enquiries' | 'pages' | 'stakeholders'>(() => {
     const tab = searchParams?.get('tab');
     if (tab && ['blogs', 'enquiries', 'pages', 'stakeholders'].includes(tab)) {
@@ -134,32 +134,99 @@ export default function DashboardPage() {
 
   // Fetch enquiries
   useEffect(() => {
-    if (!appUuid) return;
+    // Wait for app context to finish loading
+    if (appContextLoading) {
+      return;
+    }
+
+    // Check if appUuid is valid (not null, undefined, or empty string)
+    if (!appUuid || (typeof appUuid === 'string' && appUuid.trim() === '')) {
+      console.warn('appUuid is not available - querying all enquiries as fallback');
+      // If no appUuid, query all enquiries (useful until site_settings is set up)
+      const fetchAllEnquiries = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('enquiries')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (error) {
+            console.error('Error fetching all enquiries (fallback):', error);
+            setEnquiries([]);
+          } else {
+            console.log('Fetched all enquiries (no app_uuid filter):', data?.length || 0);
+            setEnquiries(data || []);
+          }
+        } catch (err) {
+          console.error('Exception fetching all enquiries:', err);
+          setEnquiries([]);
+        } finally {
+          setLoadingEnquiries(false);
+        }
+      };
+      fetchAllEnquiries();
+      return;
+    }
 
     const fetchEnquiries = async () => {
       try {
+        console.log('Fetching enquiries with appUuid:', appUuid);
+        
+        // Try querying with app_uuid filter first
         const { data, error } = await supabase
           .from('enquiries')
           .select('*')
           .eq('app_uuid', appUuid)
           .order('created_at', { ascending: false });
 
-        console.log('Initial enquiries fetch:', { data, error, count: data?.length });
-
         if (error) {
-          console.error('Supabase error:', error);
-          throw error;
+          const errorObj: any = error || {};
+          const errorCode = typeof errorObj.code === 'string' ? errorObj.code : '';
+          const errorMessage = typeof errorObj.message === 'string' ? errorObj.message : '';
+
+          if (errorCode || errorMessage || errorObj.details || errorObj.hint) {
+            console.warn('Problem fetching enquiries:', {
+              code: errorCode || undefined,
+              message: errorMessage || undefined,
+              details: errorObj.details || undefined,
+              hint: errorObj.hint || undefined,
+            });
+          } else {
+            console.warn('Problem fetching enquiries (no details available).');
+          }
+
+          const messageIncludesColumn = typeof errorMessage === 'string' && (errorMessage.includes('app_uuid') || errorMessage.includes('column'));
+
+          if (errorCode === '42703' || messageIncludesColumn) {
+            console.warn('app_uuid column issue detected, querying all enquiries as fallback');
+            const { data: allData, error: allError } = await supabase
+              .from('enquiries')
+              .select('*')
+              .order('created_at', { ascending: false });
+            
+            if (!allError && allData) {
+              console.log('Fallback query successful, found', allData.length, 'enquiries');
+              setEnquiries(allData);
+              return;
+            }
+          }
+          
+          setEnquiries([]);
+          return;
         }
+        
+        console.log('Successfully fetched', data?.length || 0, 'enquiries');
         setEnquiries(data || []);
-      } catch (err) {
-        console.error('Error fetching enquiries:', err);
+      } catch (err: any) {
+        console.error('Exception in fetchEnquiries:', err);
+        setEnquiries([]);
       } finally {
         setLoadingEnquiries(false);
       }
     };
 
     fetchEnquiries();
-  }, [appUuid]);
+  }, [appUuid, appContextLoading]);
 
   // Fetch stakeholders
   useEffect(() => {
@@ -242,21 +309,45 @@ export default function DashboardPage() {
   const refreshEnquiries = async () => {
     setLoadingEnquiries(true);
     try {
+      if (!appUuid) {
+        setEnquiries([]);
+        setLoadingEnquiries(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('enquiries')
         .select('*')
         .eq('app_uuid', appUuid)
         .order('created_at', { ascending: false });
 
-      console.log('Enquiries fetch result:', { data, error, count: data?.length });
-
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        // If error is about missing column (42703 = undefined_column), try without filter
+        const errorCode = (error as any)?.code;
+        const errorMessage = (error as any)?.message || '';
+        
+        if (errorCode === '42703' || errorMessage.includes('app_uuid') || errorMessage.includes('column')) {
+          console.warn('app_uuid column does not exist yet, querying all enquiries. Please run the migration.');
+          // Fallback: query all enquiries (for backward compatibility)
+          const { data: allData, error: allError } = await supabase
+            .from('enquiries')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (!allError && allData) {
+            setEnquiries(allData);
+            return;
+          }
+        }
+        
+        console.error('Error fetching enquiries:', error);
+        setEnquiries([]);
+        return;
       }
       setEnquiries(data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching enquiries:', err);
+      setEnquiries([]);
     } finally {
       setLoadingEnquiries(false);
     }
@@ -302,13 +393,22 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold">VC Studio Admin</h1>
               <p className="text-brand-text-muted text-sm">{user.email}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis px-4 py-2 rounded-lg transition"
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard/admin"
+                className="flex items-center gap-2 bg-accent-primary hover:bg-accent-primary-hover text-white px-4 py-2 rounded-lg transition"
+              >
+                <Users className="w-5 h-5" />
+                Admin Settings
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-section-subtle hover:bg-section-emphasis px-4 py-2 rounded-lg transition"
+              >
+                <LogOut className="w-5 h-5" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -676,7 +776,7 @@ export default function DashboardPage() {
                         <td className="p-3 border-b border-section-border">{s.is_verified ? 'Yes' : 'No'}</td>
                         <td className="p-3 border-b border-section-border">{new Date(s.created_at).toLocaleDateString()}</td>
                         <td className="p-3 border-b border-section-border">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Link
                               className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
                               href={`/dashboard/admin/stakeholders/${s.id}/view`}
@@ -694,6 +794,12 @@ export default function DashboardPage() {
                               href={`/dashboard/admin/stakeholders/${s.id}/roles`}
                             >
                               Roles
+                            </Link>
+                            <Link
+                              className="px-2 py-1 bg-blue-100 text-blue-800 border border-blue-300 rounded hover:bg-blue-200 transition"
+                              href={`/dashboard/admin/stakeholders/${s.id}/relationships`}
+                            >
+                              Relationships
                             </Link>
                           </div>
                         </td>

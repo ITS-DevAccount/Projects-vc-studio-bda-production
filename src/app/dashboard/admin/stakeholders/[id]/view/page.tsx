@@ -12,6 +12,7 @@ interface Stakeholder {
   reference: string;
   name: string;
   stakeholder_type_id: string;
+  primary_role_id?: string | null;
   email: string | null;
   phone: string | null;
   website: string | null;
@@ -20,6 +21,9 @@ interface Stakeholder {
   city: string | null;
   status: 'active' | 'inactive' | 'pending' | 'suspended';
   is_verified: boolean;
+  is_user?: boolean;
+  auth_user_email?: string | null;
+  invite_email?: string | null;
   industry: string | null;
   sector: string | null;
   created_at: string;
@@ -35,6 +39,8 @@ interface StakeholderType {
 interface StakeholderRole {
   id: string;
   role_type: string;
+  role_id?: string | null;
+  label?: string | null;
   assigned_at: string;
 }
 
@@ -67,6 +73,7 @@ export default function ViewStakeholderPage() {
   const [stakeholder, setStakeholder] = useState<Stakeholder | null>(null);
   const [stakeholderType, setStakeholderType] = useState<StakeholderType | null>(null);
   const [roles, setRoles] = useState<StakeholderRole[]>([]);
+  const [primaryRoleLabel, setPrimaryRoleLabel] = useState<string | null>(null);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [deleting, setDeleting] = useState(false);
 
@@ -126,6 +133,17 @@ export default function ViewStakeholderPage() {
       if (rolesRes.ok) {
         const rolesData = await rolesRes.json();
         setRoles(rolesData || []);
+
+        if (stakeholderData.primary_role_id) {
+          const primaryRole = (rolesData || []).find((role: StakeholderRole) => role.role_id === stakeholderData.primary_role_id);
+          if (primaryRole) {
+            setPrimaryRoleLabel(primaryRole.label || primaryRole.role_type);
+          } else {
+            setPrimaryRoleLabel(null);
+          }
+        } else {
+          setPrimaryRoleLabel(null);
+        }
       }
 
       // Fetch relationships
@@ -251,6 +269,10 @@ export default function ViewStakeholderPage() {
               <p className="text-brand-text font-medium">{stakeholderType?.label || 'Unknown'}</p>
             </div>
             <div>
+              <label className="text-sm text-brand-text-muted block mb-1">Primary Role</label>
+              <p className="text-brand-text font-medium">{primaryRoleLabel || 'Not set'}</p>
+            </div>
+            <div>
               <label className="text-sm text-brand-text-muted block mb-1">Email</label>
               <p className="text-brand-text">{stakeholder.email || '-'}</p>
             </div>
@@ -284,6 +306,14 @@ export default function ViewStakeholderPage() {
             <div>
               <label className="text-sm text-brand-text-muted block mb-1">Verified</label>
               <p className="text-brand-text">{stakeholder.is_verified ? 'Yes' : 'No'}</p>
+            </div>
+            <div>
+              <label className="text-sm text-brand-text-muted block mb-1">Portal Account</label>
+              <p className="text-brand-text">{stakeholder.is_user ? 'Enabled' : 'Not enabled'}</p>
+            </div>
+            <div>
+              <label className="text-sm text-brand-text-muted block mb-1">Login Email</label>
+              <p className="text-brand-text">{stakeholder.invite_email || stakeholder.auth_user_email || stakeholder.email || '-'}</p>
             </div>
             <div>
               <label className="text-sm text-brand-text-muted block mb-1">Country</label>
@@ -344,7 +374,7 @@ export default function ViewStakeholderPage() {
                   key={role.id}
                   className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
                 >
-                  {BDA_ROLES[role.role_type] || role.role_type}
+                  {role.label || BDA_ROLES[role.role_type] || role.role_type}
                 </span>
               ))}
             </div>

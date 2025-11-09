@@ -11,18 +11,19 @@ function getAccessToken(req: NextRequest): string | undefined {
 }
 
 // Get roles available for a specific stakeholder type
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
-    
+
     const { data, error } = await supabase
       .from('stakeholder_type_roles')
       .select(`
         role:role_id(id, code, label, description),
         is_default
       `)
-      .eq('stakeholder_type_id', params.id)
+      .eq('stakeholder_type_id', id)
       .order('is_default', { ascending: false });
     
     if (error) {
@@ -45,4 +46,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
+
+
+
+
+
 

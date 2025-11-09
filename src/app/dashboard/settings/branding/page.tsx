@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
 import { useApp } from '@/contexts/AppContext';
@@ -62,6 +63,42 @@ export default function BrandingSettings() {
     }));
   };
 
+  const ensureAppUuid = (value?: string | null) => {
+    if (value && value.trim().length > 0) {
+      return value;
+    }
+
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+
+    return null;
+  };
+
+  const sanitizeSettingsForSave = (input: typeof settings, overrides: Record<string, unknown> = {}) => {
+    const payload: Record<string, unknown> = {
+      ...input,
+      ...overrides,
+    };
+
+    // Ensure we always persist the correct site_code
+    payload.site_code = input?.site_code || site_code;
+
+    // Remove empty id so Supabase can assign UUID on insert
+    if (!payload.id || payload.id === '') {
+      delete payload.id;
+    }
+
+    const appUuid = ensureAppUuid((payload.app_uuid as string) || null);
+    if (appUuid) {
+      payload.app_uuid = appUuid;
+    } else {
+      delete payload.app_uuid;
+    }
+
+    return payload;
+  };
+
   const handleSave = async () => {
     try {
       setSaveStatus('saving');
@@ -74,14 +111,13 @@ export default function BrandingSettings() {
         throw new Error('Not authenticated');
       }
 
-      if (settings.id) {
+      if (settings.id && settings.id !== '') {
         // Update existing
         console.log('Updating existing setting with ID:', settings.id);
-        const updateData = {
-          ...settings,
+        const updateData = sanitizeSettingsForSave(settings, {
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        };
+        });
         console.log('Update data:', updateData);
 
         const { data: resultData, error: updateError } = await supabase
@@ -93,24 +129,39 @@ export default function BrandingSettings() {
         console.log('Update result:', { resultData, updateError });
 
         if (updateError) {
-          console.error('Update error:', updateError);
+          const supabaseError = updateError as PostgrestError;
+          console.error('Update error:',
+            supabaseError?.message ?? 'Unknown error',
+            {
+              code: supabaseError?.code ?? 'unknown',
+              details: supabaseError?.details ?? null
+            }
+          );
           throw updateError;
         }
       } else {
         // Insert new
         console.log('Inserting new setting');
+        const insertData = sanitizeSettingsForSave(settings, {
+          created_by: user.id,
+        });
+        console.log('Insert data:', insertData);
         const { data: resultData, error: insertError } = await supabase
           .from('site_settings')
-          .insert([{
-            ...settings,
-            created_by: user.id,
-          }])
+          .insert([insertData])
           .select();
 
         console.log('Insert result:', { resultData, insertError });
 
         if (insertError) {
-          console.error('Insert error:', insertError);
+          const supabaseError = insertError as PostgrestError;
+          console.error('Insert error:',
+            supabaseError?.message ?? 'Unknown error',
+            {
+              code: supabaseError?.code ?? 'unknown',
+              details: supabaseError?.details ?? null
+            }
+          );
           throw insertError;
         }
       }
@@ -123,8 +174,9 @@ export default function BrandingSettings() {
       refreshSettings();
       await loadSettings();
     } catch (err) {
-      console.error('Error saving settings:', err);
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to save settings');
+      const message = err instanceof Error ? err.message : 'Failed to save settings';
+      console.error('Error saving settings:', message, err);
+      setErrorMessage(message);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 5000);
     }

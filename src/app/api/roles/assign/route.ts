@@ -14,9 +14,20 @@ function getAccessToken(req: NextRequest): string | undefined {
 async function assignRolesServer(stakeholderId: string, roleTypes: string[], accessToken?: string) {
   if (!roleTypes?.length) return [];
   const supabase = await createServerClient(accessToken);
+  const { data: roleRecords, error: roleLookupError } = await supabase
+    .from('roles')
+    .select('id, code')
+    .in('code', roleTypes);
+
+  if (roleLookupError) {
+    console.error('Error looking up role IDs:', roleLookupError);
+    throw roleLookupError;
+  }
+
   const rows = roleTypes.map((role) => ({ 
     stakeholder_id: stakeholderId, 
-    role_type: role 
+    role_type: role,
+    role_id: roleRecords?.find((record) => record.code === role)?.id || null,
   }));
   const { data, error } = await supabase
     .from('stakeholder_roles')

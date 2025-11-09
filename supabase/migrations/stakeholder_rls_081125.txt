@@ -1,0 +1,93 @@
+  DO $$
+  DECLARE
+      r RECORD;
+  BEGIN
+      FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'relationships') LOOP
+          EXECUTE format('DROP POLICY IF EXISTS %I ON relationships', r.policyname);
+      END LOOP;
+  END $$;
+
+  -- Ensure RLS is enabled
+  ALTER TABLE relationships ENABLE ROW LEVEL SECURITY;
+
+  -- Policy 1: Allow authenticated users to view all relationships
+  CREATE POLICY "authenticated_users_select_relationships"
+    ON relationships
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+  -- Policy 2: Allow authenticated users to insert relationships
+  CREATE POLICY "authenticated_users_insert_relationships"
+    ON relationships
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+  -- Policy 3: Allow anonymous users to insert relationships (for onboarding)
+  CREATE POLICY "anon_users_insert_relationships"
+    ON relationships
+    FOR INSERT
+    TO anon
+    WITH CHECK (true);
+
+  -- Policy 4: Allow authenticated users to update relationships
+  CREATE POLICY "authenticated_users_update_relationships"
+    ON relationships
+    FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+  -- Policy 5: Allow authenticated users to delete relationships
+  CREATE POLICY "authenticated_users_delete_relationships"
+    ON relationships
+    FOR DELETE
+    TO authenticated
+    USING (true);
+
+  -- Fix stakeholders table too
+  DO $$
+  DECLARE
+      r RECORD;
+  BEGIN
+      FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'stakeholders' AND policyname LIKE '%insert%')
+  LOOP
+          EXECUTE format('DROP POLICY IF EXISTS %I ON stakeholders', r.policyname);
+      END LOOP;
+  END $$;
+
+  CREATE POLICY "authenticated_users_insert_stakeholders"
+    ON stakeholders
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+  CREATE POLICY "anon_users_insert_stakeholders"
+    ON stakeholders
+    FOR INSERT
+    TO anon
+    WITH CHECK (true);
+
+  -- Fix stakeholder_roles table too
+  DO $$
+  DECLARE
+      r RECORD;
+  BEGIN
+      FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'stakeholder_roles' AND policyname LIKE
+  '%insert%') LOOP
+          EXECUTE format('DROP POLICY IF EXISTS %I ON stakeholder_roles', r.policyname);
+      END LOOP;
+  END $$;
+
+  CREATE POLICY "authenticated_users_insert_stakeholder_roles"
+    ON stakeholder_roles
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+  CREATE POLICY "anon_users_insert_stakeholder_roles"
+    ON stakeholder_roles
+    FOR INSERT
+    TO anon
+    WITH CHECK (true);

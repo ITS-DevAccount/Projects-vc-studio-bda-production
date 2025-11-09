@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 interface StakeholderRow {
   id: string;
@@ -59,7 +60,15 @@ export default function StakeholdersRegistryPage() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/stakeholders?${params}`);
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const res = await fetch(`/api/stakeholders?${params}`, {
+          headers: {
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+        });
         const json: ListResponse = await res.json();
         if (!ignore) {
           setRows(json.data || []);
@@ -147,13 +156,15 @@ export default function StakeholdersRegistryPage() {
                 <td className="p-3 border-b border-section-border">{r.is_verified ? 'Yes' : 'No'}</td>
                 <td className="p-3 border-b border-section-border">{new Date(r.created_at).toLocaleDateString()}</td>
                 <td className="p-3 border-b border-section-border">
-                  <div className="flex gap-2">
-                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded"
+                  <div className="flex gap-2 flex-wrap">
+                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
                           href={`/dashboard/admin/stakeholders/${r.id}/view`}>View</Link>
-                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded"
+                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
                           href={`/dashboard/admin/stakeholders/${r.id}/edit`}>Edit</Link>
-                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded"
+                    <Link className="px-2 py-1 bg-section-subtle border border-section-border rounded hover:bg-section-emphasis transition"
                           href={`/dashboard/admin/stakeholders/${r.id}/roles`}>Roles</Link>
+                    <Link className="px-2 py-1 bg-blue-100 text-blue-800 border border-blue-300 rounded hover:bg-blue-200 transition"
+                          href={`/dashboard/admin/stakeholders/${r.id}/relationships`}>Relationships</Link>
                   </div>
                 </td>
               </tr>

@@ -156,3 +156,8 @@ JOIN stakeholder_types st ON st.id = str.stakeholder_type_id
 JOIN roles r ON r.id = str.role_id
 ORDER BY st.code, r.code;
 
+
+
+
+
+

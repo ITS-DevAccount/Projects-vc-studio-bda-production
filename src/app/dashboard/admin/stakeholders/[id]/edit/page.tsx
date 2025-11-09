@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
@@ -54,22 +54,23 @@ export default function EditStakeholderPage() {
     city: '',
     status: 'active',
     is_verified: false,
+    is_user: false,
   });
+  const [manageAccount, setManageAccount] = useState(false);
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+  const allowTestEmails = process.env.NEXT_PUBLIC_ALLOW_TEST_USER_EMAILS === 'true';
+  const testEmailDomain = process.env.NEXT_PUBLIC_TEST_USER_EMAIL_DOMAIN || 'example.test';
+  const generateTestEmail = () => {
+    const unique = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10);
+    return `stakeholder+${unique}@${testEmailDomain}`;
+  };
 
   const stakeholderId = params?.id as string;
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-    if (stakeholderId) {
-      loadStakeholder();
-      loadStakeholderTypes();
-    }
-  }, [stakeholderId, user, authLoading]);
-
-  async function loadStakeholderTypes() {
+  const loadStakeholderTypes = useCallback(async () => {
     try {
       const res = await fetch('/api/stakeholder-types');
       if (res.ok) {
@@ -79,9 +80,9 @@ export default function EditStakeholderPage() {
     } catch (err) {
       console.error('Error loading stakeholder types:', err);
     }
-  }
+  }, []);
 
-  async function loadStakeholder() {
+  const loadStakeholder = useCallback(async () => {
     if (!stakeholderId) return;
     setLoadingData(true);
     setError('');
@@ -115,13 +116,27 @@ export default function EditStakeholderPage() {
         city: data.city || '',
         status: data.status || 'active',
         is_verified: data.is_verified || false,
+        is_user: data.is_user || false,
       });
+      setAccountEmail(data.invite_email || data.auth_user_email || data.email || '');
+      setManageAccount(data.is_user || false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading stakeholder');
     } finally {
       setLoadingData(false);
     }
-  }
+  }, [stakeholderId]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (stakeholderId) {
+      loadStakeholder();
+      loadStakeholderTypes();
+    }
+  }, [authLoading, loadStakeholder, loadStakeholderTypes, router, stakeholderId, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -157,6 +172,7 @@ export default function EditStakeholderPage() {
         city: formData.city || null,
         status: formData.status || 'active',
         is_verified: formData.is_verified || false,
+        is_user: formData.is_user || false,
       };
 
       const res = await fetch(`/api/stakeholders/${stakeholderId}`, {
@@ -171,6 +187,42 @@ export default function EditStakeholderPage() {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to update stakeholder');
+      }
+
+      if (manageAccount) {
+        let finalEmail = accountEmail.trim();
+
+        if (!finalEmail && allowTestEmails) {
+          finalEmail = generateTestEmail();
+          setAccountEmail(finalEmail);
+        }
+
+        if (!finalEmail) {
+          throw new Error('Login email is required when managing portal access');
+        }
+
+        const accountPayload: any = {
+          stakeholderId,
+          email: finalEmail,
+        };
+
+        if (accountPassword) {
+          accountPayload.temporaryPassword = accountPassword;
+        }
+
+        const accountRes = await fetch('/api/stakeholders/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+          body: JSON.stringify(accountPayload),
+        });
+
+        if (!accountRes.ok) {
+          const accountError = await accountRes.json();
+          throw new Error(accountError.error || 'Failed to manage stakeholder account');
+        }
       }
 
       router.push(`/dashboard/admin/stakeholders/${stakeholderId}/view`);
@@ -368,7 +420,59 @@ export default function EditStakeholderPage() {
                 Verified
               </label>
             </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={manageAccount || Boolean(formData.is_user)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setManageAccount(checked);
+                  setFormData(prev => ({ ...prev, is_user: checked || prev.is_user }));
+                  if (checked && !accountEmail) {
+                    setAccountEmail(formData.email || '');
+                  }
+                }}
+                className="w-5 h-5 bg-section-light border border-section-border rounded cursor-pointer accent-accent-primary"
+              />
+              <label className="text-brand-text font-medium">Manage portal access</label>
+            </div>
           </div>
+
+          {(manageAccount || formData.is_user) && (
+            <div className="mt-4 border-t border-section-border pt-4">
+              <h3 className="text-sm font-semibold text-brand-text mb-3">Portal Access</h3>
+              {allowTestEmails && (
+                <p className="text-xs text-brand-text-muted mb-3">Test mode enabled: leave email blank to auto-generate using `{testEmailDomain}`.</p>
+              )}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-brand-text">Login Email *</label>
+                  <input
+                    type="email"
+                    value={accountEmail}
+                    onChange={(e) => setAccountEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="w-full px-3 py-2 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                    required={!allowTestEmails}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-brand-text">Set/Reset Password</label>
+                  <input
+                    type="password"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    placeholder="Leave blank to keep current"
+                    className="w-full px-3 py-2 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                  />
+                  <p className="text-xs text-brand-text-muted mt-1">Enter a temporary password to reset the stakeholder's login. Leave blank to keep existing credentials.</p>
+                </div>
+              </div>
+              {!formData.is_user && (
+                <p className="text-xs text-brand-text-muted mt-3">The account will be created if it does not exist yet.</p>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-4 pt-4">

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 
-// Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
@@ -57,10 +56,13 @@ async function deleteRelationshipServer(id: string, accessToken?: string) {
   return true;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(req: NextRequest, { params }: RouteContext) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
-    const item = await getRelationshipServer(params.id, accessToken);
+    const item = await getRelationshipServer(id, accessToken);
     return NextResponse.json(item);
   } catch (e: any) {
     console.error('API error in GET /api/relationships/[id]:', e);
@@ -68,11 +70,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
     const body = await req.json();
-    const updated = await updateRelationshipServer(params.id, body, accessToken);
+    const updated = await updateRelationshipServer(id, body, accessToken);
     return NextResponse.json(updated);
   } catch (e: any) {
     console.error('API error in PATCH /api/relationships/[id]:', e);
@@ -80,10 +83,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
   try {
+    const { id } = await params;
     const accessToken = getAccessToken(req);
-    await deleteRelationshipServer(params.id, accessToken);
+    await deleteRelationshipServer(id, accessToken);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('API error in DELETE /api/relationships/[id]:', e);

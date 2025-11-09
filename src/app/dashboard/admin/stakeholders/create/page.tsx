@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader, Save, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader, Save, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface StakeholderType {
   id: string;
@@ -30,10 +30,19 @@ export default function CreateStakeholderPage() {
   const [loading, setLoading] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [stakeholderTypes, setStakeholderTypes] = useState<StakeholderType[]>([]);
   const [existingStakeholders, setExistingStakeholders] = useState<Array<{ id: string; name: string; reference: string }>>([]);
   const [relationshipTypes, setRelationshipTypes] = useState<Array<{ id: string; label: string; code: string }>>([]);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const allowTestEmails = process.env.NEXT_PUBLIC_ALLOW_TEST_USER_EMAILS === 'true';
+  const testEmailDomain = process.env.NEXT_PUBLIC_TEST_USER_EMAIL_DOMAIN || 'example.test';
+  const generateTestEmail = () => {
+    const unique = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10);
+    return `stakeholder+${unique}@${testEmailDomain}`;
+  };
   const [formData, setFormData] = useState({
     stakeholder_type_id: '',
     name: '',
@@ -47,7 +56,11 @@ export default function CreateStakeholderPage() {
     city: '',
     status: 'active' as 'active' | 'inactive' | 'pending' | 'suspended',
     is_verified: false,
+    create_user_account: false,
+    invite_email: '',
+    temporary_password: '',
     selectedRoles: [] as string[], // Store role codes
+    primary_role_id: '' as string,
     relationships: [] as Array<{ to_stakeholder_id: string; relationship_type_id: string; strength?: number }>,
   });
 
@@ -56,6 +69,11 @@ export default function CreateStakeholderPage() {
       router.replace('/auth/login');
     }
   }, [authLoading, user, router]);
+
+  // Clear temporary password when component mounts to prevent browser retention
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, temporary_password: '' }));
+  }, []);
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -121,13 +139,40 @@ export default function CreateStakeholderPage() {
         if (res.ok) {
           const data = await res.json();
           setAvailableRoles(data || []);
-          // Clear selected roles if they're not available for this type
-          setFormData(prev => ({
-            ...prev,
-            selectedRoles: prev.selectedRoles.filter(roleCode => 
-              data.some((r: Role) => r.code === roleCode)
-            ),
-          }));
+          // Determine default roles and primary role
+          setFormData(prev => {
+            const filteredSelected = prev.selectedRoles.filter(roleCode =>
+              (data || []).some((r: Role) => r.code === roleCode)
+            );
+
+            // Determine candidate primary role (carry over if still available)
+            let newPrimaryRoleId = prev.primary_role_id && (data || []).some(r => r.id === prev.primary_role_id)
+              ? prev.primary_role_id
+              : '';
+
+            if (!newPrimaryRoleId) {
+              const defaultRole = (data || []).find((r: Role) => r.is_default);
+              if (defaultRole) {
+                newPrimaryRoleId = defaultRole.id;
+              } else if ((data || []).length === 1) {
+                newPrimaryRoleId = data[0].id;
+              }
+            }
+
+            let newSelected = filteredSelected;
+            if (newPrimaryRoleId) {
+              const primaryRole = (data || []).find((r: Role) => r.id === newPrimaryRoleId);
+              if (primaryRole && !newSelected.includes(primaryRole.code)) {
+                newSelected = [...newSelected, primaryRole.code];
+              }
+            }
+
+            return {
+              ...prev,
+              selectedRoles: newSelected,
+              primary_role_id: newPrimaryRoleId,
+            };
+          });
         }
       } catch (err) {
         console.error('Error fetching roles for stakeholder type:', err);
@@ -145,12 +190,44 @@ export default function CreateStakeholderPage() {
     });
   };
 
-  const handleRoleToggle = (roleValue: string) => {
+  const handleRoleToggle = (role: Role) => {
+    const isSelected = formData.selectedRoles.includes(role.code);
+    let newSelected = formData.selectedRoles;
+    let newPrimary = formData.primary_role_id;
+
+    if (isSelected) {
+      newSelected = formData.selectedRoles.filter(r => r !== role.code);
+      if (formData.primary_role_id === role.id) {
+        newPrimary = '';
+      }
+    } else {
+      newSelected = [...formData.selectedRoles, role.code];
+      if (!formData.primary_role_id) {
+        newPrimary = role.id;
+      }
+    }
+
     setFormData({
       ...formData,
-      selectedRoles: formData.selectedRoles.includes(roleValue)
-        ? formData.selectedRoles.filter(r => r !== roleValue)
-        : [...formData.selectedRoles, roleValue],
+      selectedRoles: newSelected,
+      primary_role_id: newPrimary,
+    });
+  };
+
+  const handlePrimaryRoleChange = (roleId: string) => {
+    const role = availableRoles.find(r => r.id === roleId);
+    if (!role) {
+      setFormData(prev => ({ ...prev, primary_role_id: '' }));
+      return;
+    }
+
+    setFormData(prev => {
+      const alreadySelected = prev.selectedRoles.includes(role.code);
+      return {
+        ...prev,
+        primary_role_id: role.id,
+        selectedRoles: alreadySelected ? prev.selectedRoles : [...prev.selectedRoles, role.code],
+      };
     });
   };
 
@@ -187,18 +264,43 @@ export default function CreateStakeholderPage() {
         throw new Error('Name and stakeholder type are required');
       }
 
+      if (formData.selectedRoles.length > 0 && !formData.primary_role_id) {
+        throw new Error('Please select a primary role');
+      }
+
+      let inviteEmail = formData.invite_email.trim();
+
+      if (formData.create_user_account && !inviteEmail && allowTestEmails) {
+        inviteEmail = generateTestEmail();
+        setFormData(prev => ({ ...prev, invite_email: inviteEmail }));
+      }
+
+      if (formData.create_user_account) {
+        if (!inviteEmail) {
+          throw new Error('Email is required to create a user account');
+        }
+
+        if (!formData.temporary_password || formData.temporary_password.length < 8) {
+          throw new Error('Temporary password must be at least 8 characters');
+        }
+      }
+
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      // Create stakeholder
-      const res = await fetch('/api/stakeholders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-        },
-        body: JSON.stringify({
+      const validRelationships = formData.relationships.filter(
+        (rel) => rel.to_stakeholder_id && rel.relationship_type_id
+      );
+
+      if (validRelationships.length !== formData.relationships.length) {
+        const skipped = formData.relationships.length - validRelationships.length;
+        console.warn(`${skipped} relationship(s) were skipped due to missing required fields`);
+        setError(prev => prev ? `${prev}; ${skipped} relationship(s) skipped` : `${skipped} relationship(s) skipped - ensure stakeholder and type are selected`);
+      }
+
+      const payload = {
+        stakeholder: {
           stakeholder_type_id: formData.stakeholder_type_id,
           name: formData.name,
           email: formData.email || null,
@@ -211,7 +313,29 @@ export default function CreateStakeholderPage() {
           city: formData.city || null,
           status: formData.status,
           is_verified: formData.is_verified,
-        }),
+        },
+        roleCodes: formData.selectedRoles,
+        primaryRoleId: formData.primary_role_id || null,
+        relationships: validRelationships.map((rel) => ({
+          to_stakeholder_id: rel.to_stakeholder_id,
+          relationship_type_id: rel.relationship_type_id,
+          strength: rel.strength || null,
+          status: 'active',
+        })),
+        portalAccess: {
+          enabled: formData.create_user_account,
+          email: formData.create_user_account ? inviteEmail : null,
+          temporaryPassword: formData.create_user_account ? formData.temporary_password : null,
+        },
+      };
+
+      const res = await fetch('/api/stakeholders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -220,77 +344,7 @@ export default function CreateStakeholderPage() {
         throw new Error(data.error || 'Failed to create stakeholder');
       }
 
-      // Assign roles if any selected
-      if (formData.selectedRoles.length > 0) {
-        const rolesRes = await fetch('/api/roles/assign', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-          },
-          body: JSON.stringify({
-            stakeholderId: data.id,
-            add: formData.selectedRoles,
-          }),
-        });
-
-        if (!rolesRes.ok) {
-          console.warn('Stakeholder created but roles assignment failed');
-        }
-      }
-
-      // Create relationships if any selected
-      if (formData.relationships.length > 0) {
-        const validRelationships = formData.relationships.filter(
-          (rel) => rel.to_stakeholder_id && rel.relationship_type_id
-        );
-        
-        if (validRelationships.length !== formData.relationships.length) {
-          const skipped = formData.relationships.length - validRelationships.length;
-          console.warn(`${skipped} relationship(s) were skipped due to missing required fields`);
-          setError(prev => prev ? `${prev}; ${skipped} relationship(s) skipped` : `${skipped} relationship(s) skipped - ensure stakeholder and type are selected`);
-        }
-
-        console.log('Creating relationships:', validRelationships);
-        
-        for (const rel of validRelationships) {
-          try {
-            const payload = {
-              from_stakeholder_id: data.id,
-              to_stakeholder_id: rel.to_stakeholder_id,
-              relationship_type_id: rel.relationship_type_id,
-              strength: rel.strength || null,
-              status: 'active',
-            };
-            
-            console.log('Creating relationship with payload:', payload);
-            
-            const relRes = await fetch('/api/relationships', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-              },
-              body: JSON.stringify(payload),
-            });
-            
-            const relData = await relRes.json();
-            
-            if (!relRes.ok) {
-              console.error('Relationship creation failed:', relData);
-              setError(prev => prev ? `${prev}; Failed to create relationship: ${relData.error || 'Unknown error'}` : `Failed to create relationship: ${relData.error || 'Unknown error'}`);
-            } else {
-              console.log('Relationship created successfully:', relData);
-            }
-          } catch (err) {
-            console.error('Error creating relationship:', err);
-            setError(prev => prev ? `${prev}; Relationship creation error: ${err instanceof Error ? err.message : 'Unknown error'}` : `Relationship creation error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-            // Continue with other relationships even if one fails
-          }
-        }
-      }
-
-      router.push('/dashboard?tab=stakeholders');
+      router.push(`/dashboard/admin/stakeholders/${data.id}/view`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error creating stakeholder');
     } finally {
@@ -514,7 +568,7 @@ export default function CreateStakeholderPage() {
                     <input
                       type="checkbox"
                       checked={formData.selectedRoles.includes(role.code)}
-                      onChange={() => handleRoleToggle(role.code)}
+                      onChange={() => handleRoleToggle(role)}
                       className="w-5 h-5 bg-section-light border border-section-border rounded cursor-pointer accent-accent-primary"
                     />
                     <div className="flex-1">
@@ -528,6 +582,97 @@ export default function CreateStakeholderPage() {
                     </div>
                   </label>
                 ))}
+                {availableRoles.length > 0 && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-semibold text-brand-text mb-2">
+                      Primary Role
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                      value={formData.primary_role_id}
+                      onChange={(e) => handlePrimaryRoleChange(e.target.value)}
+                    >
+                      <option value="">Select primary role</option>
+                      {availableRoles.map(role => (
+                        <option key={role.id} value={role.id}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-sm text-brand-text-muted">
+                      The primary role determines the dashboard experience after the stakeholder signs in.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Account Creation */}
+          <div className="border border-section-border rounded-xl p-6 bg-section-light">
+            <h3 className="text-lg font-semibold mb-4 text-brand-text">Portal Access</h3>
+            <div className="flex items-start gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="create_user_account"
+                checked={formData.create_user_account}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  create_user_account: e.target.checked,
+                  invite_email: e.target.checked ? (prev.invite_email || prev.email || (allowTestEmails ? generateTestEmail() : '')) : '',
+                  temporary_password: e.target.checked ? prev.temporary_password : '',
+                }))}
+                className="mt-1 w-5 h-5 bg-section-subtle border border-section-border rounded cursor-pointer accent-accent-primary"
+              />
+              <div>
+                <label htmlFor="create_user_account" className="text-brand-text font-medium">
+                  Create login for this stakeholder
+                </label>
+                <p className="text-sm text-brand-text-muted mt-1">
+                  Generates a Supabase Auth account using the details below. The stakeholder will be able to sign in and access their dashboard.
+                </p>
+                {allowTestEmails && (
+                  <p className="text-sm text-brand-text-muted mt-2">
+                    Test mode enabled via environment: empty email fields will auto-generate addresses using `{testEmailDomain}`.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {formData.create_user_account && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-brand-text">Login Email *</label>
+                  <input
+                    type="email"
+                    value={formData.invite_email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, invite_email: e.target.value }))}
+                    placeholder="user@example.com"
+                    className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                    required={!allowTestEmails}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-brand-text">Temporary Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.temporary_password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, temporary_password: e.target.value }))}
+                      placeholder="At least 8 characters"
+                      className="w-full px-3 py-2 pr-10 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text transition"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-brand-text-muted mt-1">Share this temporary password with the stakeholder. They should change it after first login.</p>
+                </div>
               </div>
             )}
           </div>
