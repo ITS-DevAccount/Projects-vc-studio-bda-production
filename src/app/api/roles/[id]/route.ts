@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 // Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
@@ -19,10 +20,14 @@ export async function GET(
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { data, error } = await supabase
       .from('roles')
       .select('*')
       .eq('id', id)
+      .eq('app_uuid', appUuid) // SECURITY: Validate belongs to current app
       .single();
 
     if (error) {
@@ -48,12 +53,17 @@ export async function PATCH(
     const { id } = await params;
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const body = await req.json();
 
     const { data, error } = await supabase
       .from('roles')
       .update(body)
       .eq('id', id)
+      .eq('app_uuid', appUuid) // SECURITY: Only update roles in current app
       .select()
       .single();
 
@@ -81,10 +91,14 @@ export async function DELETE(
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { error } = await supabase
       .from('roles')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('app_uuid', appUuid); // SECURITY: Only delete roles in current app
 
     if (error) {
       console.error('Error deleting role:', error);

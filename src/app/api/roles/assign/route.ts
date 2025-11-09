@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 // Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
@@ -10,28 +11,33 @@ function getAccessToken(req: NextRequest): string | undefined {
   return undefined;
 }
 
-// Server-side role assignment functions
-async function assignRolesServer(stakeholderId: string, roleTypes: string[], accessToken?: string) {
+// Server-side role assignment functions with app_uuid filtering
+async function assignRolesServer(stakeholderId: string, roleTypes: string[], appUuid: string, accessToken?: string) {
   if (!roleTypes?.length) return [];
   const supabase = await createServerClient(accessToken);
+
+  // Get role IDs for this app
   const { data: roleRecords, error: roleLookupError } = await supabase
     .from('roles')
     .select('id, code')
-    .in('code', roleTypes);
+    .in('code', roleTypes)
+    .eq('app_uuid', appUuid); // SECURITY: Only get roles from current app
 
   if (roleLookupError) {
     console.error('Error looking up role IDs:', roleLookupError);
     throw roleLookupError;
   }
 
-  const rows = roleTypes.map((role) => ({ 
-    stakeholder_id: stakeholderId, 
+  const rows = roleTypes.map((role) => ({
+    stakeholder_id: stakeholderId,
     role_type: role,
     role_id: roleRecords?.find((record) => record.code === role)?.id || null,
+    app_uuid: appUuid, // Include app_uuid in the insert
   }));
+
   const { data, error } = await supabase
     .from('stakeholder_roles')
-    .upsert(rows, { onConflict: 'stakeholder_id,role_type' })
+    .upsert(rows, { onConflict: 'stakeholder_id,role_type,app_uuid' })
     .select();
   if (error) {
     console.error('Error assigning roles:', error);
@@ -40,14 +46,15 @@ async function assignRolesServer(stakeholderId: string, roleTypes: string[], acc
   return data || [];
 }
 
-async function removeRolesServer(stakeholderId: string, roleTypes: string[], accessToken?: string) {
+async function removeRolesServer(stakeholderId: string, roleTypes: string[], appUuid: string, accessToken?: string) {
   if (!roleTypes?.length) return true;
   const supabase = await createServerClient(accessToken);
   const { error } = await supabase
     .from('stakeholder_roles')
     .delete()
     .eq('stakeholder_id', stakeholderId)
-    .in('role_type', roleTypes);
+    .in('role_type', roleTypes)
+    .eq('app_uuid', appUuid); // SECURITY: Only delete roles in current app
   if (error) {
     console.error('Error removing roles:', error);
     throw error;
@@ -58,11 +65,15 @@ async function removeRolesServer(stakeholderId: string, roleTypes: string[], acc
 export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { stakeholderId, add = [], remove = [] } = await req.json();
     if (!stakeholderId) return NextResponse.json({ error: 'Missing stakeholderId' }, { status: 400 });
 
-    if (add.length) await assignRolesServer(stakeholderId, add, accessToken);
-    if (remove.length) await removeRolesServer(stakeholderId, remove, accessToken);
+    if (add.length) await assignRolesServer(stakeholderId, add, appUuid, accessToken);
+    if (remove.length) await removeRolesServer(stakeholderId, remove, appUuid, accessToken);
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

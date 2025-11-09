@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 // Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
@@ -16,13 +17,17 @@ export async function GET(req: NextRequest) {
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     // Check if we should filter by active status
     const { searchParams } = new URL(req.url);
     const activeOnly = searchParams.get('active_only') === 'true';
 
     let query = supabase
       .from('roles')
-      .select('*');
+      .select('*')
+      .eq('app_uuid', appUuid); // SECURITY: Filter by app_uuid
 
     if (activeOnly) {
       query = query.eq('is_active', true);
@@ -48,11 +53,21 @@ export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const body = await req.json();
+
+    // Ensure app_uuid is set in the role data
+    const roleData = {
+      ...body,
+      app_uuid: appUuid, // Always set app_uuid for new roles
+    };
 
     const { data, error } = await supabase
       .from('roles')
-      .insert([body])
+      .insert([roleData])
       .select()
       .single();
 

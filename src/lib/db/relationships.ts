@@ -9,8 +9,13 @@ export interface ListParams {
   order?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
+  appUuid: string; // Required - filter relationships by app
 }
 
+/**
+ * List relationships with app-level filtering
+ * @param params - Filter parameters including required appUuid
+ */
 export async function listRelationships(params: ListParams) {
   const {
     stakeholderId,
@@ -21,6 +26,7 @@ export async function listRelationships(params: ListParams) {
     order = 'desc',
     page = 1,
     pageSize = 50,
+    appUuid,
   } = params;
 
   let query = supabase
@@ -39,10 +45,12 @@ export async function listRelationships(params: ListParams) {
       last_interaction,
       interaction_count,
       created_at,
+      app_uuid,
       from_stakeholder:from_stakeholder_id(name),
       to_stakeholder:to_stakeholder_id(name),
       relationship_type:relationship_type_id(label, code)
-    `, { count: 'exact' });
+    `, { count: 'exact' })
+    .eq('app_uuid', appUuid); // SECURITY: Always filter by app_uuid
 
   // Filter by stakeholder
   if (stakeholderId) {
@@ -70,7 +78,12 @@ export async function listRelationships(params: ListParams) {
   return { data: data || [], count: count || 0 };
 }
 
-export async function getRelationship(id: string) {
+/**
+ * Get a single relationship by ID with app_uuid validation
+ * @param id - Relationship ID
+ * @param appUuid - Application UUID for security validation
+ */
+export async function getRelationship(id: string, appUuid: string) {
   const { data, error } = await supabase
     .from('relationships')
     .select(`
@@ -80,8 +93,9 @@ export async function getRelationship(id: string) {
       relationship_type:relationship_type_id(*)
     `)
     .eq('id', id)
+    .eq('app_uuid', appUuid) // SECURITY: Validate belongs to current app
     .single();
-  
+
   if (error) {
     console.error('Error getting relationship:', error);
     throw error;
@@ -89,10 +103,20 @@ export async function getRelationship(id: string) {
   return data;
 }
 
-export async function createRelationship(payload: Record<string, any>) {
+/**
+ * Create a new relationship in a specific app
+ * @param payload - Relationship data
+ * @param appUuid - Application UUID
+ */
+export async function createRelationship(payload: Record<string, any>, appUuid: string) {
+  const relationshipData = {
+    ...payload,
+    app_uuid: appUuid, // Always set app_uuid for new relationships
+  };
+
   const { data, error } = await supabase
     .from('relationships')
-    .insert([payload])
+    .insert([relationshipData])
     .select()
     .single();
   if (error) {
@@ -102,11 +126,18 @@ export async function createRelationship(payload: Record<string, any>) {
   return data;
 }
 
-export async function updateRelationship(id: string, payload: Record<string, any>) {
+/**
+ * Update a relationship in a specific app
+ * @param id - Relationship ID
+ * @param payload - Updated relationship data
+ * @param appUuid - Application UUID for security validation
+ */
+export async function updateRelationship(id: string, payload: Record<string, any>, appUuid: string) {
   const { data, error } = await supabase
     .from('relationships')
     .update(payload)
     .eq('id', id)
+    .eq('app_uuid', appUuid) // SECURITY: Only update relationships in current app
     .select()
     .single();
   if (error) {
@@ -116,11 +147,17 @@ export async function updateRelationship(id: string, payload: Record<string, any
   return data;
 }
 
-export async function deleteRelationship(id: string) {
+/**
+ * Delete a relationship from a specific app
+ * @param id - Relationship ID
+ * @param appUuid - Application UUID for security validation
+ */
+export async function deleteRelationship(id: string, appUuid: string) {
   const { error } = await supabase
     .from('relationships')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('app_uuid', appUuid); // SECURITY: Only delete relationships in current app
   if (error) {
     console.error('Error deleting relationship:', error);
     throw error;

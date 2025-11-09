@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
@@ -17,10 +18,14 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     const supabase = await createServerClient(accessToken);
     const { id } = await params;
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { data, error } = await supabase
       .from('relationship_types')
       .select('*')
       .eq('id', id)
+      .eq('app_uuid', appUuid) // SECURITY: Validate belongs to current app
       .single();
 
     if (error) {
@@ -43,12 +48,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
     const { id } = await params;
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const body = await req.json();
 
     const { data, error } = await supabase
       .from('relationship_types')
       .update(body)
       .eq('id', id)
+      .eq('app_uuid', appUuid) // SECURITY: Only update in current app
       .select()
       .single();
 
@@ -73,10 +83,14 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     const supabase = await createServerClient(accessToken);
     const { id } = await params;
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { error } = await supabase
       .from('relationship_types')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('app_uuid', appUuid); // SECURITY: Only delete in current app
 
     if (error) {
       console.error('Error deleting relationship type:', error);

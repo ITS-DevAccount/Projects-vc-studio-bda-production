@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 // Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
@@ -10,7 +11,7 @@ function getAccessToken(req: NextRequest): string | undefined {
   return undefined;
 }
 
-async function listRelationshipsServer(params: any, accessToken?: string) {
+async function listRelationshipsServer(params: any, appUuid: string, accessToken?: string) {
   const supabase = await createServerClient(accessToken);
   const {
     stakeholderId,
@@ -39,10 +40,12 @@ async function listRelationshipsServer(params: any, accessToken?: string) {
       last_interaction,
       interaction_count,
       created_at,
+      app_uuid,
       from_stakeholder:from_stakeholder_id(name),
       to_stakeholder:to_stakeholder_id(name),
       relationship_type:relationship_type_id(label, code)
-    `, { count: 'exact' });
+    `, { count: 'exact' })
+    .eq('app_uuid', appUuid); // SECURITY: Filter by app_uuid
 
   if (stakeholderId) {
     if (direction === 'from') {
@@ -68,11 +71,18 @@ async function listRelationshipsServer(params: any, accessToken?: string) {
   return { data: data || [], count: count || 0 };
 }
 
-async function createRelationshipServer(payload: Record<string, any>, accessToken?: string) {
+async function createRelationshipServer(payload: Record<string, any>, appUuid: string, accessToken?: string) {
   const supabase = await createServerClient(accessToken);
+
+  // Ensure app_uuid is set in the payload
+  const relationshipData = {
+    ...payload,
+    app_uuid: appUuid, // Always set app_uuid for new relationships
+  };
+
   const { data, error } = await supabase
     .from('relationships')
-    .insert([payload])
+    .insert([relationshipData])
     .select()
     .single();
   if (error) {
@@ -85,8 +95,12 @@ async function createRelationshipServer(payload: Record<string, any>, accessToke
 export async function GET(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { searchParams } = new URL(req.url);
-    
+
     const stakeholderId = searchParams.get('stakeholderId') || undefined;
     const direction = searchParams.get('direction') || 'both';
     const type = searchParams.get('type') || undefined;
@@ -98,6 +112,7 @@ export async function GET(req: NextRequest) {
 
     const result = await listRelationshipsServer(
       { stakeholderId, direction, type, status, sort, order, page, pageSize },
+      appUuid,
       accessToken
     );
     return NextResponse.json(result);
@@ -110,8 +125,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const body = await req.json();
-    const created = await createRelationshipServer(body, accessToken);
+    const created = await createRelationshipServer(body, appUuid, accessToken);
     return NextResponse.json(created);
   } catch (e: any) {
     console.error('API error in POST /api/relationships:', e);

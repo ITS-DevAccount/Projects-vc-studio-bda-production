@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 
 // Helper to get access token from request
 function getAccessToken(req: NextRequest): string | undefined {
@@ -15,9 +16,13 @@ export async function GET(req: NextRequest) {
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
 
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const { data, error } = await supabase
       .from('relationship_types')
       .select('*')
+      .eq('app_uuid', appUuid) // SECURITY: Filter by app_uuid
       .order('label');
 
     if (error) {
@@ -36,11 +41,21 @@ export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
     const supabase = await createServerClient(accessToken);
+
+    // Get app_uuid for multi-tenancy filtering
+    const appUuid = await getAppUuid(accessToken);
+
     const body = await req.json();
+
+    // Ensure app_uuid is set
+    const relationshipTypeData = {
+      ...body,
+      app_uuid: appUuid, // Always set app_uuid for new relationship types
+    };
 
     const { data, error } = await supabase
       .from('relationship_types')
-      .insert([body])
+      .insert([relationshipTypeData])
       .select()
       .single();
 
