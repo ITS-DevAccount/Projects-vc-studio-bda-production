@@ -9,14 +9,16 @@ function getAccessToken(req: NextRequest): string | undefined {
   return undefined;
 }
 
+type RouteContext = { params: Promise<{ id: string }> }
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
     const accessToken = getAccessToken(request);
     const supabase = await createServerClient(accessToken)
-    const activityId = params.id
+    const { id: activityId } = await params
 
     // Verify authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()

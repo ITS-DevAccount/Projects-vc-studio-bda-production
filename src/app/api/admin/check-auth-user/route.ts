@@ -51,6 +51,13 @@ export async function POST(request: NextRequest) {
       .eq('auth_user_id', authUser.id)
       .single()
 
+    if (stakeholderError) {
+      console.error('Error fetching stakeholder:', stakeholderError)
+      return NextResponse.json({ error: stakeholderError.message }, { status: 500 })
+    }
+
+  const bannedUntil = (authUser as any).banned_until ?? null
+
     return NextResponse.json({
       found: true,
       auth_user: {
@@ -60,16 +67,16 @@ export async function POST(request: NextRequest) {
         confirmed: !!authUser.email_confirmed_at,
         created_at: authUser.created_at,
         last_sign_in_at: authUser.last_sign_in_at,
-        banned: authUser.banned_until ? true : false,
-        banned_until: authUser.banned_until,
+      banned: !!bannedUntil,
+      banned_until: bannedUntil,
         user_metadata: authUser.user_metadata,
       },
       stakeholder: stakeholder || null,
       diagnosis: {
-        can_login: !!authUser.email_confirmed_at && !authUser.banned_until,
+      can_login: !!authUser.email_confirmed_at && !bannedUntil,
         issues: [
           !authUser.email_confirmed_at ? 'Email not confirmed' : null,
-          authUser.banned_until ? 'User is banned' : null,
+        bannedUntil ? 'User is banned' : null,
           !stakeholder ? 'No stakeholder record linked' : null,
         ].filter(Boolean)
       }
