@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     // Get stakeholder record with core_config
     const { data: stakeholder, error: stakeholderError } = await supabase
       .from('stakeholders')
-      .select('id, core_config, primary_role')
+      .select('id, core_config')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -32,6 +32,14 @@ export async function GET(req: Request) {
         { status: 404 }
       );
     }
+
+    // Get stakeholder roles
+    const { data: stakeholderRoles, error: rolesError } = await supabase
+      .from('stakeholder_roles')
+      .select('role_type')
+      .eq('stakeholder_id', stakeholder.id)
+      .limit(1)
+      .single();
 
     // Extract core_config
     const coreConfig = stakeholder.core_config as any;
@@ -44,7 +52,7 @@ export async function GET(req: Request) {
     }
 
     // Get menu items for current role
-    const role = stakeholder.primary_role || 'producer';
+    const role = stakeholderRoles?.role_type || 'producer';
     const roleConfig = coreConfig.role_configurations[role];
 
     if (!roleConfig || !roleConfig.menu_items) {
