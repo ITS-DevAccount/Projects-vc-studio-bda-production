@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Mail, ArrowRight } from 'lucide-react';
 
-export default function OnboardingSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const email = searchParams?.get('email') || '';
 
@@ -119,5 +120,22 @@ export default function OnboardingSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-brand-background text-brand-text flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-brand-text-muted text-sm">Loading onboarding details...</p>
+          </div>
+        </div>
+      }
+    >
+      <SuccessContent />
+    </Suspense>
   );
 }

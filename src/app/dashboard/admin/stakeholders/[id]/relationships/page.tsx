@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader, Save, Users, Plus, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, Loader, Users, Plus, Trash2, Edit } from 'lucide-react';
 
 interface RelationshipType {
   id: string;

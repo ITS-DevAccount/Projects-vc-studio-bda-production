@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { useAppUuid, useApp } from '@/contexts/AppContext';
+import { useApp } from '@/contexts/AppContext';
 import { Plus, Trash2, Edit2, Mail, MessageSquare, LogOut, Loader, RefreshCw, FileEdit, Palette, Users } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,7 +43,7 @@ interface ListResponse {
   count: number;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading, signOut } = useAuth();
@@ -853,5 +853,22 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-brand-background text-brand-text flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader className="w-8 h-8 animate-spin" />
+            <p className="text-brand-text-muted text-sm">Loading dashboard...</p>
+          </div>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

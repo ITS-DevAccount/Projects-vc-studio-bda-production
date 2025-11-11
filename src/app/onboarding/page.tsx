@@ -20,7 +20,6 @@ import type {
   OnboardingStep,
   StakeholderType,
   Role,
-  RelationshipType,
   StakeholderTypeCode,
   RoleCode,
 } from '@/lib/types/onboarding';
@@ -35,7 +34,6 @@ export default function OnboardingPage() {
   // Reference data
   const [stakeholderTypes, setStakeholderTypes] = useState<StakeholderType[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
 
   // Form data
   const [formData, setFormData] = useState<OnboardingFormData>({
@@ -60,7 +58,6 @@ export default function OnboardingPage() {
         const data = await res.json();
         setStakeholderTypes(data.stakeholder_types || []);
         setRoles(data.roles || []);
-        setRelationshipTypes(data.relationship_types || []);
       } catch (err) {
         console.error('Error fetching reference data:', err);
         setError('Failed to load form data');

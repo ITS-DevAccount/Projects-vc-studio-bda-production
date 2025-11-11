@@ -82,7 +82,7 @@ export default function BrandingSettings() {
     };
 
     // Ensure we always persist the correct site_code
-    payload.site_code = input?.site_code || site_code;
+    payload.site_code = (input as any)?.site_code || site_code;
 
     // Remove empty id so Supabase can assign UUID on insert
     if (!payload.id || payload.id === '') {

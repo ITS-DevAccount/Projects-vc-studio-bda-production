@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -21,7 +21,7 @@ export async function createServerClient(accessToken?: string): Promise<Supabase
     };
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, options);
+  const client = createSupabaseClient(supabaseUrl, supabaseAnonKey, options);
 
   // Set the session so auth.uid() works in RLS policies
   if (accessToken) {
@@ -44,5 +44,9 @@ export async function createServerClient(accessToken?: string): Promise<Supabase
   }
 
   return client;
+}
+
+export async function createClient(accessToken?: string): Promise<SupabaseClient> {
+  return createServerClient(accessToken);
 }
 

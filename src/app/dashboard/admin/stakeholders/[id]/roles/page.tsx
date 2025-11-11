@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader, Save, Shield } from 'lucide-react';
+import { ArrowLeft, Loader, Shield } from 'lucide-react';
 
 interface StakeholderRole {
   id: string;
@@ -31,7 +31,6 @@ export default function ManageRolesPage() {
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [error, setError] = useState('');
   const [stakeholderName, setStakeholderName] = useState('');
-  const [stakeholderTypeId, setStakeholderTypeId] = useState<string>('');
   const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
   const [primaryRoleId, setPrimaryRoleId] = useState<string>('');
   const [initialPrimaryRoleId, setInitialPrimaryRoleId] = useState<string>('');
@@ -72,7 +71,6 @@ export default function ManageRolesPage() {
 
       const stakeholderData = await stakeholderRes.json();
       setStakeholderName(stakeholderData.name || 'Unknown');
-      setStakeholderTypeId(stakeholderData.stakeholder_type_id || '');
       setPrimaryRoleId(stakeholderData.primary_role_id || '');
       setInitialPrimaryRoleId(stakeholderData.primary_role_id || '');
 

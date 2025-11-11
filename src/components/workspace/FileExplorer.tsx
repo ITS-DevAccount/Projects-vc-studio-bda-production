@@ -5,7 +5,6 @@
 // Displays files and folders from nodes table
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 interface Node {
   id: string;

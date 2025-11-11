@@ -2,16 +2,18 @@
 // Purpose: Returns children of folder (for FileExplorer)
 // Phase 1c: Component Registry & File System
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+type RouteContext = { params: Promise<{ parent_id: string }> }
+
 export async function GET(
-  req: Request,
-  { params }: { params: { parent_id: string } }
+  _request: Request,
+  { params }: RouteContext
 ) {
   try {
-    const supabase = createClient();
-    const { parent_id } = params;
+    const supabase = await createServerClient();
+    const { parent_id } = await params;
 
     // Get current authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

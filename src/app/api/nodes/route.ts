@@ -2,12 +2,12 @@
 // Purpose: Create new node (file/folder/component)
 // Phase 1c: Component Registry & File System
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createServerClient();
     const body = await req.json();
 
     // Get current authenticated user
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
 // Purpose: Get all nodes for a parent (for root, use parent_id=null or omit)
 export async function GET(req: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createServerClient();
     const { searchParams } = new URL(req.url);
     const parentId = searchParams.get('parent_id');
 

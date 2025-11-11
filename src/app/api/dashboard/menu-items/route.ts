@@ -2,12 +2,12 @@
 // Purpose: Returns menu items from stakeholder.core_config for current role
 // Phase 1c: Component Registry & File System
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request) {
+export async function GET(_request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createServerClient();
 
     // Get current authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -40,6 +40,10 @@ export async function GET(req: Request) {
       .eq('stakeholder_id', stakeholder.id)
       .limit(1)
       .single();
+
+    if (rolesError) {
+      console.warn('Error fetching stakeholder roles:', rolesError);
+    }
 
     // Extract core_config
     const coreConfig = stakeholder.core_config as any;

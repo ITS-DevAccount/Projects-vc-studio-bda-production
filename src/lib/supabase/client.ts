@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js'
+﻿import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -18,17 +18,32 @@ if (!supabaseUrl || !supabaseAnonKey) {
   }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
+let browserClient: SupabaseClient | null = null
+
+function initClient(): SupabaseClient {
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  })
+}
+
+export function createClient(): SupabaseClient {
+  if (!browserClient) {
+    browserClient = initClient()
   }
-})
+  return browserClient
+}
+
+export const supabase = createClient()
 
 // Handle auth errors and clear stale tokens
 if (typeof window !== 'undefined') {
-  supabase.auth.onAuthStateChange((event) => {
+  const client = createClient()
+
+  client.auth.onAuthStateChange((event) => {
     if (event === 'TOKEN_REFRESHED') {
       console.log('Token refreshed successfully')
     } else if (event === 'SIGNED_OUT') {
@@ -37,7 +52,7 @@ if (typeof window !== 'undefined') {
   })
 
   // Clear stale auth data on initialization
-  supabase.auth.getSession().catch((error) => {
+  client.auth.getSession().catch((error) => {
     if (error.message?.includes('refresh_token_not_found') ||
         error.message?.includes('Invalid Refresh Token')) {
       console.log('Clearing stale auth session')

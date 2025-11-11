@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -41,6 +41,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const stakeholderTypeData = (stakeholder as any).stakeholder_type;
+    const stakeholderTypeName = Array.isArray(stakeholderTypeData)
+      ? stakeholderTypeData[0]?.type_name
+      : stakeholderTypeData?.type_name;
+
     return NextResponse.json({
       success: true,
       user: {
@@ -51,7 +56,7 @@ export async function GET(request: NextRequest) {
         id: stakeholder.id,
         name: stakeholder.name,
         email: stakeholder.email,
-        stakeholder_type: stakeholder.stakeholder_type?.type_name,
+        stakeholder_type: stakeholderTypeName,
         has_core_config: !!stakeholder.core_config && Object.keys(stakeholder.core_config).length > 0,
         core_config_keys: stakeholder.core_config ? Object.keys(stakeholder.core_config) : [],
         core_config: stakeholder.core_config

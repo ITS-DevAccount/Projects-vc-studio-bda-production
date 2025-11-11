@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader, Save, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Loader, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface StakeholderType {
   id: string;
@@ -146,7 +146,7 @@ export default function CreateStakeholderPage() {
             );
 
             // Determine candidate primary role (carry over if still available)
-            let newPrimaryRoleId = prev.primary_role_id && (data || []).some(r => r.id === prev.primary_role_id)
+            let newPrimaryRoleId = prev.primary_role_id && (data || []).some((role: Role) => role.id === prev.primary_role_id)
               ? prev.primary_role_id
               : '';
 
@@ -245,7 +245,7 @@ export default function CreateStakeholderPage() {
     });
   };
 
-  const handleRelationshipChange = (index: number, field: string, value: string | number) => {
+  const handleRelationshipChange = (index: number, field: string, value: string | number | undefined) => {
     setFormData({
       ...formData,
       relationships: formData.relationships.map((rel, i) =>

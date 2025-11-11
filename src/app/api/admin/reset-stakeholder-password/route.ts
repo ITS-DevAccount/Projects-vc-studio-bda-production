@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update password and confirm email
-    const { data: updatedUser, error: updateError } = await adminClient.auth.admin.updateUserById(
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
       authUser.id,
       {
         password: new_password,

@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader, Save } from 'lucide-react';
+import { ArrowLeft, Loader } from 'lucide-react';
 
 interface StakeholderType {
   id: string;
@@ -29,6 +29,7 @@ interface Stakeholder {
   city: string | null;
   status: 'active' | 'inactive' | 'pending' | 'suspended';
   is_verified: boolean;
+  is_user: boolean;
   industry: string | null;
   sector: string | null;
 }
@@ -262,7 +263,7 @@ export default function EditStakeholderPage() {
             <label className="block text-sm font-semibold mb-2 text-brand-text">Stakeholder Type *</label>
             <select
               name="stakeholder_type_id"
-              value={formData.stakeholder_type_id}
+              value={formData.stakeholder_type_id ?? ''}
               onChange={handleChange}
               required
               className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text transition"
@@ -282,7 +283,7 @@ export default function EditStakeholderPage() {
             <input
               type="text"
               name="name"
-              value={formData.name}
+              value={formData.name ?? ''}
               onChange={handleChange}
               required
               placeholder="Stakeholder name"
@@ -297,7 +298,7 @@ export default function EditStakeholderPage() {
               <input
                 type="email"
                 name="email"
-                value={formData.email}
+                value={formData.email ?? ''}
                 onChange={handleChange}
                 placeholder="email@example.com"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -308,7 +309,7 @@ export default function EditStakeholderPage() {
               <input
                 type="tel"
                 name="phone"
-                value={formData.phone}
+                value={formData.phone ?? ''}
                 onChange={handleChange}
                 placeholder="+1 234 567 8900"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -321,7 +322,7 @@ export default function EditStakeholderPage() {
             <input
               type="url"
               name="website"
-              value={formData.website}
+              value={formData.website ?? ''}
               onChange={handleChange}
               placeholder="https://example.com"
               className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -335,7 +336,7 @@ export default function EditStakeholderPage() {
               <input
                 type="text"
                 name="industry"
-                value={formData.industry}
+                value={formData.industry ?? ''}
                 onChange={handleChange}
                 placeholder="e.g., Technology, Agriculture"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -346,7 +347,7 @@ export default function EditStakeholderPage() {
               <input
                 type="text"
                 name="sector"
-                value={formData.sector}
+                value={formData.sector ?? ''}
                 onChange={handleChange}
                 placeholder="e.g., Fintech, Healthcare"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -361,7 +362,7 @@ export default function EditStakeholderPage() {
               <input
                 type="text"
                 name="country"
-                value={formData.country}
+                value={formData.country ?? ''}
                 onChange={handleChange}
                 placeholder="Country"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -372,7 +373,7 @@ export default function EditStakeholderPage() {
               <input
                 type="text"
                 name="region"
-                value={formData.region}
+                value={formData.region ?? ''}
                 onChange={handleChange}
                 placeholder="Region/State"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -383,7 +384,7 @@ export default function EditStakeholderPage() {
               <input
                 type="text"
                 name="city"
-                value={formData.city}
+                value={formData.city ?? ''}
                 onChange={handleChange}
                 placeholder="City"
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted transition"
@@ -397,7 +398,7 @@ export default function EditStakeholderPage() {
               <label className="block text-sm font-semibold mb-2 text-brand-text">Status</label>
               <select
                 name="status"
-                value={formData.status}
+                value={formData.status ?? 'active'}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text transition"
               >

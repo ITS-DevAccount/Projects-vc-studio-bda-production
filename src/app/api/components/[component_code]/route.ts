@@ -2,16 +2,18 @@
 // Purpose: Returns component registry entry + default params
 // Phase 1c: Component Registry & File System
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+type RouteContext = { params: Promise<{ component_code: string }> };
+
 export async function GET(
-  req: Request,
-  { params }: { params: { component_code: string } }
+  _request: Request,
+  { params }: RouteContext
 ) {
   try {
-    const supabase = createClient();
-    const { component_code } = params;
+    const supabase = await createServerClient();
+    const { component_code } = await params;
 
     // Get current authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

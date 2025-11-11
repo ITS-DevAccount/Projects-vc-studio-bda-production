@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 
 /**
  * Admin endpoint to list stakeholders without auth users
  * Helps identify which stakeholders need auth credentials created
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     // Verify admin authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -59,6 +59,10 @@ export async function GET(request: NextRequest) {
       .not('auth_user_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(5)
+
+    if (withAuthError) {
+      console.warn('Error fetching stakeholders with auth:', withAuthError)
+    }
 
     return NextResponse.json({
       stakeholders_without_auth: stakeholders || [],

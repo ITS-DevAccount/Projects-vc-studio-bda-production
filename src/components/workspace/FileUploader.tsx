@@ -66,7 +66,7 @@ export default function FileUploader() {
 
       // Upload to Supabase Storage
       setProgress(30);
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('workspace-files')
         .upload(storagePath, file, {
           cacheControl: '3600',
