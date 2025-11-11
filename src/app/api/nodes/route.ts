@@ -20,14 +20,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get stakeholder
+    // Get stakeholder - documents belong to stakeholder, not app
     const { data: stakeholder, error: stakeholderError } = await supabase
       .from('stakeholders')
-      .select('id, app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
     if (stakeholderError || !stakeholder) {
+      console.error('[POST /api/nodes] Stakeholder not found for user:', user.id, stakeholderError);
       return NextResponse.json(
         { error: 'Stakeholder not found' },
         { status: 404 }
@@ -50,13 +51,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Build node data
+    // Build node data - stakeholder-owned, can be used across apps
     const nodeData: any = {
       name: body.name,
       type: body.type,
-      parent_id: body.parent_id || null,
-      owner_id: stakeholder.id,
-      app_uuid: stakeholder.app_uuid,
+      parent_id: body.parent_id || null,  // For folder hierarchy
+      owner_id: stakeholder.id,            // Primary ownership by stakeholder
       created_by: user.id,
       description: body.description || null,
       tags: body.tags || [],

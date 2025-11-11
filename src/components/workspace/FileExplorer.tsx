@@ -5,6 +5,9 @@
 // Displays files and folders from nodes table
 
 import { useEffect, useState } from 'react';
+import { useFileSystem } from '@/contexts/FileSystemContext';
+import FileViewer from './FileViewer';
+import Breadcrumb from './Breadcrumb';
 
 interface Node {
   id: string;
@@ -22,15 +25,15 @@ interface Node {
 }
 
 export default function FileExplorer() {
+  const { currentPath, currentParentId, navigateToFolder, navigateToPath, navigateToRoot, refreshTrigger } = useFileSystem();
   const [nodes, setNodes] = useState<Node[]>([]);
-  const [currentPath, setCurrentPath] = useState<string[]>([]);
-  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<Node | null>(null);
 
   useEffect(() => {
     fetchNodes(currentParentId);
-  }, [currentParentId]);
+  }, [currentParentId, refreshTrigger]);
 
   const fetchNodes = async (parentId: string | null) => {
     setLoading(true);
@@ -59,22 +62,21 @@ export default function FileExplorer() {
   };
 
   const handleFolderClick = (folder: Node) => {
-    setCurrentPath([...currentPath, folder.name]);
-    setCurrentParentId(folder.id);
+    navigateToFolder(folder.id, folder.name);
   };
 
-  const handleBreadcrumbClick = (index: number) => {
-    if (index === -1) {
-      // Go to root
-      setCurrentPath([]);
-      setCurrentParentId(null);
-    } else {
-      // Go to specific level
-      setCurrentPath(currentPath.slice(0, index + 1));
-      // This would need to track folder IDs, simplified for now
-      setCurrentParentId(null);
+  const handleFileClick = (file: Node) => {
+    setSelectedFile(file);
+  };
+
+  const handleNodeClick = (node: Node) => {
+    if (node.type === 'folder') {
+      handleFolderClick(node);
+    } else if (node.type === 'file') {
+      handleFileClick(node);
     }
   };
+
 
   const formatFileSize = (bytes?: number): string => {
     if (!bytes) return '-';
@@ -104,6 +106,12 @@ export default function FileExplorer() {
     return '📄';
   };
 
+  const getCounts = () => {
+    const folderCount = nodes.filter(node => node.type === 'folder').length;
+    const fileCount = nodes.filter(node => node.type === 'file').length;
+    return { folderCount, fileCount };
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -131,32 +139,27 @@ export default function FileExplorer() {
 
   return (
     <div className="bg-white rounded-lg shadow">
+      {/* Breadcrumb Navigation */}
+      <div className="p-4 pb-0">
+        <Breadcrumb />
+      </div>
+
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-800">File Explorer</h2>
-
-            {/* Breadcrumb */}
-            <div className="flex items-center mt-2 text-sm text-gray-600">
-              <button
-                onClick={() => handleBreadcrumbClick(-1)}
-                className="hover:text-blue-600 transition-colors"
-              >
-                Home
-              </button>
-              {currentPath.map((folder, index) => (
-                <span key={index}>
-                  <span className="mx-2">/</span>
-                  <button
-                    onClick={() => handleBreadcrumbClick(index)}
-                    className="hover:text-blue-600 transition-colors"
-                  >
-                    {folder}
-                  </button>
-                </span>
-              ))}
-            </div>
+            {!loading && (
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {(() => {
+                  const { folderCount, fileCount } = getCounts();
+                  const parts = [];
+                  if (folderCount > 0) parts.push(`${folderCount} folder${folderCount !== 1 ? 's' : ''}`);
+                  if (fileCount > 0) parts.push(`${fileCount} file${fileCount !== 1 ? 's' : ''}`);
+                  return parts.length > 0 ? parts.join(', ') : 'Empty';
+                })()}
+              </span>
+            )}
           </div>
 
           <button
@@ -181,9 +184,9 @@ export default function FileExplorer() {
               <div
                 key={node.id}
                 className={`flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${
-                  node.type === 'folder' ? 'cursor-pointer' : ''
+                  node.type === 'folder' || node.type === 'file' ? 'cursor-pointer' : ''
                 }`}
-                onClick={() => node.type === 'folder' && handleFolderClick(node)}
+                onClick={() => handleNodeClick(node)}
               >
                 <div className="flex items-center space-x-3 flex-1">
                   <span className="text-2xl">{getFileIcon(node)}</span>
@@ -225,6 +228,18 @@ export default function FileExplorer() {
           </div>
         )}
       </div>
+
+      {/* File Viewer Modal */}
+      {selectedFile && selectedFile.type === 'file' && (
+        <FileViewer
+          fileId={selectedFile.id}
+          fileName={selectedFile.name}
+          filePath={selectedFile.file_storage_path || ''}
+          mimeType={selectedFile.mime_type || 'application/octet-stream'}
+          sizeBytes={selectedFile.size_bytes || 0}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
     </div>
   );
 }

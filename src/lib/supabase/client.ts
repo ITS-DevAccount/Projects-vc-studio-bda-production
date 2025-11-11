@@ -1,4 +1,5 @@
-﻿import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
+﻿import { createBrowserClient } from '@supabase/ssr'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -21,13 +22,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 let browserClient: SupabaseClient | null = null
 
 function initClient(): SupabaseClient {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  })
+  // Use createBrowserClient from @supabase/ssr which handles cookies properly
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
 export function createClient(): SupabaseClient {

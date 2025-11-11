@@ -5,8 +5,11 @@
 // Modal component for creating new folders
 
 import { useState } from 'react';
+import { useFileSystem } from '@/contexts/FileSystemContext';
+import Breadcrumb from './Breadcrumb';
 
 export default function FolderCreator() {
+  const { currentPath, currentParentId, triggerRefresh } = useFileSystem();
   const [folderName, setFolderName] = useState('');
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
@@ -34,7 +37,7 @@ export default function FolderCreator() {
         name: folderName.trim(),
         type: 'folder',
         description: description.trim() || undefined,
-        parent_id: null // Create at root for now
+        parent_id: currentParentId  // Create at current location in hierarchy
       };
 
       const response = await fetch('/api/nodes', {
@@ -51,6 +54,9 @@ export default function FolderCreator() {
       setSuccess(true);
       setFolderName('');
       setDescription('');
+
+      // Trigger file explorer refresh
+      triggerRefresh();
 
       // Reset success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
@@ -72,6 +78,11 @@ export default function FolderCreator() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-6">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-6">
+          <Breadcrumb />
+        </div>
+
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Folder</h2>
 
         {/* Folder Name Input */}
@@ -133,11 +144,6 @@ export default function FolderCreator() {
         >
           {creating ? 'Creating...' : 'Create Folder'}
         </button>
-
-        {/* Help Text */}
-        <p className="mt-4 text-xs text-gray-500 text-center">
-          Folders will be created in your workspace root directory
-        </p>
       </div>
     </div>
   );

@@ -1,20 +1,17 @@
 import { supabase } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { getDashboardRouteForStakeholder } from '@/lib/db/dashboardRoutes';
 
 export type UserType = 'admin' | 'stakeholder' | 'unknown';
 
 export interface UserInfo {
   type: UserType;
-  userRecord?: any; // From users table
   stakeholderRecord?: any; // From stakeholders table
   dashboardRoute?: string;
 }
 
-const ADMIN_ROLES = new Set(['super_admin', 'domain_admin', 'manager', 'viewer']);
-
 /**
- * Determines if a logged-in user is an admin (in users table) or a stakeholder
+ * Determines user type based on stakeholder record and primary_role_id
+ * Uses stakeholder_type.code = 'admin' to identify admin users
  */
 export async function getUserType(authUser: User | null): Promise<UserInfo> {
   if (!authUser) {
@@ -22,60 +19,38 @@ export async function getUserType(authUser: User | null): Promise<UserInfo> {
   }
 
   try {
-    // First check if they're in the users table (admin)
-    const { data: userRecord, error: userError } = await supabase
-      .from('users')
-      .select('*')
+    // Get stakeholder record with stakeholder_type
+    const { data: stakeholderRecord, error: stakeholderError } = await supabase
+      .from('stakeholders')
+      .select('*, stakeholder_type:stakeholder_types(code)')
       .eq('auth_user_id', authUser.id)
       .single();
 
-    if (userError) {
-      console.warn('Admin lookup failed in getUserType', {
-        code: (userError as any)?.code,
-        message: userError.message,
-        details: (userError as any)?.details,
-        hint: (userError as any)?.hint,
-      });
+    if (stakeholderError || !stakeholderRecord) {
+      console.warn('Stakeholder not found for auth user:', authUser.id);
+      return { type: 'unknown' };
     }
 
-    if (!userError && userRecord && ADMIN_ROLES.has(userRecord.role)) {
+    // Simple routing logic:
+    // - Admin stakeholder type → hardcoded admin dashboard
+    // - All others (organisation, individual, etc.) → dynamic stakeholder dashboard
+    const isAdmin = (stakeholderRecord.stakeholder_type as any)?.code === 'admin';
+
+    if (isAdmin) {
       return {
         type: 'admin',
-        userRecord,
+        stakeholderRecord,
         dashboardRoute: '/dashboard',
       };
     }
 
-    if (userRecord && !ADMIN_ROLES.has(userRecord.role)) {
-      console.log('User record found but role is not admin, treating as stakeholder', {
-        role: userRecord.role,
-        authUserId: authUser.id,
-      });
-    }
+    // All non-admin stakeholders use the dynamic dashboard renderer
+    return {
+      type: 'stakeholder',
+      stakeholderRecord,
+      dashboardRoute: '/dashboard/stakeholder',
+    };
 
-    // If not in users table, check if they're a stakeholder
-    const { data: stakeholderRecord, error: stakeholderError } = await supabase
-      .from('stakeholders')
-      .select('*')
-      .eq('auth_user_id', authUser.id)
-      .single();
-
-    if (!stakeholderError && stakeholderRecord) {
-      const route = await getDashboardRouteForStakeholder(
-        stakeholderRecord.id,
-        stakeholderRecord.stakeholder_type_id || null,
-        stakeholderRecord.primary_role_id || null
-      );
-
-      return {
-        type: 'stakeholder',
-        stakeholderRecord,
-        dashboardRoute: route || '/dashboard/stakeholder',
-      };
-    }
-
-    // Neither found
-    return { type: 'unknown' };
   } catch (error) {
     console.error('Error determining user type:', error);
     return { type: 'unknown' };

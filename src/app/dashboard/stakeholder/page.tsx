@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import { FileSystemProvider } from '@/contexts/FileSystemContext';
 
 // Import workspace components
 import FileExplorer from '@/components/workspace/FileExplorer';
@@ -60,17 +61,25 @@ export default function StakeholderDashboardPage() {
 
   const fetchDashboardConfig = async () => {
     try {
+      console.log('[Dashboard] Fetching menu items...');
       const response = await fetch('/api/dashboard/menu-items');
 
+      console.log('[Dashboard] API response status:', response.status);
+
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[Dashboard] API error:', response.status, errorData);
+
         if (response.status === 401) {
+          console.log('[Dashboard] Unauthorized - redirecting to login');
           router.push('/auth/login');
           return;
         }
-        throw new Error('Failed to load dashboard configuration');
+        throw new Error(`Failed to load dashboard configuration: ${errorData.error || 'Unknown error'}`);
       }
 
       const data: DashboardConfig = await response.json();
+      console.log('[Dashboard] Config loaded:', data);
       setConfig(data);
 
       // Get stakeholder name
@@ -152,7 +161,8 @@ export default function StakeholderDashboardPage() {
   const sidebarWidth = config.workspace_layout.sidebar_width || '250px';
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <FileSystemProvider>
+      <div className="flex h-screen bg-gray-50">
       {/* Sidebar: Menu Items */}
       <aside
         className="bg-white border-r border-gray-200 flex flex-col"
@@ -222,6 +232,7 @@ export default function StakeholderDashboardPage() {
         </div>
       </main>
     </div>
+    </FileSystemProvider>
   );
 }
 

@@ -55,13 +55,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Transform the data to flatten the role object
-    const roles = (data || []).map((item: any) => ({
-      id: item.role.id,
-      code: item.role.code,
-      label: item.role.label,
-      description: item.role.description,
-      is_default: item.is_default,
-    }));
+    // Filter out entries where role is null (orphaned foreign keys)
+    const roles = (data || [])
+      .filter((item: any) => item.role !== null)
+      .map((item: any) => ({
+        id: item.role.id,
+        code: item.role.code,
+        label: item.role.label,
+        description: item.role.description,
+        is_default: item.is_default,
+      }));
 
     return NextResponse.json(roles);
   } catch (e: any) {
