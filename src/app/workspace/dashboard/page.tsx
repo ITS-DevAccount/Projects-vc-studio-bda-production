@@ -1,12 +1,12 @@
 'use client';
 
-// Dashboard Page with Dynamic Component Loading - Phase 1c
-// Location: /dashboard/stakeholder (stakeholder portal entry point)
+// Dashboard Page with Dynamic Component Loading
+// Phase 1c: Component Registry & File System
+// Location: /workspace/dashboard
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 
 // Import workspace components
 import FileExplorer from '@/components/workspace/FileExplorer';
@@ -45,14 +45,12 @@ interface DashboardConfig {
   stakeholder_id: string;
 }
 
-export default function StakeholderDashboardPage() {
+export default function DashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [activeComponent, setActiveComponent] = useState<string>('file_explorer');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stakeholderName, setStakeholderName] = useState<string>('');
 
   useEffect(() => {
     fetchDashboardConfig();
@@ -73,20 +71,6 @@ export default function StakeholderDashboardPage() {
       const data: DashboardConfig = await response.json();
       setConfig(data);
 
-      // Get stakeholder name
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: stakeholder } = await supabase
-          .from('stakeholders')
-          .select('name')
-          .eq('auth_user_id', user.id)
-          .single();
-
-        if (stakeholder) {
-          setStakeholderName(stakeholder.name);
-        }
-      }
-
       // Set default component
       const defaultItem = data.menu_items.find(item => item.is_default);
       const defaultComponent = defaultItem?.component_id ||
@@ -104,11 +88,6 @@ export default function StakeholderDashboardPage() {
 
   const handleMenuClick = (componentId: string) => {
     setActiveComponent(componentId);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
   };
 
   if (loading) {
@@ -163,9 +142,6 @@ export default function StakeholderDashboardPage() {
             {config.dashboard_name}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {stakeholderName}
-          </p>
-          <p className="text-xs text-gray-400">
             Role: {config.role}
           </p>
         </div>
@@ -188,17 +164,8 @@ export default function StakeholderDashboardPage() {
             ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition text-gray-700"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-          <p className="text-xs text-gray-400 mt-2 text-center">
-            Phase 1c: Component Registry
-          </p>
+        <div className="p-4 border-t border-gray-200 text-xs text-gray-500">
+          Phase 1c: Component Registry
         </div>
       </aside>
 
@@ -224,4 +191,3 @@ export default function StakeholderDashboardPage() {
     </div>
   );
 }
-
