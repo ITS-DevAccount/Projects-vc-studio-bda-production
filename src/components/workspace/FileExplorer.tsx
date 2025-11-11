@@ -25,7 +25,7 @@ interface Node {
 }
 
 export default function FileExplorer() {
-  const { currentParentId, navigateToFolder, navigateToPath, navigateToRoot, refreshTrigger } = useFileSystem();
+  const { currentParentId, navigateToFolder, refreshTrigger } = useFileSystem();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +232,6 @@ export default function FileExplorer() {
       {/* File Viewer Modal */}
       {selectedFile && selectedFile.type === 'file' && (
         <FileViewer
-          fileId={selectedFile.id}
           fileName={selectedFile.name}
           filePath={selectedFile.file_storage_path || ''}
           mimeType={selectedFile.mime_type || 'application/octet-stream'}

@@ -9,7 +9,7 @@ import { useFileSystem } from '@/contexts/FileSystemContext';
 import Breadcrumb from './Breadcrumb';
 
 export default function FolderCreator() {
-  const { currentPath, currentParentId, triggerRefresh } = useFileSystem();
+  const { currentParentId, triggerRefresh } = useFileSystem();
   const [folderName, setFolderName] = useState('');
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);

@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/client';
 import { X, Download, ExternalLink } from 'lucide-react';
 
 interface FileViewerProps {
-  fileId: string;
   fileName: string;
   filePath: string;
   mimeType: string;
@@ -18,7 +17,6 @@ interface FileViewerProps {
 }
 
 export default function FileViewer({
-  fileId,
   fileName,
   filePath,
   mimeType,

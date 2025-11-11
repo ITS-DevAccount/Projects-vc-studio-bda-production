@@ -10,7 +10,7 @@ import { useFileSystem } from '@/contexts/FileSystemContext';
 import Breadcrumb from './Breadcrumb';
 
 export default function FileUploader() {
-  const { currentPath, currentParentId, triggerRefresh } = useFileSystem();
+  const { currentParentId, triggerRefresh } = useFileSystem();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
