@@ -13,7 +13,15 @@ interface Role {
   label: string;
   description: string;
   is_active: boolean;
+  scope: 'general' | 'specific';
+  specific_stakeholder_id: string | null;
   created_at: string;
+}
+
+interface Stakeholder {
+  id: string;
+  name: string;
+  reference: string;
 }
 
 export default function RolesPage() {
@@ -22,6 +30,7 @@ export default function RolesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +39,8 @@ export default function RolesPage() {
     label: '',
     description: '',
     is_active: true,
+    scope: 'general' as 'general' | 'specific',
+    specific_stakeholder_id: '',
   });
 
   useEffect(() => {
@@ -49,6 +60,7 @@ export default function RolesPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
+      // Fetch roles
       const res = await fetch('/api/roles', {
         headers: {
           ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
@@ -57,6 +69,17 @@ export default function RolesPage() {
       if (!res.ok) throw new Error('Failed to load roles');
       const data = await res.json();
       setRoles(data || []);
+
+      // Fetch stakeholders for the specific stakeholder dropdown
+      const stakeholdersRes = await fetch('/api/stakeholders?pageSize=1000', {
+        headers: {
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+      });
+      if (stakeholdersRes.ok) {
+        const stakeholdersData = await stakeholdersRes.json();
+        setStakeholders(stakeholdersData.data || []);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -71,6 +94,8 @@ export default function RolesPage() {
       label: role.label,
       description: role.description || '',
       is_active: role.is_active,
+      scope: role.scope || 'general',
+      specific_stakeholder_id: role.specific_stakeholder_id || '',
     });
     setShowCreateForm(false);
   };
@@ -83,6 +108,8 @@ export default function RolesPage() {
       label: '',
       description: '',
       is_active: true,
+      scope: 'general',
+      specific_stakeholder_id: '',
     });
   };
 
@@ -94,6 +121,8 @@ export default function RolesPage() {
       label: '',
       description: '',
       is_active: true,
+      scope: 'general',
+      specific_stakeholder_id: '',
     });
   };
 
@@ -237,6 +266,49 @@ export default function RolesPage() {
               />
             </div>
 
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium mb-2">Scope *</label>
+                <select
+                  value={formData.scope}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    scope: e.target.value as 'general' | 'specific',
+                    specific_stakeholder_id: e.target.value === 'general' ? '' : formData.specific_stakeholder_id
+                  })}
+                  className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
+                >
+                  <option value="general">General (App-wide)</option>
+                  <option value="specific">Specific (Single Stakeholder)</option>
+                </select>
+                <p className="text-xs text-brand-text-muted mt-1">
+                  General roles are available to all. Specific roles are limited to one stakeholder.
+                </p>
+              </div>
+
+              {formData.scope === 'specific' && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Specific Stakeholder *</label>
+                  <select
+                    value={formData.specific_stakeholder_id}
+                    onChange={(e) => setFormData({ ...formData, specific_stakeholder_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
+                    required={formData.scope === 'specific'}
+                  >
+                    <option value="">Select stakeholder...</option>
+                    {stakeholders.map(stakeholder => (
+                      <option key={stakeholder.id} value={stakeholder.id}>
+                        {stakeholder.name} ({stakeholder.reference})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-brand-text-muted mt-1">
+                    This role will only be available for this stakeholder
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -301,6 +373,7 @@ export default function RolesPage() {
                 <th className="text-left p-3 border-b border-section-border">Code</th>
                 <th className="text-left p-3 border-b border-section-border">Label</th>
                 <th className="text-left p-3 border-b border-section-border">Description</th>
+                <th className="text-left p-3 border-b border-section-border">Scope</th>
                 <th className="text-left p-3 border-b border-section-border">Active</th>
                 <th className="text-left p-3 border-b border-section-border">Created</th>
                 <th className="text-left p-3 border-b border-section-border">Actions</th>
@@ -315,6 +388,17 @@ export default function RolesPage() {
                   <td className="p-3 border-b border-section-border font-medium">{role.label}</td>
                   <td className="p-3 border-b border-section-border text-brand-text-muted">
                     {role.description || '-'}
+                  </td>
+                  <td className="p-3 border-b border-section-border">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        role.scope === 'general'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-purple-100 text-purple-800'
+                      }`}
+                    >
+                      {role.scope === 'general' ? 'General' : 'Specific'}
+                    </span>
                   </td>
                   <td className="p-3 border-b border-section-border">
                     <span

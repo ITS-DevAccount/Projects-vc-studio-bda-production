@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, ChevronRight } from 'lucide-react';
+import { Users, Shield, Network, ChevronRight, UserCog } from 'lucide-react';
 
 export default function AdminHome() {
   const { user, loading } = useAuth();
@@ -74,6 +74,23 @@ export default function AdminHome() {
           <h2 className="text-lg font-semibold mb-2">Relationship Types</h2>
           <p className="text-sm text-brand-text-muted">
             Define types of relationships between stakeholders (supplier, customer, etc.)
+          </p>
+        </Link>
+
+        {/* Stakeholder Type Roles Configuration */}
+        <Link
+          href="/dashboard/admin/stakeholder-types"
+          className="bg-section-light p-6 rounded-lg border border-section-border hover:border-accent-primary transition group"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <UserCog className="w-6 h-6 text-orange-600" />
+            </div>
+            <ChevronRight className="w-5 h-5 text-brand-text-muted group-hover:text-accent-primary transition" />
+          </div>
+          <h2 className="text-lg font-semibold mb-2">Stakeholder Type Roles</h2>
+          <p className="text-sm text-brand-text-muted">
+            Configure which roles are available for each stakeholder type
           </p>
         </Link>
       </div>
