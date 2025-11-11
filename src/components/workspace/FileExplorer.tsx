@@ -25,7 +25,7 @@ interface Node {
 }
 
 export default function FileExplorer() {
-  const { currentPath, currentParentId, navigateToFolder, navigateToPath, navigateToRoot, refreshTrigger } = useFileSystem();
+  const { currentParentId, navigateToFolder, navigateToPath, navigateToRoot, refreshTrigger } = useFileSystem();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
