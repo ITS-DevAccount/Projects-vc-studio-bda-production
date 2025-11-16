@@ -30,7 +30,13 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresh session if expired - required for Server Components
-  await supabase.auth.getUser();
+  // Use getSession instead of getUser to avoid triggering refresh token errors
+  try {
+    await supabase.auth.getSession();
+  } catch (error) {
+    // Silently handle auth errors in middleware - let the app handle them
+    console.error('[Middleware] Auth error:', error);
+  }
 
   return supabaseResponse;
 }

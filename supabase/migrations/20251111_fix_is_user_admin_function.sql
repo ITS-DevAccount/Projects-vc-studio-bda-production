@@ -56,6 +56,7 @@ CREATE POLICY "roles_select_policy" ON roles
     );
 
 CREATE POLICY "roles_insert_policy" ON roles
+
     FOR INSERT WITH CHECK (
         is_user_admin()
     );

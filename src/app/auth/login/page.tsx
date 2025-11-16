@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { getUserType, getDashboardRoute } from '@/lib/utils/userType';
 import { Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/branding/Logo';
@@ -33,11 +32,18 @@ export default function LoginPage() {
       // Wait a moment for session to be established
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Get the current user to determine their type
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const userInfo = await getUserType(authUser);
-        const dashboardRoute = getDashboardRoute(userInfo);
+      // Get the current session (safer than getUser which triggers refresh)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('[Login] Session error after sign in:', sessionError);
+        throw new Error('Failed to establish session');
+      }
+      
+      if (session?.user) {
+        // Use the dashboard router to determine the correct path
+        const { getDashboardPath } = await import('@/lib/middleware/dashboardRouter');
+        const dashboardRoute = await getDashboardPath(session.user.id);
         router.push(dashboardRoute);
       } else {
         router.push('/dashboard'); // Fallback to admin dashboard

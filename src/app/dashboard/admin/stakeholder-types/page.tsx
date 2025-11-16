@@ -3,15 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Loader, Star } from 'lucide-react';
+import { Plus, Trash2, Loader, Star, Edit, X, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMenu from '@/components/admin/AdminMenu';
 
 interface StakeholderType {
   id: string;
   code: string;
   label: string;
   description: string | null;
+  is_individual?: boolean;
+  is_organization?: boolean;
+  is_active?: boolean;
 }
 
 interface Role {
@@ -42,6 +46,8 @@ export default function StakeholderTypeRolesPage() {
   const [mappings, setMappings] = useState<StakeholderTypeRoleMapping[]>([]);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<StakeholderType>>({});
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -183,6 +189,85 @@ export default function StakeholderTypeRolesPage() {
     }
   }
 
+  function handleEditType(type: StakeholderType) {
+    setEditingTypeId(type.id);
+    setEditFormData({
+      label: type.label,
+      description: type.description || '',
+      is_individual: type.is_individual || false,
+      is_organization: type.is_organization || false,
+      is_active: type.is_active !== undefined ? type.is_active : true,
+    });
+  }
+
+  function handleCancelEdit() {
+    setEditingTypeId(null);
+    setEditFormData({});
+  }
+
+  async function handleSaveType() {
+    if (!editingTypeId) return;
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch(`/api/stakeholder-types/${editingTypeId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+        body: JSON.stringify(editFormData),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update');
+      }
+
+      handleCancelEdit();
+      loadData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteType(id: string, code: string) {
+    if (!confirm(`Are you sure you want to delete the stakeholder type "${code}"? This action cannot be undone.`)) return;
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch(`/api/stakeholder-types/${id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete');
+      }
+
+      loadData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // Group mappings by stakeholder type
   const mappingsByType = stakeholderTypes.map(type => ({
     type,
@@ -201,28 +286,163 @@ export default function StakeholderTypeRolesPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-6">
-        <Link
-          href="/dashboard/admin"
-          className="inline-flex items-center gap-2 text-brand-text-muted hover:text-brand-text mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Admin
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">Stakeholder Type Roles</h1>
-          <p className="text-brand-text-muted text-sm mt-1">
-            Configure which roles are available for each stakeholder type
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <AdminMenu />
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Stakeholder Types</h1>
+            <p className="text-brand-text-muted text-sm mt-1">
+              Manage stakeholder types and configure which roles are available for each type
+            </p>
+          </div>
         </div>
-      </div>
 
       {error && (
         <div className="mb-4 bg-semantic-error-bg border border-red-500 text-semantic-error rounded-lg p-4">
           {error}
         </div>
       )}
+
+      {/* Stakeholder Types List */}
+      <div className="mb-6 bg-section-light border border-section-border rounded-lg overflow-hidden">
+        <div className="bg-section-subtle px-4 py-3 border-b border-section-border">
+          <h2 className="text-lg font-semibold">Stakeholder Types</h2>
+        </div>
+        {loading ? (
+          <div className="p-8 text-center">
+            <Loader className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-brand-text-muted">Loading...</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-section-subtle">
+              <tr>
+                <th className="text-left p-3 border-b border-section-border">Code</th>
+                <th className="text-left p-3 border-b border-section-border">Label</th>
+                <th className="text-left p-3 border-b border-section-border">Description</th>
+                <th className="text-left p-3 border-b border-section-border">Type</th>
+                <th className="text-left p-3 border-b border-section-border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stakeholderTypes.map((type) => (
+                <tr key={type.id} className="hover:bg-section-subtle/50">
+                  {editingTypeId === type.id ? (
+                    <>
+                      <td className="p-3 border-b border-section-border">
+                        <code className="text-xs bg-section-subtle px-2 py-1 rounded">{type.code}</code>
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <input
+                          type="text"
+                          value={editFormData.label || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, label: e.target.value })}
+                          className="w-full px-2 py-1 bg-section-subtle border border-section-border rounded"
+                          required
+                        />
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <input
+                          type="text"
+                          value={editFormData.description || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                          className="w-full px-2 py-1 bg-section-subtle border border-section-border rounded"
+                        />
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <div className="flex gap-2 text-xs">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={editFormData.is_individual || false}
+                              onChange={(e) => setEditFormData({ ...editFormData, is_individual: e.target.checked })}
+                              className="w-3 h-3"
+                            />
+                            Individual
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={editFormData.is_organization || false}
+                              onChange={(e) => setEditFormData({ ...editFormData, is_organization: e.target.checked })}
+                              className="w-3 h-3"
+                            />
+                            Organization
+                          </label>
+                        </div>
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveType}
+                            disabled={saving || !editFormData.label}
+                            className="p-2 bg-accent-primary hover:bg-accent-primary-hover text-white rounded transition disabled:opacity-50"
+                            title="Save"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            disabled={saving}
+                            className="p-2 bg-section-subtle hover:bg-section-emphasis rounded transition"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="p-3 border-b border-section-border">
+                        <code className="text-xs bg-section-subtle px-2 py-1 rounded">{type.code}</code>
+                      </td>
+                      <td className="p-3 border-b border-section-border font-medium">{type.label}</td>
+                      <td className="p-3 border-b border-section-border text-brand-text-muted">
+                        {type.description || '-'}
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <div className="flex gap-2 text-xs">
+                          {type.is_individual && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">Individual</span>
+                          )}
+                          {type.is_organization && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded">Organization</span>
+                          )}
+                          {!type.is_individual && !type.is_organization && (
+                            <span className="text-brand-text-muted">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 border-b border-section-border">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditType(type)}
+                            className="p-2 bg-section-subtle hover:bg-section-emphasis rounded transition"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteType(type.id, type.code)}
+                            className="p-2 bg-semantic-error-bg hover:bg-red-900/40 text-semantic-error rounded transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {/* Add Mapping Form */}
       <div className="mb-6 bg-section-light border border-section-border rounded-lg p-6">
@@ -379,6 +599,7 @@ export default function StakeholderTypeRolesPage() {
           ))}
         </div>
       )}
+      </main>
     </div>
   );
 }

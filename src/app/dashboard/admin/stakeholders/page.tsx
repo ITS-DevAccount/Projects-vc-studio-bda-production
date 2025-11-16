@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMenu from '@/components/admin/AdminMenu';
 
 interface StakeholderRow {
   id: string;
@@ -87,14 +89,20 @@ export default function StakeholdersRegistryPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Stakeholder Registry</h1>
-        <div className="flex gap-2">
-          <Link href="/dashboard/admin" className="px-4 py-2 bg-section-subtle border border-section-border rounded-lg">Admin</Link>
-          <Link href="/dashboard/admin/stakeholders/create" className="px-4 py-2 bg-accent-primary text-white rounded-lg">Create</Link>
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <AdminMenu />
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">Stakeholder Registry</h1>
+              <p className="text-gray-600 text-sm mt-1">Manage stakeholders, view profiles, assign roles, and create relationships</p>
+            </div>
+            <Link href="/dashboard/admin/stakeholders/create" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">Create</Link>
+          </div>
         </div>
-      </div>
 
       <div className="grid gap-3 mb-4 md:grid-cols-4">
         <input className="px-3 py-2 bg-section-subtle border border-section-border rounded"
@@ -183,6 +191,7 @@ export default function StakeholdersRegistryPage() {
                   className="px-3 py-1 bg-section-subtle border border-section-border rounded disabled:opacity-50">Next</button>
         </div>
       </div>
+      </main>
     </div>
   );
 }

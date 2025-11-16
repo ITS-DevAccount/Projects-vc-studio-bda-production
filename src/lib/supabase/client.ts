@@ -35,24 +35,65 @@ export function createClient(): SupabaseClient {
 
 export const supabase = createClient()
 
+/**
+ * Check if an error is a refresh token error
+ */
+export function isRefreshTokenError(error: any): boolean {
+  const message = error?.message || error?.error_description || ''
+  return (
+    message.includes('refresh_token_not_found') ||
+    message.includes('Invalid Refresh Token') ||
+    message.includes('Refresh Token Not Found') ||
+    message.includes('JWT expired') ||
+    error?.status === 401
+  )
+}
+
+/**
+ * Clear stale auth session
+ */
+export async function clearStaleAuth(): Promise<void> {
+  try {
+    await supabase.auth.signOut({ scope: 'local' })
+    // Also clear any localStorage items related to Supabase
+    if (typeof window !== 'undefined') {
+      // Clear all Supabase-related localStorage items
+      const keys = Object.keys(localStorage)
+      keys.forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key)
+        }
+      })
+    }
+  } catch (error) {
+    // Ignore errors during cleanup
+    console.log('Error during auth cleanup:', error)
+  }
+}
+
 // Handle auth errors and clear stale tokens
 if (typeof window !== 'undefined') {
   const client = createClient()
 
-  client.auth.onAuthStateChange((event) => {
-    if (event === 'TOKEN_REFRESHED') {
-      console.log('Token refreshed successfully')
-    } else if (event === 'SIGNED_OUT') {
-      console.log('User signed out')
+  // Clear stale auth data on initialization
+  client.auth.getSession().catch(async (error) => {
+    if (isRefreshTokenError(error)) {
+      console.log('Clearing stale auth session on init')
+      await clearStaleAuth()
     }
   })
 
-  // Clear stale auth data on initialization
-  client.auth.getSession().catch((error) => {
-    if (error.message?.includes('refresh_token_not_found') ||
-        error.message?.includes('Invalid Refresh Token')) {
-      console.log('Clearing stale auth session')
-      supabase.auth.signOut({ scope: 'local' })
+  // Listen for auth errors globally
+  client.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'TOKEN_REFRESHED') {
+      if (session) {
+        console.log('Token refreshed successfully')
+      } else {
+        console.log('Token refresh failed, clearing session')
+        await clearStaleAuth()
+      }
+    } else if (event === 'SIGNED_OUT') {
+      console.log('User signed out')
     }
   })
 }

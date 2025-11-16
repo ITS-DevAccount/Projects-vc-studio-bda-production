@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Loader } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMenu from '@/components/admin/AdminMenu';
 
 interface Role {
   id: string;
@@ -139,13 +140,26 @@ export default function RolesPage() {
       const url = editingId ? `/api/roles/${editingId}` : '/api/roles';
       const method = editingId ? 'PATCH' : 'POST';
 
+      // Prepare data: convert empty string to null for UUID fields
+      // If scope is 'general', set specific_stakeholder_id to null
+      // If scope is 'specific' but no stakeholder selected, keep empty string (validation will catch it)
+      const submitData: any = {
+        ...formData,
+        // Convert empty string to null for UUID field
+        specific_stakeholder_id: formData.scope === 'general' || !formData.specific_stakeholder_id 
+          ? null 
+          : formData.specific_stakeholder_id,
+        // Ensure description is null if empty
+        description: formData.description || null,
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (!res.ok) {
@@ -187,15 +201,12 @@ export default function RolesPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-6">
-        <Link
-          href="/dashboard/admin"
-          className="inline-flex items-center gap-2 text-brand-text-muted hover:text-brand-text mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Admin
-        </Link>
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <AdminMenu />
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Roles</h1>
@@ -436,6 +447,7 @@ export default function RolesPage() {
           </table>
         )}
       </div>
+      </main>
     </div>
   );
 }

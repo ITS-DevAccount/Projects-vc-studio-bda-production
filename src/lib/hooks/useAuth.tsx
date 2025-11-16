@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, isRefreshTokenError, clearStaleAuth } from '@/lib/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -24,11 +24,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error('Error getting session:', error);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          // Handle refresh token errors by clearing stale auth
+          if (isRefreshTokenError(error)) {
+            console.log('Clearing stale auth session');
+            await clearStaleAuth();
+            setSession(null);
+            setUser(null);
+          } else {
+            console.error('Error getting session:', error);
+          }
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error: any) {
+        // Handle any other errors
+        if (isRefreshTokenError(error)) {
+          console.log('Clearing stale auth session');
+          await clearStaleAuth();
+        } else {
+          console.error('Error getting session:', error);
+        }
       } finally {
         setLoading(false);
       }
@@ -37,7 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (event, session) => {
+        // Handle token refresh errors
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed, clearing session');
+          await clearStaleAuth();
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);

@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Loader } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMenu from '@/components/admin/AdminMenu';
 
 interface RelationshipType {
   id: string;
@@ -170,15 +171,12 @@ export default function RelationshipTypesPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-6">
-        <Link
-          href="/dashboard/admin"
-          className="inline-flex items-center gap-2 text-brand-text-muted hover:text-brand-text mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Admin
-        </Link>
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <AdminMenu />
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Relationship Types</h1>
@@ -400,6 +398,7 @@ export default function RelationshipTypesPage() {
           </table>
         )}
       </div>
+      </main>
     </div>
   );
 }

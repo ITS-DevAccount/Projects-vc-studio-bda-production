@@ -23,6 +23,9 @@ const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
   'folder_creator': FolderCreator,
   'workflow_tasks': WorkflowTasksWidget,
   'vc_pyramid': VCModelPyramid,
+  // Legacy component name mappings
+  'file_view': FileExplorer, // Map file_view to file_explorer
+  'profile_view': FileExplorer, // Temporary: map profile_view to file_explorer until ProfileView component is created
 };
 
 interface MenuItem {
@@ -80,6 +83,8 @@ export default function StakeholderDashboardPage() {
 
       const data: DashboardConfig = await response.json();
       console.log('[Dashboard] Config loaded:', data);
+      console.log('[Dashboard] Menu items count:', data.menu_items?.length || 0);
+      console.log('[Dashboard] Menu items:', data.menu_items);
       setConfig(data);
 
       // Get stakeholder name
@@ -158,7 +163,12 @@ export default function StakeholderDashboardPage() {
   }
 
   const ActiveComponentToRender = COMPONENT_MAP[activeComponent];
-  const sidebarWidth = config.workspace_layout.sidebar_width || '250px';
+  // Safely access workspace_layout with defaults
+  const workspaceLayout = config.workspace_layout || {};
+  const sidebarWidth = workspaceLayout.sidebar_width || '250px';
+  // Theme and showNotifications are available for future use
+  // const theme = workspaceLayout.theme || 'light';
+  // const showNotifications = workspaceLayout.show_notifications !== false;
 
   return (
     <FileSystemProvider>
@@ -181,21 +191,35 @@ export default function StakeholderDashboardPage() {
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">
-          {config.menu_items
-            .sort((a, b) => a.position - b.position)
-            .map((item) => (
-              <button
-                key={item.component_id}
-                onClick={() => handleMenuClick(item.component_id)}
-                className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-colors ${
-                  activeComponent === item.component_id
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
+          {config.menu_items && config.menu_items.length > 0 ? (
+            config.menu_items
+              .sort((a, b) => a.position - b.position)
+              .map((item) => {
+                const hasComponent = COMPONENT_MAP[item.component_id] !== undefined;
+                console.log('[Dashboard] Rendering menu item:', item.component_id, 'hasComponent:', hasComponent);
+                return (
+                  <button
+                    key={item.component_id}
+                    onClick={() => handleMenuClick(item.component_id)}
+                    className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-colors ${
+                      activeComponent === item.component_id
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="font-medium">{item.label}</span>
+                    {!hasComponent && (
+                      <span className="ml-2 text-xs text-yellow-600">(Component not found)</span>
+                    )}
+                  </button>
+                );
+              })
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>No menu items available</p>
+              <p className="text-xs mt-2">Check your dashboard configuration</p>
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-gray-200">
