@@ -32,20 +32,20 @@ export function AppProvider({ children }: AppProviderProps) {
   useEffect(() => {
     async function loadAppContext() {
       try {
-        // Get site_code from environment variable
-        const siteCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO'
+        // Get app_code from environment variable
+        const appCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO'
 
-        // Try to query site_settings - use .maybeSingle() instead of .single() to handle no records
+        // Query applications table to get app context
         const { data, error } = await supabase
-          .from('site_settings')
+          .from('applications')
           .select('*')
-          .or(`site_code.eq.${siteCode},is_active.eq.true`)
-          .limit(1)
-          .maybeSingle() // Use maybeSingle() to return null if no record found instead of error
+          .eq('app_code', appCode)
+          .eq('is_active', true)
+          .maybeSingle()
 
         if (error) {
           const supabaseError = error as PostgrestError
-          console.error('Error loading app context from site_settings:',
+          console.error('Error loading app context from applications:',
             supabaseError?.message ?? 'Unknown error',
             {
               code: supabaseError?.code ?? 'unknown',
@@ -53,55 +53,46 @@ export function AppProvider({ children }: AppProviderProps) {
             }
           )
 
-          // Try to get any record as fallback
+          // Try to get any active record as fallback
           const { data: anyData, error: anyError } = await supabase
-            .from('site_settings')
+            .from('applications')
             .select('*')
-            .or(`site_code.eq.${siteCode},is_active.eq.true`)
+            .eq('is_active', true)
             .limit(1)
             .maybeSingle()
-          
+
           if (!anyError && anyData) {
-            let fallbackUuid = anyData.app_uuid || anyData.id || ''
-            if (!fallbackUuid && typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-              fallbackUuid = crypto.randomUUID()
-            }
-            console.log('Using fallback site_settings record:', anyData)
+            console.log('Using fallback applications record:', anyData)
             setAppContext({
-              app_uuid: fallbackUuid,
-              site_code: anyData.site_code || siteCode,
-              domain_code: anyData.domain_code || 'BDA',
-              site_name: anyData.site_name || 'VC Studio',
-              is_active_app: anyData.is_active_app !== undefined ? anyData.is_active_app : (anyData.is_active || true),
+              app_uuid: anyData.id,
+              site_code: anyData.app_code,
+              domain_code: anyData.domain_type || 'BDA',
+              site_name: anyData.app_name || 'VC Studio',
+              is_active_app: anyData.is_active || true,
               isLoading: false,
             })
             return
           }
-          
+
           // If still no data, use defaults
-          console.warn('No site_settings found, using defaults. app_uuid will be empty.')
+          console.warn('No applications found, using defaults. app_uuid will be empty.')
           setAppContext(prev => ({ ...prev, isLoading: false }))
           return
         }
 
         if (data) {
-          // Support both old schema (is_active) and new schema (is_active_app, site_code, etc.)
-          let appUuid = data.app_uuid || data.id || ''
-          if (!appUuid && typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-            appUuid = crypto.randomUUID()
-          }
-          console.log('Loaded app context:', { app_uuid: appUuid, site_code: data.site_code || siteCode })
+          console.log('Loaded app context:', { app_uuid: data.id, app_code: data.app_code })
           setAppContext({
-            app_uuid: appUuid,
-            site_code: data.site_code || siteCode,
-            domain_code: data.domain_code || 'BDA',
-            site_name: data.site_name || 'VC Studio',
-            is_active_app: data.is_active_app !== undefined ? data.is_active_app : (data.is_active || true),
+            app_uuid: data.id,
+            site_code: data.app_code,
+            domain_code: data.domain_type || 'BDA',
+            site_name: data.app_name || 'VC Studio',
+            is_active_app: data.is_active || true,
             isLoading: false,
           })
         } else {
           // No record found
-          console.warn('No active site_settings record found, using defaults. app_uuid will be empty.')
+          console.warn('No active application record found for app_code:', appCode)
           setAppContext(prev => ({ ...prev, isLoading: false }))
         }
       } catch (err: any) {
