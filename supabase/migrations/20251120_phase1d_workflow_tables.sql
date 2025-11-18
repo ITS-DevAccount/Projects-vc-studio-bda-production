@@ -97,9 +97,7 @@ CREATE TABLE IF NOT EXISTS workflow_definitions (
     CONSTRAINT workflow_definitions_app_workflow_version_unique 
         UNIQUE (app_code, workflow_code, version),
     CONSTRAINT workflow_definitions_status_check 
-        CHECK (status IN ('DRAFT', 'ACTIVE', 'DEPRECATED')),
-    CONSTRAINT workflow_definitions_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE
+        CHECK (status IN ('DRAFT', 'ACTIVE', 'DEPRECATED'))
 );
 
 -- Indexes for workflow_definitions
@@ -156,9 +154,7 @@ CREATE TABLE IF NOT EXISTS workflow_instances (
     
     -- Constraints
     CONSTRAINT workflow_instances_status_check 
-        CHECK (status IN ('RUNNING', 'COMPLETED', 'SUSPENDED', 'ERROR')),
-    CONSTRAINT workflow_instances_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE
+        CHECK (status IN ('RUNNING', 'COMPLETED', 'SUSPENDED', 'ERROR'))
 );
 
 -- Indexes for workflow_instances
@@ -225,11 +221,7 @@ CREATE TABLE IF NOT EXISTS instance_tasks (
     CONSTRAINT instance_tasks_status_check 
         CHECK (status IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED')),
     CONSTRAINT instance_tasks_task_type_check 
-        CHECK (task_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK')),
-    CONSTRAINT instance_tasks_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE,
-    CONSTRAINT instance_tasks_function_code_fk 
-        FOREIGN KEY (function_code) REFERENCES function_registry(function_code) ON DELETE RESTRICT
+        CHECK (task_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK'))
 );
 
 -- Indexes for instance_tasks
@@ -277,9 +269,7 @@ CREATE TABLE IF NOT EXISTS instance_context (
     
     -- Constraints
     CONSTRAINT instance_context_instance_version_unique 
-        UNIQUE (workflow_instance_id, version),
-    CONSTRAINT instance_context_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE
+        UNIQUE (workflow_instance_id, version)
 );
 
 -- Indexes for instance_context
@@ -341,9 +331,7 @@ CREATE TABLE IF NOT EXISTS workflow_history (
             'TRANSITION',
             'INSTANCE_COMPLETED',
             'INSTANCE_SUSPENDED'
-        )),
-    CONSTRAINT workflow_history_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE
+        ))
 );
 
 -- Indexes for workflow_history
@@ -411,10 +399,25 @@ CREATE TABLE IF NOT EXISTS function_registry (
     CONSTRAINT function_registry_app_function_unique 
         UNIQUE (app_code, function_code),
     CONSTRAINT function_registry_implementation_type_check 
-        CHECK (implementation_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK')),
-    CONSTRAINT function_registry_app_code_fk 
-        FOREIGN KEY (app_code) REFERENCES applications(app_code) ON DELETE CASCADE
+        CHECK (implementation_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK'))
 );
+
+-- Add foreign key constraint separately to handle NULL app_code
+-- Only enforce FK when app_code is NOT NULL (shared functions have NULL app_code)
+-- Note: PostgreSQL allows NULL values in foreign key columns, they just won't be validated
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applications') THEN
+        ALTER TABLE function_registry
+            ADD CONSTRAINT function_registry_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key constraint on function_registry.app_code';
+    ELSE
+        RAISE WARNING '⚠ applications table does not exist, skipping foreign key constraint';
+    END IF;
+END $$;
 
 -- Indexes for function_registry
 CREATE INDEX IF NOT EXISTS idx_function_registry_app_active 
@@ -433,6 +436,55 @@ COMMENT ON COLUMN function_registry.endpoint_or_path IS
     'For SERVICE_TASK: API endpoint URL. For AI_AGENT_TASK: agent configuration path.';
 COMMENT ON COLUMN function_registry.ui_widget_id IS 
     'UI widget identifier for rendering user task interfaces';
+
+-- ============================================================================
+-- FOREIGN KEY CONSTRAINTS
+-- Purpose: Add all foreign key constraints after tables are created
+--          This ensures applications table exists before referencing it
+-- ============================================================================
+
+-- Foreign key: workflow_definitions.app_code -> applications.app_code
+ALTER TABLE workflow_definitions
+    ADD CONSTRAINT workflow_definitions_app_code_fk 
+    FOREIGN KEY (app_code) 
+    REFERENCES applications(app_code) 
+    ON DELETE CASCADE;
+
+-- Foreign key: workflow_instances.app_code -> applications.app_code
+ALTER TABLE workflow_instances
+    ADD CONSTRAINT workflow_instances_app_code_fk 
+    FOREIGN KEY (app_code) 
+    REFERENCES applications(app_code) 
+    ON DELETE CASCADE;
+
+-- Foreign key: instance_tasks.app_code -> applications.app_code
+ALTER TABLE instance_tasks
+    ADD CONSTRAINT instance_tasks_app_code_fk 
+    FOREIGN KEY (app_code) 
+    REFERENCES applications(app_code) 
+    ON DELETE CASCADE;
+
+-- Foreign key: instance_tasks.function_code -> function_registry.function_code
+-- Note: Added after function_registry table is created
+ALTER TABLE instance_tasks
+    ADD CONSTRAINT instance_tasks_function_code_fk 
+    FOREIGN KEY (function_code) 
+    REFERENCES function_registry(function_code) 
+    ON DELETE RESTRICT;
+
+-- Foreign key: instance_context.app_code -> applications.app_code
+ALTER TABLE instance_context
+    ADD CONSTRAINT instance_context_app_code_fk 
+    FOREIGN KEY (app_code) 
+    REFERENCES applications(app_code) 
+    ON DELETE CASCADE;
+
+-- Foreign key: workflow_history.app_code -> applications.app_code
+ALTER TABLE workflow_history
+    ADD CONSTRAINT workflow_history_app_code_fk 
+    FOREIGN KEY (app_code) 
+    REFERENCES applications(app_code) 
+    ON DELETE CASCADE;
 
 -- ============================================================================
 -- HELPER FUNCTIONS: Deferred - Will be created in a later migration
