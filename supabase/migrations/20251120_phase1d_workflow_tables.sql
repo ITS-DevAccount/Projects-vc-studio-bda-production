@@ -3,77 +3,13 @@
 -- File: 20251120_phase1d_workflow_tables.sql
 -- Purpose: Create complete PostgreSQL database schema for workflow orchestration
 -- Sprint: 1d.1 - Database Schema Implementation
--- Dependencies: site_settings table (for app_code mapping), auth.jwt() function
+-- Dependencies: app_code provided via environment variable (.env.local), auth.jwt() function
 -- ============================================================================
 
 -- ============================================================================
--- STEP 0: Create applications table if it doesn't exist
--- Purpose: Map site_settings.site_code to applications.app_code for workflow system
--- Note: This creates a simple applications table that can be populated from
---       site_settings or maintained separately for workflow management.
+-- NOTE: app_code is provided via environment variable (.env.local)
+--       No applications table is needed - app_code is just a TEXT identifier
 -- ============================================================================
-
--- Drop applications table if it exists without app_code column
-DO $$
-BEGIN
-    -- Check if applications table exists
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applications') THEN
-        -- Check if it has app_code column
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'applications' AND column_name = 'app_code'
-        ) THEN
-            -- Drop the table if it doesn't have app_code
-            DROP TABLE IF EXISTS applications CASCADE;
-            RAISE NOTICE '⚠ Dropped existing applications table (missing app_code column)';
-        END IF;
-    END IF;
-END $$;
-
--- Create applications table
-CREATE TABLE IF NOT EXISTS applications (
-    app_code TEXT PRIMARY KEY,
-    app_name TEXT NOT NULL,
-    app_uuid UUID,                          -- Optional: link to site_settings.app_uuid
-    description TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create index for active applications
-CREATE INDEX IF NOT EXISTS idx_applications_active ON applications(is_active);
-
--- Populate applications table with default application
--- Note: Can be populated from site_settings in a follow-up migration if needed
-DO $$
-BEGIN
-    -- Only populate if applications table is empty
-    IF NOT EXISTS (SELECT 1 FROM applications LIMIT 1) THEN
-        -- Create default application
-        INSERT INTO applications (app_code, app_name, description, is_active)
-        VALUES ('VC_STUDIO', 'VC Studio', 'Default application for workflow management', true)
-        ON CONFLICT (app_code) DO NOTHING;
-        
-        RAISE NOTICE '✓ Created default application VC_STUDIO';
-    END IF;
-END $$;
-
--- Enable RLS on applications table
-ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Allow read access to all authenticated users
-CREATE POLICY "applications_select" ON applications
-    FOR SELECT USING (true);
-
--- RLS Policy: Allow insert/update/delete for admins (can be refined later)
-CREATE POLICY "applications_modify" ON applications
-    FOR ALL USING (true)
-    WITH CHECK (true);
-
--- Table comment
-COMMENT ON TABLE applications IS 
-    'Registry of applications for workflow management. Maps to site_settings for multi-tenancy.';
 
 -- ============================================================================
 -- TABLE 1: workflow_definitions
@@ -457,68 +393,11 @@ COMMENT ON COLUMN function_registry.ui_widget_id IS
 
 -- ============================================================================
 -- FOREIGN KEY CONSTRAINTS
--- Purpose: Add all foreign key constraints after tables are created
---          This ensures applications table exists before referencing it
+-- Purpose: Add foreign key constraints (app_code has no FK - it's from env var)
 -- ============================================================================
 
 DO $$
 BEGIN
-    -- Verify applications table exists and has app_code column
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.tables 
-        WHERE table_name = 'applications'
-    ) THEN
-        RAISE EXCEPTION 'applications table does not exist. Please create it first.';
-    END IF;
-    
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'applications' AND column_name = 'app_code'
-    ) THEN
-        RAISE EXCEPTION 'applications table exists but app_code column is missing.';
-    END IF;
-    
-    RAISE NOTICE '✓ Verified applications table and app_code column exist';
-    
-    -- Foreign key: workflow_definitions.app_code -> applications.app_code
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'workflow_definitions_app_code_fk'
-    ) THEN
-        ALTER TABLE workflow_definitions
-            ADD CONSTRAINT workflow_definitions_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: workflow_definitions.app_code';
-    END IF;
-    
-    -- Foreign key: workflow_instances.app_code -> applications.app_code
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'workflow_instances_app_code_fk'
-    ) THEN
-        ALTER TABLE workflow_instances
-            ADD CONSTRAINT workflow_instances_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: workflow_instances.app_code';
-    END IF;
-    
-    -- Foreign key: instance_tasks.app_code -> applications.app_code
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'instance_tasks_app_code_fk'
-    ) THEN
-        ALTER TABLE instance_tasks
-            ADD CONSTRAINT instance_tasks_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: instance_tasks.app_code';
-    END IF;
-    
     -- Foreign key: instance_tasks.function_code -> function_registry.function_code
     IF EXISTS (
         SELECT 1 FROM information_schema.tables 
@@ -535,48 +414,7 @@ BEGIN
         RAISE NOTICE '✓ Added foreign key: instance_tasks.function_code';
     END IF;
     
-    -- Foreign key: instance_context.app_code -> applications.app_code
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'instance_context_app_code_fk'
-    ) THEN
-        ALTER TABLE instance_context
-            ADD CONSTRAINT instance_context_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: instance_context.app_code';
-    END IF;
-    
-    -- Foreign key: workflow_history.app_code -> applications.app_code
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'workflow_history_app_code_fk'
-    ) THEN
-        ALTER TABLE workflow_history
-            ADD CONSTRAINT workflow_history_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: workflow_history.app_code';
-    END IF;
-    
-    -- Foreign key: function_registry.app_code -> applications.app_code (nullable)
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables 
-        WHERE table_name = 'function_registry'
-    ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'function_registry_app_code_fk'
-    ) THEN
-        ALTER TABLE function_registry
-            ADD CONSTRAINT function_registry_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key: function_registry.app_code';
-    END IF;
-    
+    RAISE NOTICE '✓ Foreign key constraints added (app_code columns have no FK - validated via env var)';
 END $$;
 
 -- ============================================================================
