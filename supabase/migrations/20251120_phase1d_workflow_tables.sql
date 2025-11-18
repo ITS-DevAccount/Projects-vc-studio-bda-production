@@ -13,6 +13,24 @@
 --       site_settings or maintained separately for workflow management.
 -- ============================================================================
 
+-- Drop applications table if it exists without app_code column
+DO $$
+BEGIN
+    -- Check if applications table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applications') THEN
+        -- Check if it has app_code column
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'applications' AND column_name = 'app_code'
+        ) THEN
+            -- Drop the table if it doesn't have app_code
+            DROP TABLE IF EXISTS applications CASCADE;
+            RAISE NOTICE '⚠ Dropped existing applications table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
+
+-- Create applications table
 CREATE TABLE IF NOT EXISTS applications (
     app_code TEXT PRIMARY KEY,
     app_name TEXT NOT NULL,
