@@ -73,43 +73,123 @@ export default function VCStudioLanding() {
 
   // Fetch page settings and data on mount
   useEffect(() => {
-    if (!appUuid) return;
-    fetchPageSettings();
+    // Fetch blogs even if appUuid is not available (has fallback logic)
     fetchBlogs();
-  }, [appUuid]);
+    
+    // Fetch page settings (will try with appUuid if available, fallback if not)
+    fetchPageSettings();
+  }, [appUuid]); // Still depend on appUuid to refetch when it becomes available
 
   const fetchPageSettings = async () => {
     try {
-
       console.log('🔍 Fetching page settings for: home');
 
       // Fetch page settings for current app
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('page_settings')
-        .select('*')
-        .eq('page_name', 'home')
-        .eq('app_uuid', appUuid)
-        .eq('is_published', true)
-        .single();
+      let settingsData = null;
+      let settingsError = null;
 
-      console.log('📊 Page Settings Fetch Result:', {
-        hasData: !!settingsData,
-        hasError: !!settingsError,
-        errorCode: settingsError?.code,
-        errorMessage: settingsError?.message,
-        settingsData,
-        settingsError,
-        hero_video_url: settingsData?.hero_video_url,
-        hero_video_public_id: settingsData?.hero_video_public_id,
-      });
+      if (appUuid) {
+        const result = await supabase
+          .from('page_settings')
+          .select('*')
+          .eq('page_name', 'home')
+          .eq('app_uuid', appUuid)
+          .eq('is_published', true)
+          .single();
+        settingsData = result.data;
+        settingsError = result.error;
+      } else {
+        // No appUuid, try without filter
+        const result = await supabase
+          .from('page_settings')
+          .select('*')
+          .eq('page_name', 'home')
+          .eq('is_published', true)
+          .single();
+        settingsData = result.data;
+        settingsError = result.error;
+      }
+
+      // Safely log fetch result
+      try {
+        const safeErrorCode = settingsError ? ((settingsError as any)?.code || 'unknown') : null;
+        const safeErrorMessage = settingsError ? ((settingsError as any)?.message || String(settingsError)) : null;
+        
+        console.log('📊 Page Settings Fetch Result:', {
+          hasData: !!settingsData,
+          hasError: !!settingsError,
+          errorCode: safeErrorCode,
+          errorMessage: safeErrorMessage,
+          hero_video_url: settingsData?.hero_video_url,
+          hero_video_public_id: settingsData?.hero_video_public_id,
+        });
+      } catch (logError) {
+        // If logging fails, just continue silently
+      }
 
       if (settingsError) {
-        console.error('❌ Error fetching page settings:', {
-          code: settingsError.code,
-          message: settingsError.message,
-          details: settingsError.details,
-          hint: settingsError.hint
-        });
+        // Safely extract error information
+        try {
+          const errorCode = (settingsError as any)?.code || 'unknown';
+          const errorMessage = (settingsError as any)?.message || String(settingsError);
+          
+          // If error is about app_uuid column missing, try without that filter
+          if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('page_settings')
+              .select('*')
+              .eq('page_name', 'home')
+              .eq('is_published', true)
+              .single();
+            
+            if (!fallbackError && fallbackData) {
+              // Use fallback data
+              settingsData = fallbackData;
+              settingsError = null;
+              
+              // Set page settings
+              setPageSettings(fallbackData);
+              
+              // Fetch gallery images for fallback
+              const { data: imagesData } = await supabase
+                .from('page_images')
+                .select('*')
+                .eq('page_settings_id', fallbackData.id)
+                .eq('is_active', true)
+                .order('display_order', { ascending: true });
+              
+              setGalleryImages(imagesData || []);
+              return; // Exit early - we've handled everything
+            }
+            // If fallback also failed, continue to normal error handling
+            return;
+          }
+          
+          // Other errors - only log if not a missing column error
+          if (errorCode !== '42703' && !errorMessage?.includes('app_uuid')) {
+            // Safely build error object for logging
+            try {
+              const errorDetails = (settingsError as any)?.details || null;
+              const errorHint = (settingsError as any)?.hint || null;
+              
+              // Only log if we can safely construct the object
+              const errorLog: any = {
+                code: errorCode,
+                message: errorMessage
+              };
+              
+              if (errorDetails) errorLog.details = errorDetails;
+              if (errorHint) errorLog.hint = errorHint;
+              
+              console.error('❌ Error fetching page settings:', errorLog);
+            } catch (logErr) {
+              // If logging fails, just log the message string
+              console.error('❌ Error fetching page settings:', errorMessage || 'Unknown error');
+            }
+          }
+        } catch (logError) {
+          // If even error extraction fails, silently continue
+        }
       }
 
       if (settingsData) {
@@ -121,12 +201,35 @@ export default function VCStudioLanding() {
           .from('page_images')
           .select('*')
           .eq('page_settings_id', settingsData.id)
-          .eq('app_uuid', appUuid)
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
         if (imagesError) {
-          console.error('Error fetching gallery images:', imagesError);
+          // Safely handle images error - check if it's about app_uuid column
+          try {
+            const errorCode = (imagesError as any)?.code || 'unknown';
+            const errorMessage = (imagesError as any)?.message || String(imagesError);
+            
+            // If error is about app_uuid column missing, try without that filter
+            if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
+              const { data: fallbackImages } = await supabase
+                .from('page_images')
+                .select('*')
+                .eq('page_settings_id', settingsData.id)
+                .eq('is_active', true)
+                .order('display_order', { ascending: true });
+              
+              setGalleryImages(fallbackImages || []);
+              return;
+            }
+            
+            // Other errors - log safely
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Error fetching gallery images:', errorMessage);
+            }
+          } catch (err) {
+            // If error handling fails, just continue
+          }
         }
 
         setGalleryImages(imagesData || []);
@@ -139,25 +242,100 @@ export default function VCStudioLanding() {
   const fetchBlogs = async () => {
     try {
       setBlogsLoading(true);
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .select('id, title, excerpt, slug, featured_image_url, published_at')
-        .eq('app_uuid', appUuid)
-        .eq('status', 'published')
-        .eq('is_featured', true)
-        .order('published_at', { ascending: false })
-        .limit(3);
+      console.log('🔍 Fetching blog posts...', { appUuid });
+      
+      let blogsData = null;
+      let blogsError = null;
 
-      if (error) {
-        console.error('Supabase error fetching blogs:', error);
-        throw error;
+      // Try fetching with app_uuid filter if available
+      if (appUuid) {
+        const result = await supabase
+          .from('blog_posts')
+          .select('id, title, excerpt, slug, featured_image_url, published_at, status, is_featured')
+          .eq('app_uuid', appUuid)
+          .eq('status', 'published')
+          .eq('is_featured', true)
+          .order('published_at', { ascending: false })
+          .limit(3);
+        
+        blogsData = result.data;
+        blogsError = result.error;
+        console.log('📊 Blog query result (with app_uuid):', { 
+          count: blogsData?.length || 0, 
+          error: blogsError ? (blogsError as any)?.message : null 
+        });
+      } else {
+        // No appUuid, try without filter
+        const result = await supabase
+          .from('blog_posts')
+          .select('id, title, excerpt, slug, featured_image_url, published_at, status, is_featured')
+          .eq('status', 'published')
+          .eq('is_featured', true)
+          .order('published_at', { ascending: false })
+          .limit(3);
+        
+        blogsData = result.data;
+        blogsError = result.error;
+        console.log('📊 Blog query result (no app_uuid):', { 
+          count: blogsData?.length || 0, 
+          error: blogsError ? (blogsError as any)?.message : null 
+        });
       }
-      setBlogs(data || []);
+
+      // If error is about app_uuid column, try without that filter
+      if (blogsError) {
+        try {
+          const errorCode = (blogsError as any)?.code || 'unknown';
+          const errorMessage = (blogsError as any)?.message || String(blogsError);
+          
+          console.warn('⚠️ Blog query error:', { errorCode, errorMessage });
+          
+          if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
+            // Try fetching without app_uuid filter
+            console.log('🔄 Trying fallback query without app_uuid filter...');
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('blog_posts')
+              .select('id, title, excerpt, slug, featured_image_url, published_at, status, is_featured')
+              .eq('status', 'published')
+              .eq('is_featured', true)
+              .order('published_at', { ascending: false })
+              .limit(3);
+            
+            console.log('📊 Fallback query result:', { 
+              count: fallbackData?.length || 0, 
+              error: fallbackError ? (fallbackError as any)?.message : null 
+            });
+            
+            if (!fallbackError && fallbackData) {
+              console.log(`✅ Loaded ${fallbackData.length} blog posts (fallback)`);
+              setBlogs(fallbackData);
+              return;
+            }
+          }
+        } catch (fallbackErr) {
+          console.error('❌ Fallback query failed:', fallbackErr);
+        }
+        
+        // If we get here, there was an error we couldn't handle
+        console.warn('⚠️ Could not fetch blogs:', (blogsError as any)?.message || 'Unknown error');
+        setBlogs([]);
+        return;
+      }
+
+      // Success - set the blogs
+      console.log(`✅ Loaded ${blogsData?.length || 0} blog posts`);
+      if (blogsData && blogsData.length === 0) {
+        console.warn('⚠️ No blogs found. Checking if blogs exist without filters...');
+        // Debug: Check if any blogs exist at all
+        const { data: allBlogs } = await supabase
+          .from('blog_posts')
+          .select('id, title, status, is_featured, app_uuid')
+          .limit(5);
+        console.log('📊 All blogs in database (first 5):', allBlogs);
+      }
+      setBlogs(blogsData || []);
     } catch (err) {
-      console.error('Error fetching blogs:', err);
-      if (err instanceof Error) {
-        console.error('Error details:', err.message);
-      }
+      console.error('❌ Error fetching blogs:', err);
       setBlogs([]);
     } finally {
       setBlogsLoading(false);

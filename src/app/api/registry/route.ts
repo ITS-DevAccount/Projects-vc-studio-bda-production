@@ -6,7 +6,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import type { CreateRegistryEntryInput, RegistryFilters } from '@/lib/types/registry';
+import type { CreateRegistryEntryInput } from '@/lib/types/registry';
 
 /**
  * GET /api/registry

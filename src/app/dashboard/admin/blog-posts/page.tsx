@@ -40,16 +40,67 @@ export default function BlogPostsPage() {
   const loadBlogs = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .select('*')
-        .eq('app_uuid', appUuid)
-        .order('created_at', { ascending: false })
+      console.log('🔍 Loading blog posts for app_uuid:', appUuid)
+      
+      let blogsData = null
+      let blogsError = null
 
-      if (error) throw error
-      setBlogs(data || [])
+      // Try with app_uuid filter if available
+      if (appUuid) {
+        const result = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('app_uuid', appUuid)
+          .order('created_at', { ascending: false })
+        
+        blogsData = result.data
+        blogsError = result.error
+      } else {
+        // No appUuid, try without filter
+        const result = await supabase
+          .from('blog_posts')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        blogsData = result.data
+        blogsError = result.error
+      }
+
+      // If error is about app_uuid column, try without that filter
+      if (blogsError) {
+        const errorCode = (blogsError as any)?.code || 'unknown'
+        const errorMessage = (blogsError as any)?.message || String(blogsError)
+        
+        console.warn('⚠️ Error fetching blogs with app_uuid filter:', { errorCode, errorMessage })
+        
+        if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
+          console.warn('⚠️ app_uuid column not found, fetching all blog posts (migration may not have run)')
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('blog_posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+
+          if (fallbackError) {
+            console.error('❌ Error fetching blogs (fallback):', fallbackError)
+            setBlogs([])
+            return
+          }
+          console.log(`✅ Loaded ${fallbackData?.length || 0} blog posts (fallback)`)
+          setBlogs(fallbackData || [])
+          return
+        }
+        
+        // Other errors
+        console.error('❌ Error fetching blogs:', blogsError)
+        setBlogs([])
+        return
+      }
+
+      console.log(`✅ Loaded ${blogsData?.length || 0} blog posts`)
+      setBlogs(blogsData || [])
     } catch (err) {
-      console.error('Error fetching blogs:', err)
+      console.error('❌ Error fetching blogs:', err)
+      setBlogs([])
     } finally {
       setLoading(false)
     }

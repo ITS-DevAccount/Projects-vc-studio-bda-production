@@ -12,8 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * Check which stakeholders are using this component
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { code: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createServerClient();
@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Get stakeholder to check app_uuid
     const { data: stakeholder } = await supabase

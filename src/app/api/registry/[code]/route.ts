@@ -13,8 +13,8 @@ import type { UpdateRegistryEntryInput } from '@/lib/types/registry';
  * Get single registry entry by component_code
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { code: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createServerClient();
@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
@@ -81,7 +81,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createServerClient();
@@ -92,7 +92,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
@@ -165,8 +165,8 @@ export async function PATCH(
  * Soft delete registry entry (sets deleted_at timestamp)
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { code: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createServerClient();
@@ -177,7 +177,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
