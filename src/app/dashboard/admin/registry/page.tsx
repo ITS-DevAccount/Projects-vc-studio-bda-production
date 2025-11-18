@@ -7,6 +7,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { RegistryTable } from './RegistryTable';
 import { RegistryCreateModal } from './RegistryCreateModal';
 import { RegistryEditModal } from './RegistryEditModal';
@@ -97,6 +99,17 @@ export default function RegistryManagementPage() {
 
   return (
     <div className="p-6">
+      {/* Back Navigation */}
+      <div className="mb-4">
+        <Link
+          href="/dashboard/admin"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Admin Dashboard
+        </Link>
+      </div>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Registry Management</h1>
         <p className="text-gray-600 mt-2">
