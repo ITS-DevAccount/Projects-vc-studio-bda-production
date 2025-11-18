@@ -19,6 +19,20 @@
 --              versions and is scoped to a specific application.
 -- ============================================================================
 
+-- Drop table if it exists without app_code column
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'workflow_definitions') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'workflow_definitions' AND column_name = 'app_code'
+        ) THEN
+            DROP TABLE IF EXISTS workflow_definitions CASCADE;
+            RAISE NOTICE '⚠ Dropped existing workflow_definitions table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS workflow_definitions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
@@ -77,6 +91,20 @@ COMMENT ON COLUMN workflow_definitions.l4_operation_code IS
 --              Each instance tracks its current state, input data, and lifecycle.
 -- ============================================================================
 
+-- Drop table if it exists without app_code column
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'workflow_instances') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'workflow_instances' AND column_name = 'app_code'
+        ) THEN
+            DROP TABLE IF EXISTS workflow_instances CASCADE;
+            RAISE NOTICE '⚠ Dropped existing workflow_instances table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS workflow_instances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
@@ -134,6 +162,20 @@ COMMENT ON COLUMN workflow_instances.current_node_id IS
 --              can be a user task, service task, or AI agent task. Tasks track
 --              their assignment, execution status, and results.
 -- ============================================================================
+
+-- Drop table if it exists without app_code column
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'instance_tasks') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'instance_tasks' AND column_name = 'app_code'
+        ) THEN
+            DROP TABLE IF EXISTS instance_tasks CASCADE;
+            RAISE NOTICE '⚠ Dropped existing instance_tasks table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS instance_tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -204,6 +246,20 @@ COMMENT ON COLUMN instance_tasks.assigned_to IS
 --              rollback and audit capabilities.
 -- ============================================================================
 
+-- Drop table if it exists without app_code column
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'instance_context') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'instance_context' AND column_name = 'app_code'
+        ) THEN
+            DROP TABLE IF EXISTS instance_context CASCADE;
+            RAISE NOTICE '⚠ Dropped existing instance_context table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS instance_context (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
@@ -248,6 +304,20 @@ COMMENT ON COLUMN instance_context.version IS
 -- Description: Complete audit trail of all events in workflow execution.
 --              This table is append-only and provides full traceability.
 -- ============================================================================
+
+-- Drop table if it exists without app_code column
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'workflow_history') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'workflow_history' AND column_name = 'app_code'
+        ) THEN
+            DROP TABLE IF EXISTS workflow_history CASCADE;
+            RAISE NOTICE '⚠ Dropped existing workflow_history table (missing app_code column)';
+        END IF;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS workflow_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -311,6 +381,22 @@ COMMENT ON COLUMN workflow_history.metadata IS
 --              AI agent tasks) that can be invoked within workflows. Defines
 --              the contract, schema, and execution details for each function.
 -- ============================================================================
+
+-- Drop table if it exists without app_code column (or with wrong structure)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'function_registry') THEN
+        -- For function_registry, app_code can be NULL, so we check if column exists at all
+        -- If table exists but structure is wrong, drop it
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'function_registry' AND column_name = 'function_code'
+        ) THEN
+            DROP TABLE IF EXISTS function_registry CASCADE;
+            RAISE NOTICE '⚠ Dropped existing function_registry table (wrong structure)';
+        END IF;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS function_registry (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
