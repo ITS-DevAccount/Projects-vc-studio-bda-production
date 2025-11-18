@@ -438,6 +438,8 @@ CREATE TABLE IF NOT EXISTS function_registry (
     -- Constraints
     CONSTRAINT function_registry_app_function_unique 
         UNIQUE (app_code, function_code),
+    CONSTRAINT function_registry_function_code_unique
+        UNIQUE (function_code),  -- Global uniqueness for foreign key references
     CONSTRAINT function_registry_implementation_type_check 
         CHECK (implementation_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK'))
 );
