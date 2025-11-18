@@ -356,22 +356,7 @@ CREATE TABLE IF NOT EXISTS function_registry (
         CHECK (implementation_type IN ('USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK'))
 );
 
--- Add foreign key constraint separately to handle NULL app_code
--- Only enforce FK when app_code is NOT NULL (shared functions have NULL app_code)
--- Note: PostgreSQL allows NULL values in foreign key columns, they just won't be validated
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applications') THEN
-        ALTER TABLE function_registry
-            ADD CONSTRAINT function_registry_app_code_fk 
-            FOREIGN KEY (app_code) 
-            REFERENCES applications(app_code) 
-            ON DELETE CASCADE;
-        RAISE NOTICE '✓ Added foreign key constraint on function_registry.app_code';
-    ELSE
-        RAISE WARNING '⚠ applications table does not exist, skipping foreign key constraint';
-    END IF;
-END $$;
+-- Note: app_code has no foreign key constraint - it's validated via environment variable
 
 -- Indexes for function_registry
 CREATE INDEX IF NOT EXISTS idx_function_registry_app_active 
