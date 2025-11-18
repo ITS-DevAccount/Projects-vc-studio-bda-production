@@ -443,48 +443,123 @@ COMMENT ON COLUMN function_registry.ui_widget_id IS
 --          This ensures applications table exists before referencing it
 -- ============================================================================
 
--- Foreign key: workflow_definitions.app_code -> applications.app_code
-ALTER TABLE workflow_definitions
-    ADD CONSTRAINT workflow_definitions_app_code_fk 
-    FOREIGN KEY (app_code) 
-    REFERENCES applications(app_code) 
-    ON DELETE CASCADE;
-
--- Foreign key: workflow_instances.app_code -> applications.app_code
-ALTER TABLE workflow_instances
-    ADD CONSTRAINT workflow_instances_app_code_fk 
-    FOREIGN KEY (app_code) 
-    REFERENCES applications(app_code) 
-    ON DELETE CASCADE;
-
--- Foreign key: instance_tasks.app_code -> applications.app_code
-ALTER TABLE instance_tasks
-    ADD CONSTRAINT instance_tasks_app_code_fk 
-    FOREIGN KEY (app_code) 
-    REFERENCES applications(app_code) 
-    ON DELETE CASCADE;
-
--- Foreign key: instance_tasks.function_code -> function_registry.function_code
--- Note: Added after function_registry table is created
-ALTER TABLE instance_tasks
-    ADD CONSTRAINT instance_tasks_function_code_fk 
-    FOREIGN KEY (function_code) 
-    REFERENCES function_registry(function_code) 
-    ON DELETE RESTRICT;
-
--- Foreign key: instance_context.app_code -> applications.app_code
-ALTER TABLE instance_context
-    ADD CONSTRAINT instance_context_app_code_fk 
-    FOREIGN KEY (app_code) 
-    REFERENCES applications(app_code) 
-    ON DELETE CASCADE;
-
--- Foreign key: workflow_history.app_code -> applications.app_code
-ALTER TABLE workflow_history
-    ADD CONSTRAINT workflow_history_app_code_fk 
-    FOREIGN KEY (app_code) 
-    REFERENCES applications(app_code) 
-    ON DELETE CASCADE;
+DO $$
+BEGIN
+    -- Verify applications table exists and has app_code column
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'applications'
+    ) THEN
+        RAISE EXCEPTION 'applications table does not exist. Please create it first.';
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'applications' AND column_name = 'app_code'
+    ) THEN
+        RAISE EXCEPTION 'applications table exists but app_code column is missing.';
+    END IF;
+    
+    RAISE NOTICE '✓ Verified applications table and app_code column exist';
+    
+    -- Foreign key: workflow_definitions.app_code -> applications.app_code
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'workflow_definitions_app_code_fk'
+    ) THEN
+        ALTER TABLE workflow_definitions
+            ADD CONSTRAINT workflow_definitions_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: workflow_definitions.app_code';
+    END IF;
+    
+    -- Foreign key: workflow_instances.app_code -> applications.app_code
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'workflow_instances_app_code_fk'
+    ) THEN
+        ALTER TABLE workflow_instances
+            ADD CONSTRAINT workflow_instances_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: workflow_instances.app_code';
+    END IF;
+    
+    -- Foreign key: instance_tasks.app_code -> applications.app_code
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'instance_tasks_app_code_fk'
+    ) THEN
+        ALTER TABLE instance_tasks
+            ADD CONSTRAINT instance_tasks_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: instance_tasks.app_code';
+    END IF;
+    
+    -- Foreign key: instance_tasks.function_code -> function_registry.function_code
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'function_registry'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'instance_tasks_function_code_fk'
+    ) THEN
+        ALTER TABLE instance_tasks
+            ADD CONSTRAINT instance_tasks_function_code_fk 
+            FOREIGN KEY (function_code) 
+            REFERENCES function_registry(function_code) 
+            ON DELETE RESTRICT;
+        RAISE NOTICE '✓ Added foreign key: instance_tasks.function_code';
+    END IF;
+    
+    -- Foreign key: instance_context.app_code -> applications.app_code
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'instance_context_app_code_fk'
+    ) THEN
+        ALTER TABLE instance_context
+            ADD CONSTRAINT instance_context_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: instance_context.app_code';
+    END IF;
+    
+    -- Foreign key: workflow_history.app_code -> applications.app_code
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'workflow_history_app_code_fk'
+    ) THEN
+        ALTER TABLE workflow_history
+            ADD CONSTRAINT workflow_history_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: workflow_history.app_code';
+    END IF;
+    
+    -- Foreign key: function_registry.app_code -> applications.app_code (nullable)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'function_registry'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'function_registry_app_code_fk'
+    ) THEN
+        ALTER TABLE function_registry
+            ADD CONSTRAINT function_registry_app_code_fk 
+            FOREIGN KEY (app_code) 
+            REFERENCES applications(app_code) 
+            ON DELETE CASCADE;
+        RAISE NOTICE '✓ Added foreign key: function_registry.app_code';
+    END IF;
+    
+END $$;
 
 -- ============================================================================
 -- HELPER FUNCTIONS: Deferred - Will be created in a later migration
