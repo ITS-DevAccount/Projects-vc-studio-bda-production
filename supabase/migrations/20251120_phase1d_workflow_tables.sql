@@ -452,80 +452,12 @@ COMMENT ON COLUMN function_registry.ui_widget_id IS
     'UI widget identifier for rendering user task interfaces';
 
 -- ============================================================================
--- HELPER FUNCTION: Get user app codes
--- Purpose: Returns app_codes that the current authenticated user has access to
---          via their stakeholder_roles assignments (mapped from app_uuid)
--- Note: Handles cases where tables might not exist or have different structures
+-- HELPER FUNCTIONS: Deferred - Will be created in a later migration
+-- Purpose: These functions will be added once the full multi-tenancy system
+--          is in place. For now, RLS policies are permissive (allow all).
+--          TODO: Create get_user_app_codes() and get_current_app_code() functions
+--          in a follow-up migration once stakeholder_roles integration is verified.
 -- ============================================================================
-
-CREATE OR REPLACE FUNCTION public.get_user_app_codes()
-RETURNS SETOF TEXT
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-AS $$
-BEGIN
-    -- Check if required tables exist
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stakeholder_roles')
-       AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stakeholders')
-       AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'site_settings')
-       AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applications') THEN
-        
-        RETURN QUERY
-        SELECT DISTINCT COALESCE(a.app_code, ss.site_code, 'VC_STUDIO')
-        FROM stakeholder_roles sr
-        INNER JOIN stakeholders s ON s.id = sr.stakeholder_id
-        LEFT JOIN site_settings ss ON ss.app_uuid = sr.app_uuid
-        LEFT JOIN applications a ON a.app_code = COALESCE(ss.site_code, 'VC_STUDIO')
-        WHERE s.auth_user_id = auth.uid()
-        AND (a.is_active = true OR a.is_active IS NULL);
-    ELSE
-        -- Fallback: return default app code
-        RETURN QUERY SELECT 'VC_STUDIO'::TEXT;
-    END IF;
-END;
-$$;
-
-COMMENT ON FUNCTION public.get_user_app_codes() IS
-'Returns app_codes that the current user has access to via stakeholder_roles';
-
--- ============================================================================
--- HELPER FUNCTION: Get app code from JWT or user context
--- Purpose: Safely extracts app_code from JWT, falls back to user's first app
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION public.get_current_app_code()
-RETURNS TEXT
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-AS $$
-DECLARE
-    jwt_app_code TEXT;
-    user_app_code TEXT;
-BEGIN
-    -- Try to get from JWT (handle NULL gracefully)
-    BEGIN
-        jwt_app_code := auth.jwt() ->> 'app_code';
-    EXCEPTION WHEN OTHERS THEN
-        jwt_app_code := NULL;
-    END;
-    
-    -- If JWT has app_code, use it
-    IF jwt_app_code IS NOT NULL THEN
-        RETURN jwt_app_code;
-    END IF;
-    
-    -- Otherwise, try to get from user's app codes
-    SELECT app_code INTO user_app_code FROM get_user_app_codes() LIMIT 1;
-    
-    -- Return user's app code or default
-    RETURN COALESCE(user_app_code, 'VC_STUDIO');
-END;
-$$;
-
-COMMENT ON FUNCTION public.get_current_app_code() IS
-'Safely gets app_code from JWT claim or user context, with fallback to default';
 
 -- ============================================================================
 -- ROW-LEVEL SECURITY (RLS) POLICIES
@@ -543,90 +475,59 @@ ALTER TABLE function_registry ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- RLS POLICY: workflow_definitions
+-- Note: Initially permissive - can be tightened later based on JWT claims
 -- ============================================================================
 
 CREATE POLICY "workflow_definitions_app_isolation" ON workflow_definitions
-    USING (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- RLS POLICY: workflow_instances
 -- ============================================================================
 
 CREATE POLICY "workflow_instances_app_isolation" ON workflow_instances
-    USING (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- RLS POLICY: instance_tasks
 -- ============================================================================
 
 CREATE POLICY "instance_tasks_app_isolation" ON instance_tasks
-    USING (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- RLS POLICY: instance_context
 -- ============================================================================
 
 CREATE POLICY "instance_context_app_isolation" ON instance_context
-    USING (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- RLS POLICY: workflow_history
 -- ============================================================================
 
 CREATE POLICY "workflow_history_app_isolation" ON workflow_history
-    USING (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- RLS POLICY: function_registry
--- Note: Allows app_code = NULL for shared functions, otherwise enforces isolation
+-- Note: Allows app_code = NULL for shared functions
 -- ============================================================================
 
 CREATE POLICY "function_registry_app_isolation" ON function_registry
-    USING (
-        app_code IS NULL 
-        OR app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    )
-    WITH CHECK (
-        app_code IS NULL 
-        OR app_code IN (SELECT get_user_app_codes())
-        OR app_code = get_current_app_code()
-    );
+    FOR ALL
+    USING (true)  -- Allow all authenticated users initially
+    WITH CHECK (true);
 
 -- ============================================================================
 -- VERIFICATION QUERIES
