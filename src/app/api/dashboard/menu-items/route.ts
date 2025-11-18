@@ -178,40 +178,58 @@ export async function GET(_request: Request) {
 
     // Handle menu_items - can be array of strings or array of objects
     let menuItems = roleConfig.menu_items || [];
-    
-    // If menu_items is an array of strings, convert to objects
-    if (menuItems.length > 0 && typeof menuItems[0] === 'string') {
-      console.log('[API /dashboard/menu-items] Converting string menu_items to objects');
-      menuItems = menuItems.map((item: string, index: number) => {
-        // Try to get label from function_registry if available
-        const functionRegistry = coreConfig.function_registry || [];
-        const registryItem = functionRegistry.find((f: any) => f.id === item || f.component_code === item);
-        
-        return {
-          label: registryItem?.label || registryItem?.name || item.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          component_id: item,
-          position: index + 1,
-          is_default: index === 0
-        };
-      });
+
+    // Fetch component metadata from components_registry (single source of truth)
+    const componentCodes = menuItems.map((item: any) => {
+      if (typeof item === 'string') return item;
+      return item.component_code || item.component_id || item.id || item;
+    }).filter(Boolean);
+
+    let componentsMap = new Map();
+
+    if (componentCodes.length > 0) {
+      const { data: componentsData } = await supabase
+        .from('components_registry')
+        .select('component_code, component_name, icon_name, route_path')
+        .in('component_code', componentCodes)
+        .eq('app_uuid', stakeholder.app_uuid)
+        .eq('is_active', true)
+        .is('deleted_at', null);
+
+      if (componentsData) {
+        componentsData.forEach((comp: any) => {
+          componentsMap.set(comp.component_code, comp);
+        });
+      }
     }
 
-    // Ensure menu_items are properly formatted objects
+    // Convert menu_items to standardized format
     menuItems = menuItems.map((item: any, index: number) => {
+      let componentCode: string;
+      let overrideLabel: string | null = null;
+      let position: number = index + 1;
+      let isDefault: boolean = index === 0;
+
       if (typeof item === 'string') {
-        return {
-          label: item.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          component_id: item,
-          position: index + 1,
-          is_default: index === 0
-        };
+        componentCode = item;
+      } else {
+        componentCode = item.component_code || item.component_id || item.id || item;
+        overrideLabel = item.override_label || item.label || null;
+        position = item.position !== undefined ? item.position : index + 1;
+        isDefault = item.is_default !== undefined ? item.is_default : index === 0;
       }
-      // Ensure all required fields exist
+
+      // Get component metadata from registry
+      const registryEntry = componentsMap.get(componentCode);
+
       return {
-        label: item.label || item.name || item.component_id || 'Menu Item',
-        component_id: item.component_id || item.id || item,
-        position: item.position !== undefined ? item.position : index + 1,
-        is_default: item.is_default !== undefined ? item.is_default : index === 0
+        label: overrideLabel || registryEntry?.component_name || componentCode.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+        component_id: componentCode,
+        component_code: componentCode,
+        icon_name: registryEntry?.icon_name || null,
+        route_path: registryEntry?.route_path || null,
+        position,
+        is_default: isDefault
       };
     });
 
