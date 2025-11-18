@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Database } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -27,6 +27,13 @@ export default function CommunityDashboard() {
       description: 'Manage stakeholders, view profiles, assign roles, and create relationships',
       icon: Users,
       href: '/dashboard/admin/stakeholders'
+    },
+    {
+      id: 'component-registry',
+      label: 'Component Registry',
+      description: 'Manage system components, AI functions, and workflow tasks registry',
+      icon: Database,
+      href: '/dashboard/admin/registry'
     },
     {
       id: 'roles',
