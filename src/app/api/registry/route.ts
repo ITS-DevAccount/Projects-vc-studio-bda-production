@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const page_size = parseInt(searchParams.get('page_size') || '50');
 
-    // Get stakeholder to check app_uuid
+    // Get stakeholder and app_uuid (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -41,11 +41,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
+    // Get app_uuid from stakeholder_roles
+    const { data: roleData } = await supabase
+      .from('stakeholder_roles')
+      .select('app_uuid')
+      .eq('stakeholder_id', stakeholder.id)
+      .limit(1)
+      .single();
+
+    if (!roleData) {
+      return NextResponse.json({ error: 'No app access found' }, { status: 403 });
+    }
+
+    const app_uuid = roleData.app_uuid;
+
     // Build query
     let query = supabase
       .from('components_registry')
       .select('*', { count: 'exact' })
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_uuid', app_uuid)
       .is('deleted_at', null)
       .order('component_name', { ascending: true });
 
@@ -102,10 +116,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get stakeholder to check admin role and app_uuid
+    // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('id, app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -113,10 +127,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
-    // Check if user is admin
+    // Check if user is admin and get app_uuid
     const { data: roles } = await supabase
       .from('stakeholder_roles')
-      .select('role_type')
+      .select('role_type, app_uuid')
       .eq('stakeholder_id', stakeholder.id)
       .eq('role_type', 'admin')
       .single();
@@ -124,6 +138,8 @@ export async function POST(request: NextRequest) {
     if (!roles) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
+
+    const app_uuid = roles.app_uuid;
 
     // Parse request body
     const body: CreateRegistryEntryInput = await request.json();
@@ -141,7 +157,7 @@ export async function POST(request: NextRequest) {
       .from('components_registry')
       .select('id')
       .eq('component_code', body.component_code)
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_uuid', app_uuid)
       .single();
 
     if (existing) {
@@ -157,7 +173,7 @@ export async function POST(request: NextRequest) {
       .insert([
         {
           ...body,
-          app_uuid: stakeholder.app_uuid,
+          app_uuid: app_uuid,
           created_by: user.id,
           last_modified_by: user.id,
         },

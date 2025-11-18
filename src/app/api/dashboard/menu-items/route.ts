@@ -50,10 +50,10 @@ export async function GET(_request: Request) {
 
     console.log('[API /dashboard/menu-items] Stakeholder found:', stakeholder.id);
 
-    // Get stakeholder roles
+    // Get stakeholder roles and app_uuid (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholderRoles, error: rolesError } = await supabase
       .from('stakeholder_roles')
-      .select('role_type')
+      .select('role_type, app_uuid')
       .eq('stakeholder_id', stakeholder.id)
       .limit(1)
       .maybeSingle();
@@ -187,12 +187,12 @@ export async function GET(_request: Request) {
 
     let componentsMap = new Map();
 
-    if (componentCodes.length > 0) {
+    if (componentCodes.length > 0 && stakeholderRoles) {
       const { data: componentsData } = await supabase
         .from('components_registry')
         .select('component_code, component_name, icon_name, route_path')
         .in('component_code', componentCodes)
-        .eq('app_uuid', stakeholder.app_uuid)
+        .eq('app_uuid', stakeholderRoles.app_uuid)
         .eq('is_active', true)
         .is('deleted_at', null);
 

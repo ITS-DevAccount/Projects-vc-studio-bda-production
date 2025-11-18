@@ -162,10 +162,12 @@ DROP POLICY IF EXISTS "registry_admin_update" ON components_registry;
 DROP POLICY IF EXISTS "registry_admin_delete" ON components_registry;
 
 -- Create comprehensive admin policies for INSERT, UPDATE, DELETE
+-- Note: stakeholders table is global (no app_uuid), use stakeholder_roles for app isolation
 CREATE POLICY "registry_admin_insert" ON components_registry
     FOR INSERT WITH CHECK (
         app_uuid IN (
-            SELECT s.app_uuid FROM stakeholders s
+            SELECT sr.app_uuid FROM stakeholder_roles sr
+            JOIN stakeholders s ON s.id = sr.stakeholder_id
             WHERE s.auth_user_id = auth.uid()
         )
         AND EXISTS (
@@ -179,7 +181,8 @@ CREATE POLICY "registry_admin_insert" ON components_registry
 CREATE POLICY "registry_admin_update" ON components_registry
     FOR UPDATE USING (
         app_uuid IN (
-            SELECT s.app_uuid FROM stakeholders s
+            SELECT sr.app_uuid FROM stakeholder_roles sr
+            JOIN stakeholders s ON s.id = sr.stakeholder_id
             WHERE s.auth_user_id = auth.uid()
         )
         AND EXISTS (
@@ -191,7 +194,8 @@ CREATE POLICY "registry_admin_update" ON components_registry
     )
     WITH CHECK (
         app_uuid IN (
-            SELECT s.app_uuid FROM stakeholders s
+            SELECT sr.app_uuid FROM stakeholder_roles sr
+            JOIN stakeholders s ON s.id = sr.stakeholder_id
             WHERE s.auth_user_id = auth.uid()
         )
     );
@@ -199,7 +203,8 @@ CREATE POLICY "registry_admin_update" ON components_registry
 CREATE POLICY "registry_admin_delete" ON components_registry
     FOR DELETE USING (
         app_uuid IN (
-            SELECT s.app_uuid FROM stakeholders s
+            SELECT sr.app_uuid FROM stakeholder_roles sr
+            JOIN stakeholders s ON s.id = sr.stakeholder_id
             WHERE s.auth_user_id = auth.uid()
         )
         AND EXISTS (

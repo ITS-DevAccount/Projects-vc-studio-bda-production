@@ -27,10 +27,10 @@ export async function GET(
 
     const { code } = params;
 
-    // Get stakeholder to check app_uuid
+    // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -38,12 +38,26 @@ export async function GET(
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
+    // Get app_uuid from stakeholder_roles
+    const { data: roleData } = await supabase
+      .from('stakeholder_roles')
+      .select('app_uuid')
+      .eq('stakeholder_id', stakeholder.id)
+      .limit(1)
+      .single();
+
+    if (!roleData) {
+      return NextResponse.json({ error: 'No app access found' }, { status: 403 });
+    }
+
+    const app_uuid = roleData.app_uuid;
+
     // Fetch registry entry
     const { data, error } = await supabase
       .from('components_registry')
       .select('*')
       .eq('component_code', code)
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_uuid', app_uuid)
       .is('deleted_at', null)
       .single();
 
@@ -80,10 +94,10 @@ export async function PATCH(
 
     const { code } = params;
 
-    // Get stakeholder to check admin role and app_uuid
+    // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('id, app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -91,10 +105,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
-    // Check if user is admin
+    // Check if user is admin and get app_uuid
     const { data: roles } = await supabase
       .from('stakeholder_roles')
-      .select('role_type')
+      .select('role_type, app_uuid')
       .eq('stakeholder_id', stakeholder.id)
       .eq('role_type', 'admin')
       .single();
@@ -102,6 +116,8 @@ export async function PATCH(
     if (!roles) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
+
+    const app_uuid = roles.app_uuid;
 
     // Parse request body
     const body: Partial<UpdateRegistryEntryInput> = await request.json();
@@ -124,7 +140,7 @@ export async function PATCH(
       .from('components_registry')
       .update(updateData)
       .eq('component_code', code)
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_uuid', app_uuid)
       .is('deleted_at', null)
       .select()
       .single();
@@ -163,10 +179,10 @@ export async function DELETE(
 
     const { code } = params;
 
-    // Get stakeholder to check admin role and app_uuid
+    // Get stakeholder (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('id, app_uuid')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -174,10 +190,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
-    // Check if user is admin
+    // Check if user is admin and get app_uuid
     const { data: roles } = await supabase
       .from('stakeholder_roles')
-      .select('role_type')
+      .select('role_type, app_uuid')
       .eq('stakeholder_id', stakeholder.id)
       .eq('role_type', 'admin')
       .single();
@@ -185,6 +201,8 @@ export async function DELETE(
     if (!roles) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
+
+    const app_uuid = roles.app_uuid;
 
     // Check if component is in use
     const { data: usageData } = await supabase.rpc('check_component_usage', {
@@ -211,7 +229,7 @@ export async function DELETE(
         is_active: false,
       })
       .eq('component_code', code)
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_uuid', app_uuid)
       .is('deleted_at', null)
       .select()
       .single();
