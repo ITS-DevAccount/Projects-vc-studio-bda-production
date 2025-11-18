@@ -3,12 +3,76 @@
 -- File: 20251120_phase1d_workflow_tables.sql
 -- Purpose: Create complete PostgreSQL database schema for workflow orchestration
 -- Sprint: 1d.1 - Database Schema Implementation
--- Dependencies: applications table (app_code), auth.jwt() function
--- 
--- NOTE: This migration requires an 'applications' table with 'app_code' column.
---       If the applications table does not exist, create it first or modify
---       the foreign key constraints to reference an existing table.
+-- Dependencies: site_settings table (for app_code mapping), auth.jwt() function
 -- ============================================================================
+
+-- ============================================================================
+-- STEP 0: Create applications table if it doesn't exist
+-- Purpose: Map site_settings.site_code to applications.app_code for workflow system
+-- Note: This creates a simple applications table that can be populated from
+--       site_settings or maintained separately for workflow management.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS applications (
+    app_code TEXT PRIMARY KEY,
+    app_name TEXT NOT NULL,
+    app_uuid UUID,                          -- Optional: link to site_settings.app_uuid
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for active applications
+CREATE INDEX IF NOT EXISTS idx_applications_active ON applications(is_active);
+
+-- Populate applications table from site_settings if it exists and is empty
+DO $$
+BEGIN
+    -- Only populate if applications table is empty
+    IF NOT EXISTS (SELECT 1 FROM applications LIMIT 1) THEN
+        -- Try to populate from site_settings if it exists
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'site_settings') THEN
+            -- Insert from site_settings
+            INSERT INTO applications (app_code, app_name, app_uuid, description, is_active)
+            SELECT 
+                COALESCE(site_code, 'VC_STUDIO') as app_code,
+                COALESCE(site_name, 'VC Studio') as app_name,
+                app_uuid,
+                'Application derived from site_settings' as description,
+                COALESCE(is_active_app, true) as is_active
+            FROM site_settings
+            WHERE is_active_app = true OR is_active = true
+            LIMIT 1
+            ON CONFLICT (app_code) DO NOTHING;
+            
+            RAISE NOTICE '✓ Populated applications table from site_settings';
+        ELSE
+            -- Create default application if site_settings doesn't exist
+            INSERT INTO applications (app_code, app_name, description, is_active)
+            VALUES ('VC_STUDIO', 'VC Studio', 'Default application for workflow management', true)
+            ON CONFLICT (app_code) DO NOTHING;
+            
+            RAISE NOTICE '✓ Created default application VC_STUDIO';
+        END IF;
+    END IF;
+END $$;
+
+-- Enable RLS on applications table
+ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Allow read access to all authenticated users
+CREATE POLICY "applications_select" ON applications
+    FOR SELECT USING (true);
+
+-- RLS Policy: Allow insert/update/delete for admins (can be refined later)
+CREATE POLICY "applications_modify" ON applications
+    FOR ALL USING (true)
+    WITH CHECK (true);
+
+-- Table comment
+COMMENT ON TABLE applications IS 
+    'Registry of applications for workflow management. Maps to site_settings for multi-tenancy.';
 
 -- ============================================================================
 -- TABLE 1: workflow_definitions
