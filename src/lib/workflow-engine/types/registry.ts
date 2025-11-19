@@ -31,7 +31,7 @@ export interface JsonSchema {
 export const JsonSchemaSchema: z.ZodType<JsonSchema> = z.lazy(() =>
   z.object({
     type: z.string().optional(),
-    properties: z.record(JsonSchemaSchema).optional(),
+    properties: z.record(z.string(), JsonSchemaSchema).optional(),
     required: z.array(z.string()).optional(),
     items: JsonSchemaSchema.optional(),
     additionalProperties: z.union([z.boolean(), JsonSchemaSchema]).optional(),
@@ -70,9 +70,9 @@ export const ServiceTaskConfigSchema = z.object({
   httpMethod: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
   authConfig: z.object({
     type: z.enum(['NONE', 'BEARER', 'API_KEY', 'BASIC']),
-    credentials: z.record(z.string()).optional(),
+    credentials: z.record(z.string(), z.string()).optional(),
   }).optional(),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   timeout: z.number().optional(),
 })
 
@@ -91,7 +91,7 @@ export const AIAgentTaskConfigSchema = z.object({
   systemPrompt: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().optional(),
-  additionalParams: z.record(z.unknown()).optional(),
+  additionalParams: z.record(z.string(), z.unknown()).optional(),
 })
 
 export type TaskConfig = UserTaskConfig | ServiceTaskConfig | AIAgentTaskConfig
@@ -138,7 +138,7 @@ export const FunctionRegistryEntrySchema = z.object({
   implementationType: ImplementationTypeSchema,
   inputSchema: JsonSchemaSchema,
   outputSchema: JsonSchemaSchema,
-  config: z.record(z.unknown()), // Will validate based on implementationType
+  config: z.record(z.string(), z.unknown()), // Will validate based on implementationType
   version: z.number().int().min(1),
   isActive: z.boolean(),
   appUuid: z.string().uuid(),

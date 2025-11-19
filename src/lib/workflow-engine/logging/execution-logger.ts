@@ -8,7 +8,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import {
   WorkflowEventType,
-  ActorType,
   WorkflowHistoryEntry,
   LogEventRequest,
 } from '../types'

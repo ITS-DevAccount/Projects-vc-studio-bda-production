@@ -32,11 +32,11 @@ export class AgentDetermination {
   async determineAgent(
     registryEntry: FunctionRegistryEntry,
     taskNode: TaskNode,
-    instance: WorkflowInstance
+    _instance: WorkflowInstance
   ): Promise<AgentAssignment> {
     switch (registryEntry.implementationType) {
       case 'USER_TASK':
-        return this.determineUserTaskAgent(registryEntry, taskNode, instance)
+        return this.determineUserTaskAgent(registryEntry, taskNode, _instance)
 
       case 'SERVICE_TASK':
         return this.determineServiceTaskAgent(registryEntry)
@@ -65,7 +65,7 @@ export class AgentDetermination {
   private async determineUserTaskAgent(
     registryEntry: FunctionRegistryEntry,
     taskNode: TaskNode,
-    instance: WorkflowInstance
+    _instance: WorkflowInstance
   ): Promise<UserTaskAssignment> {
     const config = registryEntry.config as any
 

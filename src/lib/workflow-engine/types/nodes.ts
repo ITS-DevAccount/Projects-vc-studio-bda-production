@@ -63,8 +63,8 @@ export interface OutputMapping {
   [contextField: string]: string // JSONPath expression to extract from task output
 }
 
-export const InputMappingSchema = z.record(z.string())
-export const OutputMappingSchema = z.record(z.string())
+export const InputMappingSchema = z.record(z.string(), z.string())
+export const OutputMappingSchema = z.record(z.string(), z.string())
 
 export interface TaskNode extends BaseNode {
   type: 'TASK_NODE'
@@ -167,4 +167,4 @@ export interface NodeCollection {
   [nodeId: string]: WorkflowNode
 }
 
-export const NodeCollectionSchema = z.record(WorkflowNodeSchema)
+export const NodeCollectionSchema = z.record(z.string(), WorkflowNodeSchema)

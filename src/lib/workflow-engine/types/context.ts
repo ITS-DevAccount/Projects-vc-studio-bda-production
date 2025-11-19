@@ -68,7 +68,7 @@ export interface ContextUpdateRequest {
 export const ContextUpdateRequestSchema = z.object({
   workflowInstanceId: z.string().uuid(),
   scope: ContextScopeSchema,
-  updates: z.record(z.unknown()),
+  updates: z.record(z.string(), z.unknown()),
   taskId: z.string().uuid().optional(),
 })
 

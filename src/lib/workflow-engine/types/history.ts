@@ -86,7 +86,7 @@ export const WorkflowHistoryEntrySchema = z.object({
   eventType: WorkflowEventTypeSchema,
   nodeId: z.string().optional(),
   taskId: z.string().uuid().optional(),
-  details: z.record(z.unknown()),
+  details: z.record(z.string(), z.unknown()),
   actorType: ActorTypeSchema.optional(),
   actorId: z.string().optional(),
   appUuid: z.string().uuid(),
@@ -112,7 +112,7 @@ export const LogEventRequestSchema = z.object({
   eventType: WorkflowEventTypeSchema,
   nodeId: z.string().optional(),
   taskId: z.string().uuid().optional(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
   actorType: ActorTypeSchema.optional(),
   actorId: z.string().optional(),
 })

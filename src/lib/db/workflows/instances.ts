@@ -8,7 +8,6 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import {
   WorkflowInstance,
   WorkflowInstanceStatus,
-  CreateWorkflowInstanceRequest,
 } from '@/lib/workflow-engine/types'
 import { WorkflowError, createInstanceNotFoundError } from '@/lib/workflow-engine/types/errors'
 

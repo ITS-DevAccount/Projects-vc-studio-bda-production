@@ -7,7 +7,6 @@
 import {
   WorkflowNode,
   TaskNode,
-  GatewayNode,
   StartNode,
   EndNode,
   StateTransition,
@@ -31,8 +30,8 @@ export class NodeEvaluator {
    */
   async evaluateNode(
     node: WorkflowNode,
-    instance: WorkflowInstance,
-    definition: WorkflowDefinition
+    _instance: WorkflowInstance,
+    _definition: WorkflowDefinition
   ): Promise<StateTransition> {
     switch (node.type) {
       case 'START_NODE':
@@ -55,7 +54,7 @@ export class NodeEvaluator {
       default:
         throw new WorkflowError(
           'INVALID_NODE_TYPE',
-          { nodeType: (node as any).type, nodeId: node.id },
+          { nodeType: (node as any).type, nodeId: (node as any).id },
           false,
           `Invalid node type: ${(node as any).type}`
         )

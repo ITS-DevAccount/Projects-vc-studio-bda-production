@@ -55,7 +55,7 @@ export const ValidationErrorSchema = z.object({
 
 export const WorkflowDefinitionJsonSchema = z.object({
   nodes: NodeCollectionSchema,
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const WorkflowDefinitionSchema = z.object({
@@ -136,7 +136,7 @@ export const WorkflowInstanceSchema = z.object({
   currentNodeId: z.string().min(1),
   status: WorkflowInstanceStatusSchema,
   errorType: z.string().optional(),
-  errorDetails: z.record(z.unknown()).optional(),
+  errorDetails: z.record(z.string(), z.unknown()).optional(),
   stakeholderId: z.string().uuid().optional(),
   version: z.number().int().min(1),
   appUuid: z.string().uuid(),
@@ -167,7 +167,7 @@ export interface CreateWorkflowInstanceRequest {
 
 export const CreateWorkflowInstanceRequestSchema = z.object({
   workflowTemplateId: z.string().uuid(),
-  initialContext: z.record(z.unknown()).optional(),
+  initialContext: z.record(z.string(), z.unknown()).optional(),
   stakeholderId: z.string().uuid().optional(),
 })
 

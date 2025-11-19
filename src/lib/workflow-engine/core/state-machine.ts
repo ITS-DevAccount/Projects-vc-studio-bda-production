@@ -15,7 +15,6 @@ import {
 import { RecursionGuard, DEFAULT_MAX_RECURSION_DEPTH } from './recursion-guard'
 import { NodeEvaluator } from './node-evaluator'
 import { ConditionEvaluator } from './condition-evaluator'
-import { WorkflowError } from '../types/errors'
 
 // ============================================================================
 // State Machine Configuration

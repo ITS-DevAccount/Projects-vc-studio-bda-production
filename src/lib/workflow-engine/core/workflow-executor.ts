@@ -9,7 +9,6 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import {
   WorkflowInstance,
   WorkflowDefinition,
-  InstanceTask,
   WorkflowExecutionResult,
 } from '../types'
 import { StateMachineEvaluator } from './state-machine'
@@ -18,7 +17,7 @@ import { RegistryLookup } from '../registry/registry-lookup'
 import { AgentDetermination } from '../registry/agent-determination'
 import { WorkTokenCreator } from '../tasks/work-token-creator'
 import { ExecutionLogger } from '../logging/execution-logger'
-import { getWorkflowInstance, updateWorkflowInstance } from '@/lib/db/workflows'
+import { updateWorkflowInstance } from '@/lib/db/workflows'
 
 // ============================================================================
 // Workflow Executor Class
@@ -95,6 +94,12 @@ export class WorkflowExecutor {
       if (transition.action === 'CREATE_TASK') {
         // Create work token
         const taskNode = definition.definitionJson.nodes[transition.taskNodeId]
+        
+        // Ensure it's a TaskNode (only TaskNodes have functionCode)
+        if (taskNode.type !== 'TASK_NODE') {
+          throw new Error(`Node ${taskNode.id} is not a TASK_NODE`)
+        }
+        
         const registryEntry = await this.registryLookup.lookupFunction(
           taskNode.functionCode
         )

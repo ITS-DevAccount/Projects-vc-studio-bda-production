@@ -89,14 +89,14 @@ export const InstanceTaskSchema = z.object({
   nodeId: z.string().min(1),
   functionCode: z.string().min(1),
   implementationType: z.enum(['USER_TASK', 'SERVICE_TASK', 'AI_AGENT_TASK']),
-  inputData: z.record(z.unknown()),
-  outputData: z.record(z.unknown()).optional(),
+  inputData: z.record(z.string(), z.unknown()),
+  outputData: z.record(z.string(), z.unknown()).optional(),
   assignedRole: z.string().optional(),
   assignedUserId: z.string().uuid().optional(),
   uiWidgetId: z.string().optional(),
   serviceEndpoint: z.string().optional(),
-  httpConfig: z.record(z.unknown()).optional(),
-  aiConfig: z.record(z.unknown()).optional(),
+  httpConfig: z.record(z.string(), z.unknown()).optional(),
+  aiConfig: z.record(z.string(), z.unknown()).optional(),
   status: TaskStatusSchema,
   outputValidated: z.boolean(),
   validationErrors: z.array(z.object({
@@ -127,7 +127,7 @@ export const CreateTaskRequestSchema = z.object({
   workflowInstanceId: z.string().uuid(),
   nodeId: z.string().min(1),
   functionCode: z.string().min(1),
-  inputData: z.record(z.unknown()),
+  inputData: z.record(z.string(), z.unknown()),
   assignedRole: z.string().optional(),
   assignedUserId: z.string().uuid().optional(),
 })
@@ -143,7 +143,7 @@ export interface CompleteTaskRequest {
 
 export const CompleteTaskRequestSchema = z.object({
   taskId: z.string().uuid(),
-  outputData: z.record(z.unknown()),
+  outputData: z.record(z.string(), z.unknown()),
 })
 
 // ============================================================================

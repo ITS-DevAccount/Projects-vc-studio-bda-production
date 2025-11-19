@@ -104,6 +104,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Get task node from definition
     const taskNode = definition.definitionJson.nodes[workToken.nodeId]
 
+    // Ensure it's a TaskNode (only TaskNodes have outputMapping)
+    if (taskNode.type !== 'TASK_NODE') {
+      return NextResponse.json(
+        { error: 'Work token does not reference a task node' },
+        { status: 400 }
+      )
+    }
+
     // Merge task output into global context
     const contextManager = new ContextManager(supabase, appUuid)
     await contextManager.mergeTaskOutput(
@@ -131,7 +139,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       taskNode.nextNodeId
     )
 
-    const updatedInstance = await supabase
+    await supabase
       .from('workflow_engine_instances')
       .update({
         current_node_id: taskNode.nextNodeId,

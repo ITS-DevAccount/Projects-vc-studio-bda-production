@@ -104,12 +104,25 @@ export default function VCStudioLanding() {
       });
 
       if (settingsError) {
-        console.error('❌ Error fetching page settings:', {
-          code: settingsError.code,
-          message: settingsError.message,
-          details: settingsError.details,
-          hint: settingsError.hint
-        });
+        // Check if it's a "no rows found" error (PGRST116) vs a real error
+        const isNotFoundError = settingsError.code === 'PGRST116';
+        
+        if (isNotFoundError) {
+          console.warn('⚠️ No page settings found for:', {
+            page_name: 'home',
+            app_uuid: appUuid,
+            is_published: true
+          });
+        } else {
+          console.error('❌ Error fetching page settings:', {
+            error: settingsError,
+            code: settingsError?.code || 'N/A',
+            message: settingsError?.message || 'Unknown error',
+            details: settingsError?.details || null,
+            hint: settingsError?.hint || null,
+            fullError: JSON.stringify(settingsError, Object.getOwnPropertyNames(settingsError), 2)
+          });
+        }
       }
 
       if (settingsData) {

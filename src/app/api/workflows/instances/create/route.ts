@@ -160,6 +160,10 @@ export async function POST(request: NextRequest) {
       if (transition.action === 'CREATE_TASK') {
         // Create work token for task
         const taskNode = definition.definitionJson.nodes[transition.taskNodeId]
+        
+        // Ensure it's a TaskNode (only TaskNodes have functionCode)
+        if (taskNode.type === 'TASK_NODE') {
+
         const registryLookup = new RegistryLookup(supabase, appUuid)
         const agentDetermination = new AgentDetermination()
         const workTokenCreator = new WorkTokenCreator(supabase, appUuid)
@@ -192,22 +196,22 @@ export async function POST(request: NextRequest) {
           user.id
         )
 
-        // Log task creation
-        await logger.logTaskCreated(
-          instance.id,
-          workToken.id,
-          workToken.taskCode,
-          workToken.functionCode,
-          workToken.implementationType,
-          taskNode.id
-        )
+          // Log task creation
+          await logger.logTaskCreated(
+            instance.id,
+            workToken.id,
+            workToken.taskCode,
+            workToken.functionCode,
+            workToken.implementationType,
+            taskNode.id
+          )
 
-        // Update instance status to PENDING_TASK
-        await supabase
-          .from('workflow_engine_instances')
-          .update({ status: 'PENDING_TASK', updated_at: new Date() })
-          .eq('id', instance.id)
-
+          // Update instance status to PENDING_TASK
+          await supabase
+            .from('workflow_engine_instances')
+            .update({ status: 'PENDING_TASK', updated_at: new Date() })
+            .eq('id', instance.id)
+        }
       } else if (transition.action === 'TRANSITION') {
         // Move to next node (Start node transitioning)
         await supabase
