@@ -1,0 +1,139 @@
+{
+  "templateCode": "example-conditional-approval",
+  "templateName": "Conditional Approval Workflow",
+  "description": "Example workflow with gateway node for conditional routing",
+  "definitionJson": {
+    "nodes": {
+      "start": {
+        "id": "start",
+        "type": "START_NODE",
+        "name": "Start Approval Process",
+        "description": "Begin document approval workflow",
+        "nextNodeId": "review_documents"
+      },
+      "review_documents": {
+        "id": "review_documents",
+        "type": "TASK_NODE",
+        "name": "Review Documents",
+        "description": "Manual review of submitted documents",
+        "functionCode": "review_documents",
+        "assignedRole": "reviewer",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "documentCount": "$.documentCount"
+        },
+        "outputMapping": {
+          "reviewStatus": "$.status",
+          "reviewScore": "$.score",
+          "reviewNotes": "$.notes",
+          "reviewedBy": "$.reviewerId"
+        },
+        "nextNodeId": "check_review_status"
+      },
+      "check_review_status": {
+        "id": "check_review_status",
+        "type": "GATEWAY_NODE",
+        "name": "Check Review Result",
+        "description": "Route based on review outcome",
+        "gatewayType": "EXCLUSIVE",
+        "transitions": [
+          {
+            "id": "approved",
+            "name": "Documents Approved",
+            "condition": "$.reviewStatus == 'approved'",
+            "targetNodeId": "send_approval_notification"
+          },
+          {
+            "id": "rejected",
+            "name": "Documents Rejected",
+            "condition": "$.reviewStatus == 'rejected'",
+            "targetNodeId": "send_rejection_notification"
+          },
+          {
+            "id": "needs_revision",
+            "name": "Needs Revision (Default)",
+            "isDefault": true,
+            "targetNodeId": "request_revision"
+          }
+        ]
+      },
+      "send_approval_notification": {
+        "id": "send_approval_notification",
+        "type": "TASK_NODE",
+        "name": "Send Approval Notification",
+        "description": "Notify stakeholder of approval",
+        "functionCode": "send_notification",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "notificationType": "'approval'",
+          "reviewNotes": "$.reviewNotes"
+        },
+        "outputMapping": {
+          "notificationSent": "$.sent",
+          "notificationSentAt": "$.sentAt"
+        },
+        "nextNodeId": "approved_end"
+      },
+      "send_rejection_notification": {
+        "id": "send_rejection_notification",
+        "type": "TASK_NODE",
+        "name": "Send Rejection Notification",
+        "description": "Notify stakeholder of rejection",
+        "functionCode": "send_notification",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "notificationType": "'rejection'",
+          "reviewNotes": "$.reviewNotes"
+        },
+        "outputMapping": {
+          "notificationSent": "$.sent",
+          "notificationSentAt": "$.sentAt"
+        },
+        "nextNodeId": "rejected_end"
+      },
+      "request_revision": {
+        "id": "request_revision",
+        "type": "TASK_NODE",
+        "name": "Request Document Revision",
+        "description": "Ask stakeholder to revise and resubmit",
+        "functionCode": "request_revision",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "reviewNotes": "$.reviewNotes"
+        },
+        "outputMapping": {
+          "revisionRequested": "$.requested",
+          "revisionRequestedAt": "$.requestedAt"
+        },
+        "nextNodeId": "revision_end"
+      },
+      "approved_end": {
+        "id": "approved_end",
+        "type": "END_NODE",
+        "name": "Approved",
+        "description": "Documents approved successfully",
+        "outcome": "SUCCESS"
+      },
+      "rejected_end": {
+        "id": "rejected_end",
+        "type": "END_NODE",
+        "name": "Rejected",
+        "description": "Documents rejected",
+        "outcome": "FAILURE"
+      },
+      "revision_end": {
+        "id": "revision_end",
+        "type": "END_NODE",
+        "name": "Revision Requested",
+        "description": "Waiting for stakeholder to revise documents",
+        "outcome": "CANCELLED"
+      }
+    },
+    "metadata": {
+      "version": "1.0",
+      "author": "System",
+      "createdAt": "2025-11-19",
+      "tags": ["approval", "example", "conditional", "gateway"]
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "templateCode": "example-linear-workflow",
+  "templateName": "Simple Linear Workflow",
+  "description": "Example workflow with 3 sequential tasks for testing",
+  "definitionJson": {
+    "nodes": {
+      "start": {
+        "id": "start",
+        "type": "START_NODE",
+        "name": "Start Workflow",
+        "description": "Entry point for linear workflow example",
+        "nextNodeId": "task_1"
+      },
+      "task_1": {
+        "id": "task_1",
+        "type": "TASK_NODE",
+        "name": "Collect Information",
+        "description": "Gather basic stakeholder information",
+        "functionCode": "collect_stakeholder_info",
+        "assignedRole": "admin",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName"
+        },
+        "outputMapping": {
+          "contactEmail": "$.email",
+          "contactPhone": "$.phone"
+        },
+        "nextNodeId": "task_2"
+      },
+      "task_2": {
+        "id": "task_2",
+        "type": "TASK_NODE",
+        "name": "Verify Documents",
+        "description": "Verify identity and compliance documents",
+        "functionCode": "verify_documents",
+        "assignedRole": "compliance_officer",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "contactEmail": "$.contactEmail"
+        },
+        "outputMapping": {
+          "documentsVerified": "$.verified",
+          "verificationDate": "$.completedAt",
+          "verificationNotes": "$.notes"
+        },
+        "nextNodeId": "task_3"
+      },
+      "task_3": {
+        "id": "task_3",
+        "type": "TASK_NODE",
+        "name": "Send Welcome Email",
+        "description": "Send onboarding completion email",
+        "functionCode": "send_welcome_email",
+        "assignedRole": "admin",
+        "inputMapping": {
+          "stakeholderName": "$.stakeholderName",
+          "contactEmail": "$.contactEmail",
+          "verificationDate": "$.verificationDate"
+        },
+        "outputMapping": {
+          "emailSent": "$.sent",
+          "emailSentAt": "$.sentAt"
+        },
+        "nextNodeId": "end"
+      },
+      "end": {
+        "id": "end",
+        "type": "END_NODE",
+        "name": "Workflow Complete",
+        "description": "Successfully completed onboarding",
+        "outcome": "SUCCESS"
+      }
+    },
+    "metadata": {
+      "version": "1.0",
+      "author": "System",
+      "createdAt": "2025-11-19",
+      "tags": ["onboarding", "example", "linear"]
+    }
+  }
+}
