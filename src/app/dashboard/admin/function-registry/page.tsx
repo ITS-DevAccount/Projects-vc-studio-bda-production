@@ -14,13 +14,16 @@ import type {
   ImplementationType,
 } from '@/lib/types/function-registry';
 import FunctionRegistryCreateModal from './FunctionRegistryCreateModal';
+import FunctionRegistryEditModal from './FunctionRegistryEditModal';
 import FunctionRegistryDeleteModal from './FunctionRegistryDeleteModal';
+import TemplateSelectorModal from './TemplateSelectorModal';
 
 export default function FunctionRegistryPage() {
   const [entries, setEntries] = useState<FunctionRegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<FunctionRegistryEntry | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -164,13 +167,22 @@ export default function FunctionRegistryPage() {
           </select>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Function
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create from Template
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Function
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -278,6 +290,27 @@ export default function FunctionRegistryPage() {
         <FunctionRegistryCreateModal
           onClose={() => setShowCreateModal(false)}
           onCreated={handleRefresh}
+        />
+      )}
+
+      {showTemplateModal && (
+        <TemplateSelectorModal
+          onClose={() => setShowTemplateModal(false)}
+          onCreated={() => {
+            setShowTemplateModal(false);
+            handleRefresh();
+          }}
+        />
+      )}
+
+      {showEditModal && selectedEntry && (
+        <FunctionRegistryEditModal
+          entry={selectedEntry}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedEntry(null);
+          }}
+          onUpdated={handleRefresh}
         />
       )}
 

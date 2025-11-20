@@ -16,6 +16,8 @@ export default function WorkflowDesignerPage() {
   const [functions, setFunctions] = useState<FunctionRegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
+  const [viewMode, setViewMode] = useState<'edit' | 'view' | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -46,6 +48,21 @@ export default function WorkflowDesignerPage() {
     } catch (err) {
       console.error('Error fetching functions:', err);
     }
+  };
+
+  const handleEdit = (template: WorkflowTemplate) => {
+    setSelectedTemplate(template);
+    setViewMode('edit');
+  };
+
+  const handleView = (template: WorkflowTemplate) => {
+    setSelectedTemplate(template);
+    setViewMode('view');
+  };
+
+  const handleCloseView = () => {
+    setSelectedTemplate(null);
+    setViewMode(null);
   };
 
   return (
@@ -112,10 +129,16 @@ export default function WorkflowDesignerPage() {
               </div>
 
               <div className="mt-4 flex gap-2">
-                <button className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition">
+                <button
+                  onClick={() => handleEdit(template)}
+                  className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition"
+                >
                   Edit
                 </button>
-                <button className="flex-1 px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition">
+                <button
+                  onClick={() => handleView(template)}
+                  className="flex-1 px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 transition"
+                >
                   View
                 </button>
               </div>
@@ -134,6 +157,93 @@ export default function WorkflowDesignerPage() {
             fetchTemplates();
           }}
         />
+      )}
+
+      {/* View/Edit Workflow Modal */}
+      {selectedTemplate && viewMode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {viewMode === 'edit' ? 'Edit' : 'View'} Workflow
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">{selectedTemplate.name}</p>
+              </div>
+              <button
+                onClick={handleCloseView}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2">Workflow Definition</h3>
+                <pre className="bg-gray-50 p-4 rounded-md overflow-x-auto text-sm font-mono border border-gray-200">
+                  {JSON.stringify(selectedTemplate.definition, null, 2)}
+                </pre>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2">Metadata</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Template Code</p>
+                    <p className="font-medium">{selectedTemplate.template_code}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Workflow Type</p>
+                    <p className="font-medium">{selectedTemplate.workflow_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Maturity Gate</p>
+                    <p className="font-medium">{selectedTemplate.maturity_gate || 'None'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Status</p>
+                    <p className="font-medium">{selectedTemplate.is_active ? 'Active' : 'Inactive'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedTemplate.description && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Description</h3>
+                  <p className="text-gray-700">{selectedTemplate.description}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <button
+                  onClick={handleCloseView}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition"
+                >
+                  Close
+                </button>
+                {viewMode === 'view' && (
+                  <button
+                    onClick={() => setViewMode('edit')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                  >
+                    Edit Workflow
+                  </button>
+                )}
+                {viewMode === 'edit' && (
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                    onClick={() => alert('Edit functionality coming soon. Full visual editor planned for future sprint.')}
+                  >
+                    Save Changes
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
