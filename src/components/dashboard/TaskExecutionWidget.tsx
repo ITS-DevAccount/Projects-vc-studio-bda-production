@@ -57,35 +57,40 @@ export function TaskExecutionWidget() {
     return () => clearInterval(intervalId);
   }, [fetchTasks]);
 
-  // Open task modal
-  const handleOpenTask = (task: TaskWithFunction) => {
+  // Open task modal - memoized to prevent recreating on each render
+  const handleOpenTask = useCallback((task: TaskWithFunction) => {
+    console.log('[TaskWidget] Opening task:', task.id);
     setSelectedTask(task);
     setFormData({});
     setSubmitError(null);
     setSubmitSuccess(false);
     setValidationErrors([]);
-  };
+  }, []);
 
-  // Close task modal
-  const handleCloseModal = () => {
+  // Close task modal - memoized and with cleanup delay
+  const handleCloseModal = useCallback(() => {
     if (!submitting) {
+      console.log('[TaskWidget] Closing task modal');
       setSelectedTask(null);
-      setFormData({});
-      setSubmitError(null);
-      setSubmitSuccess(false);
-      setValidationErrors([]);
+      // Clear state with slight delay to allow modal animation
+      setTimeout(() => {
+        setFormData({});
+        setSubmitError(null);
+        setSubmitSuccess(false);
+        setValidationErrors([]);
+      }, 200);
     }
-  };
+  }, [submitting]);
 
-  // Handle form field change
-  const handleFieldChange = (fieldName: string, value: any) => {
+  // Handle form field change - memoized to prevent recreating on each render
+  const handleFieldChange = useCallback((fieldName: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [fieldName]: value,
     }));
     // Clear validation errors for this field
     setValidationErrors(prev => prev.filter(e => e.field !== fieldName));
-  };
+  }, []);
 
   // Submit task
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,6 +132,13 @@ export function TaskExecutionWidget() {
       // Success
       setSubmitSuccess(true);
 
+      // Trigger workflow queue processing to advance the workflow
+      console.log('[TaskWidget] Triggering workflow queue processing...');
+      fetch('/api/workflows/process-queue', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => console.log('[TaskWidget] Queue processing result:', data))
+        .catch(err => console.error('[TaskWidget] Queue processing error:', err));
+
       // Refresh tasks after short delay
       setTimeout(() => {
         fetchTasks();
@@ -139,8 +151,8 @@ export function TaskExecutionWidget() {
     }
   };
 
-  // Render field based on schema
-  const renderField = (fieldName: string, fieldSchema: any) => {
+  // Render field based on schema - memoized to prevent recreating on each render
+  const renderField = useCallback((fieldName: string, fieldSchema: any) => {
     const fieldType = fieldSchema.type;
     const fieldValue = formData[fieldName] || '';
     const fieldError = validationErrors.find(e => e.field === fieldName);
@@ -243,7 +255,7 @@ export function TaskExecutionWidget() {
           />
         );
     }
-  };
+  }, [formData, validationErrors, handleFieldChange]);
 
   // Render loading state
   if (loading) {
@@ -346,9 +358,9 @@ export function TaskExecutionWidget() {
         )}
       </div>
 
-      {/* Task Execution Modal */}
+      {/* Task Execution Modal - key forces remount on task change */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div key={selectedTask.id} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-start justify-between">
