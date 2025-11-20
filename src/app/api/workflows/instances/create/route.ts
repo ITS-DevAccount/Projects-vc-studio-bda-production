@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { getAppUuid } from '@/lib/server/getAppUuid';
+import { getAppContext } from '@/lib/server/getAppUuid';
 import type { CreateInstanceInput, CreateInstanceResponse } from '@/lib/types/workflow-instance';
 import type { WorkflowNode } from '@/lib/types/workflow';
 
@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get app_uuid from site settings
-    const app_uuid = await getAppUuid(accessToken);
+    // Get app context from site settings
+    const appContext = await getAppContext(accessToken);
+    const app_code = appContext.site_code; // Use site_code as app_code
 
     // Fetch workflow template
     const { data: template, error: templateError } = await supabase
@@ -177,15 +178,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create workflow instance
+    // Create workflow instance (match actual table schema)
     const instanceData = {
-      app_uuid,
-      workflow_template_id: template.id,
-      template_code: template.template_code,
+      app_code,
+      workflow_definition_id: template.id, // FK to workflow_templates
+      workflow_code: template.template_code,
       current_node_id: firstTaskNodeId,
       status: 'RUNNING' as const,
-      instance_context: input.initial_context || {},
-      initial_context: input.initial_context || {},
+      input_data: input.initial_context || {},
+      initiated_by: user.id,
     };
 
     const { data: instance, error: instanceError } = await supabase
@@ -211,8 +212,8 @@ export async function POST(request: NextRequest) {
       status: node.id === firstTaskNodeId ? 'PENDING' : 'PENDING',
       assigned_to: input.task_assignments[node.id] || null,
       input_data: {},
-      context: instance.instance_context,
-      app_code: template.template_code,
+      context: instance.input_data || {},
+      app_code: app_code,
     }));
 
     const { data: createdTasks, error: tasksError } = await supabase
@@ -240,13 +241,14 @@ export async function POST(request: NextRequest) {
 
     // Log instance creation
     await supabase.from('workflow_history').insert([{
-      app_code: template.template_code,
+      app_code: app_code,
       workflow_instance_id: instance.id,
       event_type: 'INSTANCE_CREATED',
       node_id: startNode?.id || null,
       description: `Workflow instance created from template: ${template.name}`,
       metadata: {
         template_id: template.id,
+        template_code: template.template_code,
         task_count: createdTasks?.length || 0,
         assignments: input.task_assignments,
       },
