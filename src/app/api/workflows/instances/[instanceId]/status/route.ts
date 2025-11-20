@@ -83,6 +83,11 @@ export async function GET(
 
     const tasksList = tasks || [];
 
+    console.log(`[Instance Status API] Instance: ${instanceId}, Found ${tasksList.length} created tasks`);
+    tasksList.forEach(t => {
+      console.log(`  - Task ${t.id.slice(0,8)}: node_id=${t.node_id}, status=${t.status}`);
+    });
+
     // 3. Get template and workflow definition
     const template = Array.isArray(instance.workflow_templates)
       ? instance.workflow_templates[0]
@@ -94,6 +99,11 @@ export async function GET(
     const taskNodes = workflowDef.nodes?.filter((n: any) => n.type === 'TASK') || [];
     const totalTasksInDefinition = taskNodes.length;
 
+    console.log(`[Instance Status API] Found ${totalTasksInDefinition} TASK nodes in workflow definition`);
+    taskNodes.forEach((n: any) => {
+      console.log(`  - Node ${n.id}: ${n.label || n.function_code}`);
+    });
+
     // 5. Get task assignments from instance input_data
     const taskAssignments = instance.input_data?._task_assignments || {};
 
@@ -101,6 +111,8 @@ export async function GET(
     const allTasks = await Promise.all(taskNodes.map(async (taskNode: any) => {
       // Find matching created instance_task
       const createdTask = tasksList.find(t => t.node_id === taskNode.id);
+
+      console.log(`[Instance Status API] Matching node ${taskNode.id}: ${createdTask ? `FOUND (${createdTask.status})` : 'NOT FOUND'}`);
 
       if (createdTask) {
         // Task has been created - return actual data
@@ -169,7 +181,7 @@ export async function GET(
     const currentNode = workflowDef.nodes?.find((n: any) => n.id === instance.current_node_id);
 
     // 9. Format response
-    return NextResponse.json({
+    const response = NextResponse.json({
       instance_id: instance.id,
       workflow_code: instance.workflow_code,
       workflow_name: template?.name || 'Unknown',
@@ -187,6 +199,12 @@ export async function GET(
       completed_at: instance.completed_at,
       error_message: instance.error_message,
     });
+
+    // Prevent caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+
+    return response;
   } catch (error: any) {
     console.error('Error in workflows/instances/[instanceId]/status GET:', error);
     return NextResponse.json(
