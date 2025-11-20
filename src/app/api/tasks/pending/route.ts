@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch pending tasks assigned to this user
-    // Join with function_registry to get schemas and UI config
+    // Join with function_registry and workflow_instances to get full context
     const { data: tasks, error: tasksError } = await supabase
       .from('instance_tasks')
       .select(`
@@ -58,6 +58,14 @@ export async function GET(request: NextRequest) {
           output_schema,
           ui_widget_id,
           ui_definitions
+        ),
+        workflow_instances!inner (
+          id,
+          instance_name,
+          workflow_code,
+          workflow_templates:workflow_definition_id (
+            name
+          )
         )
       `)
       .eq('assigned_to', stakeholder.id)
@@ -74,6 +82,14 @@ export async function GET(request: NextRequest) {
       const funcRegistry = Array.isArray(task.function_registry)
         ? task.function_registry[0]
         : task.function_registry;
+
+      const workflowInstance = Array.isArray(task.workflow_instances)
+        ? task.workflow_instances[0]
+        : task.workflow_instances;
+
+      const workflowTemplate = Array.isArray(workflowInstance?.workflow_templates)
+        ? workflowInstance.workflow_templates[0]
+        : workflowInstance?.workflow_templates;
 
       return {
         // Task fields
@@ -102,6 +118,10 @@ export async function GET(request: NextRequest) {
         output_schema: funcRegistry?.output_schema || {},
         ui_widget_id: funcRegistry?.ui_widget_id || null,
         ui_definitions: funcRegistry?.ui_definitions || {},
+
+        // Workflow instance fields
+        instance_name: workflowInstance?.instance_name || null,
+        workflow_template_name: workflowTemplate?.name || 'Unknown Workflow',
       };
     });
 

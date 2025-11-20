@@ -157,9 +157,15 @@ export function TaskExecutionWidget() {
                     <p className="text-sm text-gray-600 mb-1">
                       <span className="font-medium">Function:</span> {task.function_code}
                     </p>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Workflow:</span> {task.workflow_code}
+                    <p className="text-sm text-gray-900 mb-1">
+                      <span className="font-medium">Instance:</span>{' '}
+                      {(task as any).instance_name || (task as any).workflow_template_name || task.workflow_code}
                     </p>
+                    {(task as any).instance_name && (
+                      <p className="text-xs text-gray-500 mb-1">
+                        Template: {(task as any).workflow_template_name}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500">
                       Created: {new Date(task.created_at).toLocaleString()}
                     </p>
