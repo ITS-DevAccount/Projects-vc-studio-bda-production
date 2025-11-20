@@ -50,7 +50,11 @@ export default function WorkflowInstanceCreationPage() {
         const stakeholdersResponse = await fetch('/api/stakeholders');
         if (!stakeholdersResponse.ok) throw new Error('Failed to fetch stakeholders');
         const stakeholdersData = await stakeholdersResponse.json();
-        setStakeholders(stakeholdersData || []);
+        // Handle both response formats: direct array or object with data property
+        const stakeholdersList = Array.isArray(stakeholdersData)
+          ? stakeholdersData
+          : (stakeholdersData.data || []);
+        setStakeholders(stakeholdersList);
 
         setLoading(false);
       } catch (err: any) {
