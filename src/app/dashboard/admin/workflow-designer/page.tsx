@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, PlayCircle } from 'lucide-react';
 import type { WorkflowTemplate, WorkflowNode, WorkflowTransition } from '@/lib/types/workflow';
 import type { FunctionRegistryEntry } from '@/lib/types/function-registry';
 
@@ -83,13 +83,22 @@ export default function WorkflowDesignerPage() {
           <p className="text-gray-600 mt-2">Create and manage workflow templates</p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Workflow
-        </button>
+        <div className="flex gap-3">
+          <Link
+            href="/dashboard/admin/workflow-instances"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition inline-flex items-center gap-2"
+          >
+            <PlayCircle className="w-4 h-4" />
+            Create Instance
+          </Link>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Workflow
+          </button>
+        </div>
       </div>
 
       {loading ? (

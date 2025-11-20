@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck, Database, Workflow, Settings } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -48,6 +48,13 @@ export default function CommunityDashboard() {
       description: 'Create and manage workflow templates with visual canvas (Sprint 1d.4)',
       icon: Workflow,
       href: '/dashboard/admin/workflow-designer'
+    },
+    {
+      id: 'workflow-instances',
+      label: 'Create Workflow Instance',
+      description: 'Create executable workflow instances from templates with stakeholder assignments (Sprint 1d.4)',
+      icon: PlayCircle,
+      href: '/dashboard/admin/workflow-instances'
     },
     {
       id: 'roles',
