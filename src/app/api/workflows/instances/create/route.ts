@@ -114,14 +114,47 @@ export async function POST(request: NextRequest) {
     const stakeholderIds = Object.values(input.task_assignments).filter(Boolean);
 
     if (stakeholderIds.length > 0) {
+      console.log('Validating stakeholder IDs:', stakeholderIds);
+
       const { data: stakeholders, error: stakeholderError } = await supabase
         .from('stakeholders')
         .select('id')
         .in('id', stakeholderIds);
 
-      if (stakeholderError || !stakeholders || stakeholders.length !== stakeholderIds.length) {
+      console.log('Stakeholder validation result:', {
+        found: stakeholders?.length,
+        expected: stakeholderIds.length,
+        error: stakeholderError
+      });
+
+      if (stakeholderError) {
+        console.error('Error validating stakeholders:', stakeholderError);
         return NextResponse.json(
-          { error: 'One or more stakeholder IDs are invalid' },
+          {
+            error: 'Failed to validate stakeholder IDs',
+            details: stakeholderError.message
+          },
+          { status: 500 }
+        );
+      }
+
+      if (!stakeholders || stakeholders.length !== stakeholderIds.length) {
+        const foundIds = stakeholders?.map(s => s.id) || [];
+        const missingIds = stakeholderIds.filter(id => !foundIds.includes(id));
+
+        console.error('Invalid stakeholder IDs:', {
+          requested: stakeholderIds,
+          found: foundIds,
+          missing: missingIds
+        });
+
+        return NextResponse.json(
+          {
+            error: 'One or more stakeholder IDs are invalid',
+            requested: stakeholderIds,
+            found: foundIds,
+            missing: missingIds
+          },
           { status: 400 }
         );
       }
