@@ -112,18 +112,20 @@ export async function POST(request: NextRequest) {
 
     // Validate all assigned stakeholder IDs exist
     const stakeholderIds = Object.values(input.task_assignments).filter(Boolean);
+    // Get unique stakeholder IDs (same person can be assigned to multiple tasks)
+    const uniqueStakeholderIds = [...new Set(stakeholderIds)];
 
-    if (stakeholderIds.length > 0) {
-      console.log('Validating stakeholder IDs:', stakeholderIds);
+    if (uniqueStakeholderIds.length > 0) {
+      console.log('Validating stakeholder IDs:', uniqueStakeholderIds);
 
       const { data: stakeholders, error: stakeholderError } = await supabase
         .from('stakeholders')
         .select('id')
-        .in('id', stakeholderIds);
+        .in('id', uniqueStakeholderIds);
 
       console.log('Stakeholder validation result:', {
         found: stakeholders?.length,
-        expected: stakeholderIds.length,
+        expected: uniqueStakeholderIds.length,
         error: stakeholderError
       });
 
@@ -138,12 +140,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!stakeholders || stakeholders.length !== stakeholderIds.length) {
+      if (!stakeholders || stakeholders.length !== uniqueStakeholderIds.length) {
         const foundIds = stakeholders?.map(s => s.id) || [];
-        const missingIds = stakeholderIds.filter(id => !foundIds.includes(id));
+        const missingIds = uniqueStakeholderIds.filter(id => !foundIds.includes(id));
 
         console.error('Invalid stakeholder IDs:', {
-          requested: stakeholderIds,
+          requested: uniqueStakeholderIds,
           found: foundIds,
           missing: missingIds
         });
@@ -151,7 +153,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'One or more stakeholder IDs are invalid',
-            requested: stakeholderIds,
+            requested: uniqueStakeholderIds,
             found: foundIds,
             missing: missingIds
           },
