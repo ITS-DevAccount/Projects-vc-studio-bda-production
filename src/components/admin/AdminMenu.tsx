@@ -11,6 +11,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'community', label: 'Community', href: '/dashboard/admin' },
+  { id: 'workflows', label: 'Workflows', href: '/dashboard/admin/workflows' },
   { id: 'content', label: 'Content', href: '/dashboard/admin/content' },
   { id: 'enquiries', label: 'Enquiries', href: '/dashboard/admin/enquiries' },
   { id: 'json-tools', label: 'JSON Tools', href: '/dashboard/admin/json-viewer' },
