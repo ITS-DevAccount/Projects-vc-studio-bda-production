@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
       .insert([{
         app_code: appContext.site_code,
         auth_user_id: user.id,
-        person_name: personName,
+        name: personName,
         email: user.email,
-        role: 'user',
-        is_active: true,
+        status: 'active',
+        is_user: true,
       }])
       .select()
       .single();

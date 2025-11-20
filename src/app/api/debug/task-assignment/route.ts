@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     // Get all stakeholders
     const { data: allStakeholders, error: stakeholdersError } = await supabase
       .from('stakeholders')
-      .select('id, person_name, auth_user_id');
+      .select('id, name, auth_user_id');
 
     // Get pending tasks for current user (if stakeholder exists)
     let pendingTasks = null;

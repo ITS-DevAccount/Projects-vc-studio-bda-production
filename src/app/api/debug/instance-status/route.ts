@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     // Get current user's stakeholder info
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('id, person_name, auth_user_id')
+      .select('id, name, auth_user_id')
       .eq('auth_user_id', user.id)
       .single();
 
