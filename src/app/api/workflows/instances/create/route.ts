@@ -179,13 +179,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Create workflow instance (match actual table schema)
+    // Store task_assignments in input_data so worker can access them when creating tasks
     const instanceData = {
       app_code,
       workflow_definition_id: template.id, // FK to workflow_templates
       workflow_code: template.template_code,
       current_node_id: firstTaskNodeId,
       status: 'RUNNING' as const,
-      input_data: input.initial_context || {},
+      input_data: {
+        ...(input.initial_context || {}),
+        _task_assignments: input.task_assignments, // Store for workflow worker
+      },
       initiated_by: user.id,
     };
 
@@ -203,22 +207,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create instance_tasks for each TASK node (match actual table schema)
-    const tasksToCreate = taskNodes.map((node: WorkflowNode) => ({
+    // IMPORTANT: Only create the FIRST task
+    // Subsequent tasks are created by the workflow execution worker when the workflow advances
+    // This prevents tasks from being completed out of sequence
+
+    if (!firstTaskNodeId) {
+      console.error('Error: No first task node found in workflow');
+      await supabase
+        .from('workflow_instances')
+        .delete()
+        .eq('id', instance.id);
+
+      return NextResponse.json(
+        { error: 'Invalid workflow: no task node found after START' },
+        { status: 400 }
+      );
+    }
+
+    const firstTaskNode = taskNodes.find((n: WorkflowNode) => n.id === firstTaskNodeId);
+
+    if (!firstTaskNode) {
+      console.error('Error: First task node not found');
+      await supabase
+        .from('workflow_instances')
+        .delete()
+        .eq('id', instance.id);
+
+      return NextResponse.json(
+        { error: 'Invalid workflow: first task node not found' },
+        { status: 400 }
+      );
+    }
+
+    // Create ONLY the first task with PENDING status
+    const firstTaskData = {
       app_code: app_code,
       workflow_instance_id: instance.id,
       workflow_code: instance.workflow_code,
-      function_code: node.function_code,
-      node_id: node.id,
-      task_type: 'USER_TASK' as const, // For now, assume all are USER_TASK
-      status: node.id === firstTaskNodeId ? 'PENDING' : 'PENDING',
-      assigned_to: input.task_assignments[node.id] || null,
+      function_code: firstTaskNode.function_code,
+      node_id: firstTaskNode.id,
+      task_type: 'USER_TASK' as const,
+      status: 'PENDING' as const,
+      assigned_to: input.task_assignments[firstTaskNode.id] || null,
       input_data: {},
-    }));
+    };
 
     const { data: createdTasks, error: tasksError } = await supabase
       .from('instance_tasks')
-      .insert(tasksToCreate)
+      .insert([firstTaskData])
       .select();
 
     if (tasksError) {
@@ -249,7 +285,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         template_id: template.id,
         template_code: template.template_code,
-        task_count: createdTasks?.length || 0,
+        total_task_nodes: taskNodes.length,
+        first_task_created: true,
+        first_task_node_id: firstTaskNodeId,
         assignments: input.task_assignments,
       },
       actor_id: user.id,
@@ -260,7 +298,7 @@ export async function POST(request: NextRequest) {
       instance_id: instance.id,
       status: instance.status,
       first_task_id: firstTask?.id,
-      message: `Workflow instance created successfully with ${createdTasks?.length || 0} tasks`,
+      message: `Workflow instance created successfully. First task is ready (${taskNodes.length} total tasks in workflow)`,
     };
 
     return NextResponse.json(response, { status: 201 });

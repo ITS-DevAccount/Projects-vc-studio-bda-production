@@ -320,8 +320,12 @@ async function createInstanceTask(instance: any, node: any): Promise<void> {
       return;
     }
 
-    // Get stakeholder assignment from node metadata (if any)
-    const assignedTo = node.assigned_to || null;
+    // Get stakeholder assignment from instance input_data._task_assignments
+    // These were stored during instance creation
+    const taskAssignments = instance.input_data?._task_assignments || {};
+    const assignedTo = taskAssignments[node.id] || null;
+
+    console.log(`[Workflow Worker] Creating task for node ${node.id}, assigned to: ${assignedTo}`);
 
     // Create instance task
     const { error: taskError } = await supabase
@@ -343,7 +347,7 @@ async function createInstanceTask(instance: any, node: any): Promise<void> {
       throw taskError;
     }
 
-    console.log(`[Workflow Worker] Created task for node ${node.id}, function ${node.function_code}`);
+    console.log(`[Workflow Worker] Created task for node ${node.id}, function ${node.function_code}, assigned to ${assignedTo}`);
 
   } catch (error) {
     console.error('[Workflow Worker] Error in createInstanceTask:', error);
