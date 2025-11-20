@@ -12,7 +12,7 @@ import { use } from 'react';
 import { ArrowLeft, RefreshCw, CheckCircle, XCircle, Clock, PlayCircle } from 'lucide-react';
 
 interface TaskStatus {
-  task_id: string;
+  task_id: string | null;
   node_id: string;
   function_code: string;
   task_name: string;
@@ -20,7 +20,7 @@ interface TaskStatus {
   status: string;
   assigned_to_name: string;
   assigned_to_email: string;
-  created_at: string;
+  created_at: string | null;
   started_at: string | null;
   completed_at: string | null;
   error_message: string | null;
@@ -88,6 +88,8 @@ export default function InstanceStatusPage({
         return <XCircle className="w-5 h-5 text-red-600" />;
       case 'PENDING':
         return <Clock className="w-5 h-5 text-yellow-600" />;
+      case 'NOT_STARTED':
+        return <Clock className="w-5 h-5 text-gray-400" />;
       default:
         return <PlayCircle className="w-5 h-5 text-gray-600" />;
     }
@@ -104,6 +106,8 @@ export default function InstanceStatusPage({
         return 'bg-red-100 text-red-800';
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
+      case 'NOT_STARTED':
+        return 'bg-gray-100 text-gray-500';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -290,8 +294,11 @@ export default function InstanceStatusPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {instance.tasks.map((task) => (
-                <tr key={task.task_id} className="hover:bg-gray-50">
+              {instance.tasks.map((task, index) => (
+                <tr
+                  key={task.task_id || `not-started-${task.node_id}`}
+                  className={`hover:bg-gray-50 ${task.status === 'NOT_STARTED' ? 'opacity-60' : ''}`}
+                >
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{task.task_name}</div>
                     <div className="text-sm text-gray-500">{task.function_code}</div>
@@ -316,7 +323,7 @@ export default function InstanceStatusPage({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {new Date(task.created_at).toLocaleString()}
+                    {task.created_at ? new Date(task.created_at).toLocaleString() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {task.completed_at ? new Date(task.completed_at).toLocaleString() : '-'}
