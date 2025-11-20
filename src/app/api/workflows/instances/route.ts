@@ -57,20 +57,23 @@ export async function GET(request: NextRequest) {
     // For each instance, get task counts
     const enrichedInstances = await Promise.all(
       (instances || []).map(async (instance) => {
-        // Get task counts
+        // Get template info first (handle array or object response)
+        const template = Array.isArray(instance.workflow_templates)
+          ? instance.workflow_templates[0]
+          : instance.workflow_templates;
+
+        // Count total TASK nodes from workflow definition (not just created tasks)
+        const taskNodes = template?.definition?.nodes?.filter((n: any) => n.type === 'TASK') || [];
+        const totalTasksInDefinition = taskNodes.length;
+
+        // Get actual created task counts
         const { data: tasks, error: tasksError } = await supabase
           .from('instance_tasks')
           .select('id, status, node_id')
           .eq('workflow_instance_id', instance.id);
 
-        const totalTasks = tasks?.length || 0;
         const completedTasks = tasks?.filter(t => t.status === 'COMPLETED').length || 0;
         const pendingTasks = tasks?.filter(t => t.status === 'PENDING').length || 0;
-
-        // Get template info (handle array or object response)
-        const template = Array.isArray(instance.workflow_templates)
-          ? instance.workflow_templates[0]
-          : instance.workflow_templates;
 
         // Find current node name from definition
         let currentNodeName = instance.current_node_id;
@@ -94,10 +97,10 @@ export async function GET(request: NextRequest) {
           created_at: instance.created_at,
           updated_at: instance.updated_at,
           completed_at: instance.completed_at,
-          total_tasks: totalTasks,
+          total_tasks: totalTasksInDefinition,
           completed_tasks: completedTasks,
           pending_tasks: pendingTasks,
-          progress_percentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+          progress_percentage: totalTasksInDefinition > 0 ? Math.round((completedTasks / totalTasksInDefinition) * 100) : 0,
         };
       })
     );
