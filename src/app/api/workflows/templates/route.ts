@@ -101,7 +101,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get app_uuid from site settings (not stakeholder - this is admin interface)
-    const app_uuid = await getAppUuid(accessToken);
+    let app_uuid: string;
+    try {
+      app_uuid = await getAppUuid(accessToken);
+    } catch (appError: any) {
+      console.error('Error getting app_uuid:', appError);
+      return NextResponse.json(
+        { error: `Failed to get app context: ${appError.message}` },
+        { status: 500 }
+      );
+    }
 
     const insertData = {
       template_code: input.template_code,
