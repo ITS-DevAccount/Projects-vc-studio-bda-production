@@ -186,8 +186,30 @@ export async function POST(
       actor_id: stakeholder.id,
     }]);
 
-    // TODO: Trigger workflow resumption (call workflow engine)
-    // For now, this is a placeholder for future workflow engine integration
+    // Queue workflow resumption for async processing
+    console.log('[Task Complete] Queueing workflow resumption for instance:', task.workflow_instance_id);
+
+    const { error: queueError } = await supabase
+      .from('workflow_execution_queue')
+      .insert([{
+        app_code: task.app_code,
+        workflow_instance_id: task.workflow_instance_id,
+        trigger_type: 'TASK_COMPLETED',
+        trigger_data: {
+          task_id: taskId,
+          node_id: task.node_id,
+          function_code: task.function_code,
+        },
+        status: 'PENDING',
+      }]);
+
+    if (queueError) {
+      console.error('[Task Complete] Error queueing workflow resumption:', queueError);
+      // Don't fail the task completion if queueing fails - log and continue
+      // The task is already marked as completed
+    } else {
+      console.log('[Task Complete] Workflow resumption queued successfully');
+    }
 
     return NextResponse.json({
       success: true,
