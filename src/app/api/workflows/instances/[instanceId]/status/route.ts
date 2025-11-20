@@ -83,17 +83,20 @@ export async function GET(
 
     const tasksList = tasks || [];
 
-    // 3. Calculate progress
-    const totalTasks = tasksList.length;
-    const completedTasks = tasksList.filter(t => t.status === 'COMPLETED').length;
-    const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // 4. Find current node name from workflow definition
+    // 3. Get template and workflow definition
     const template = Array.isArray(instance.workflow_templates)
       ? instance.workflow_templates[0]
       : instance.workflow_templates;
 
     const workflowDef = template?.definition || { nodes: [] };
+
+    // 4. Calculate progress based on total TASK nodes in definition (not just created tasks)
+    const taskNodes = workflowDef.nodes?.filter((n: any) => n.type === 'TASK') || [];
+    const totalTasksInDefinition = taskNodes.length;
+    const completedTasks = tasksList.filter(t => t.status === 'COMPLETED').length;
+    const progressPercentage = totalTasksInDefinition > 0 ? Math.round((completedTasks / totalTasksInDefinition) * 100) : 0;
+
+    // 5. Find current node name from workflow definition
     const currentNode = workflowDef.nodes?.find((n: any) => n.id === instance.current_node_id);
 
     // 5. Format response
@@ -101,13 +104,14 @@ export async function GET(
       instance_id: instance.id,
       workflow_code: instance.workflow_code,
       workflow_name: template?.name || 'Unknown',
+      instance_name: instance.instance_name,
       workflow_type: template?.workflow_type || 'Unknown',
       status: instance.status,
       current_node_id: instance.current_node_id,
       current_node_name: currentNode?.label || currentNode?.name || 'Unknown',
       progress_percentage: progressPercentage,
       completed_tasks: completedTasks,
-      total_tasks: totalTasks,
+      total_tasks: totalTasksInDefinition,
       tasks: tasksList.map((t: any) => ({
         task_id: t.id,
         node_id: t.node_id,

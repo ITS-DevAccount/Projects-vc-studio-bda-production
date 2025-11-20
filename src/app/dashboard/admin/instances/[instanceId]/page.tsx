@@ -30,6 +30,7 @@ interface InstanceStatus {
   instance_id: string;
   workflow_code: string;
   workflow_name: string;
+  instance_name: string | null;
   workflow_type: string;
   status: string;
   current_node_id: string | null;
@@ -171,8 +172,15 @@ export default function InstanceStatusPage({
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{instance.workflow_name}</h1>
-          <p className="text-gray-600 mt-1">{instance.workflow_code}</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {instance.instance_name || instance.workflow_name}
+          </h1>
+          {instance.instance_name && (
+            <p className="text-sm text-gray-600 mt-1">
+              Template: {instance.workflow_name}
+            </p>
+          )}
+          <p className="text-gray-500 mt-1 text-sm">{instance.workflow_code}</p>
         </div>
 
         <button
