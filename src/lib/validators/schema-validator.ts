@@ -238,7 +238,7 @@ export function isValidJSONSchema(schema: any): boolean {
   if (!schema.properties || typeof schema.properties !== 'object') return false;
 
   // Check each property has a valid type
-  for (const [key, prop] of Object.entries(schema.properties)) {
+  for (const [_key, prop] of Object.entries(schema.properties)) {
     if (typeof prop !== 'object' || !(prop as any).type) {
       return false;
     }

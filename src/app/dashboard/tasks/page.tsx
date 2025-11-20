@@ -20,7 +20,7 @@ export default function TasksPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
 
   // Fetch pending tasks
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (): Promise<TaskWithFunction[]> => {
     try {
       setError(null);
 
@@ -31,12 +31,15 @@ export default function TasksPage() {
       }
 
       const data = await response.json();
-      setTasks(data.tasks || []);
+      const tasks = data.tasks || [];
+      setTasks(tasks);
       setLoading(false);
+      return tasks;
     } catch (err: any) {
       console.error('Error fetching tasks:', err);
       setError(err.message || 'Failed to load tasks');
       setLoading(false);
+      return [];
     }
   }, []);
 

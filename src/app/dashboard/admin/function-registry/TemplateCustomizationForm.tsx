@@ -38,7 +38,7 @@ export default function TemplateCustomizationForm({
 
   const [inputSchemaJson, setInputSchemaJson] = useState(JSON.stringify(template.inputSchema, null, 2));
   const [outputSchemaJson, setOutputSchemaJson] = useState(JSON.stringify(template.outputSchema, null, 2));
-  const [tagsInput, setTagsInput] = useState(template.category);
+  const [tagsInput, setTagsInput] = useState<string>(template.category);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);

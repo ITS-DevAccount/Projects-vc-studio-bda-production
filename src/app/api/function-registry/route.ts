@@ -5,11 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import type {
-  FunctionRegistryEntry,
-  CreateFunctionRegistryInput,
-  FunctionRegistryFilters,
-} from '@/lib/types/function-registry';
+import type { CreateFunctionRegistryInput } from '@/lib/types/function-registry';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');

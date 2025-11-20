@@ -23,7 +23,7 @@ function getAccessToken(req: NextRequest): string | undefined {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     const accessToken = getAccessToken(request);
@@ -39,7 +39,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { taskId } = params;
+    const { taskId } = await params;
 
     // Get stakeholder_id
     const { data: stakeholder, error: stakeholderError } = await supabase
@@ -132,32 +132,33 @@ export async function POST(
     }
 
     // Update instance_context with output data
-    const { error: contextError } = await supabase.rpc('upsert_instance_context', {
+    const { error: rpcError } = await supabase.rpc('upsert_instance_context', {
       p_workflow_instance_id: task.workflow_instance_id,
       p_context_data: input.output,
-    }).catch(() => {
-      // Fallback: manual context update
-      return supabase
+    });
+
+    // Fallback: if RPC doesn't exist, do manual context update
+    if (rpcError) {
+      const { data: contextData } = await supabase
         .from('instance_context')
         .select('*')
         .eq('workflow_instance_id', task.workflow_instance_id)
         .order('version', { ascending: false })
-        .limit(1)
-        .then(({ data }) => {
-          const latestContext = data?.[0];
-          const newContextData = {
-            ...(latestContext?.context_data || {}),
-            [task.node_id]: input.output,
-          };
+        .limit(1);
 
-          return supabase.from('instance_context').insert([{
-            app_code: task.app_code,
-            workflow_instance_id: task.workflow_instance_id,
-            context_data: newContextData,
-            version: (latestContext?.version || 0) + 1,
-          }]);
-        });
-    });
+      const latestContext = contextData?.[0];
+      const newContextData = {
+        ...(latestContext?.context_data || {}),
+        [task.node_id]: input.output,
+      };
+
+      await supabase.from('instance_context').insert([{
+        app_code: task.app_code,
+        workflow_instance_id: task.workflow_instance_id,
+        context_data: newContextData,
+        version: (latestContext?.version || 0) + 1,
+      }]);
+    }
 
     // Log to workflow_history
     await supabase.from('workflow_history').insert([{

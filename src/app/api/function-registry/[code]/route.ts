@@ -22,7 +22,7 @@ function getAccessToken(req: NextRequest): string | undefined {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const accessToken = getAccessToken(request);
@@ -38,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Fetch entry by function_code
     const { data, error } = await supabase
@@ -68,7 +68,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const accessToken = getAccessToken(request);
@@ -84,7 +84,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Parse request body
     const input: Partial<UpdateFunctionRegistryInput> = await request.json();
@@ -131,7 +131,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const accessToken = getAccessToken(request);
@@ -147,7 +147,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { code } = params;
+    const { code } = await params;
 
     // Check if function is used in any workflows
     const { data: usageData, error: usageError } = await supabase

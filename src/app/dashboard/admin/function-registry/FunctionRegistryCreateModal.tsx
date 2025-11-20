@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import type { CreateFunctionRegistryInput, ImplementationType, WidgetType } from '@/lib/types/function-registry';
+import type { CreateFunctionRegistryInput, ImplementationType } from '@/lib/types/function-registry';
 import { WIDGET_CATALOG, DEFAULT_INPUT_SCHEMA, DEFAULT_OUTPUT_SCHEMA } from '@/lib/types/function-registry';
 
 interface FunctionRegistryCreateModalProps {

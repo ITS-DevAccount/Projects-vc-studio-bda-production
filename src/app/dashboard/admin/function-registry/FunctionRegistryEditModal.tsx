@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { FunctionRegistryEntry, UpdateFunctionRegistryInput, ImplementationType } from '@/lib/types/function-registry';
 import { WIDGET_CATALOG } from '@/lib/types/function-registry';

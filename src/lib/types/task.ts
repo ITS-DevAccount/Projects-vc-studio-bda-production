@@ -139,7 +139,7 @@ export class WebSocketTaskUpdateStrategy implements TaskUpdateStrategy {
     // TODO: Request refresh via WebSocket
   }
 
-  onUpdate(callback: (tasks: TaskWithFunction[]) => void): void {
+  onUpdate(_callback: (tasks: TaskWithFunction[]) => void): void {
     // TODO: Set up WebSocket message handler
   }
 }

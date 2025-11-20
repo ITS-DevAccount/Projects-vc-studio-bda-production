@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import type { WorkflowTemplate, CreateWorkflowTemplateInput } from '@/lib/types/workflow';
+import type { CreateWorkflowTemplateInput } from '@/lib/types/workflow';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
