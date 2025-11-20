@@ -203,17 +203,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create instance_tasks for each TASK node
+    // Create instance_tasks for each TASK node (match actual table schema)
     const tasksToCreate = taskNodes.map((node: WorkflowNode) => ({
+      app_code: app_code,
       workflow_instance_id: instance.id,
-      node_id: node.id,
+      workflow_code: instance.workflow_code,
       function_code: node.function_code,
+      node_id: node.id,
       task_type: 'USER_TASK' as const, // For now, assume all are USER_TASK
       status: node.id === firstTaskNodeId ? 'PENDING' : 'PENDING',
       assigned_to: input.task_assignments[node.id] || null,
       input_data: {},
-      context: instance.input_data || {},
-      app_code: app_code,
     }));
 
     const { data: createdTasks, error: tasksError } = await supabase
