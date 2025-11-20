@@ -184,6 +184,7 @@ export async function POST(request: NextRequest) {
       app_code,
       workflow_definition_id: template.id, // FK to workflow_templates
       workflow_code: template.template_code,
+      instance_name: input.instance_name || null, // User-provided name for this instance
       current_node_id: firstTaskNodeId,
       status: 'RUNNING' as const,
       input_data: {

@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
           id: instance.id,
           workflow_code: instance.workflow_code,
           workflow_name: template?.name || instance.workflow_code,
+          instance_name: instance.instance_name,
           status: instance.status,
           current_node_id: instance.current_node_id,
           current_node_name: currentNodeName,

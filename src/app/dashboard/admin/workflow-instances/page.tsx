@@ -25,6 +25,7 @@ export default function WorkflowInstanceCreationPage() {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
+  const [instanceName, setInstanceName] = useState<string>('');
   const [taskAssignments, setTaskAssignments] = useState<TaskAssignments>({});
   const [initialContext, setInitialContext] = useState<string>('{}');
 
@@ -135,6 +136,7 @@ export default function WorkflowInstanceCreationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workflow_template_id: selectedTemplateId,
+          instance_name: instanceName.trim() || undefined,
           task_assignments: taskAssignments,
           initial_context: parsedContext,
         }),
@@ -209,6 +211,7 @@ export default function WorkflowInstanceCreationPage() {
                     setSuccess(null);
                     setSelectedTemplateId('');
                     setSelectedTemplate(null);
+                    setInstanceName('');
                     setTaskAssignments({});
                     setInitialContext('{}');
                   }}
@@ -270,12 +273,31 @@ export default function WorkflowInstanceCreationPage() {
             )}
           </div>
 
-          {/* Step 2: Assign Stakeholders */}
+          {/* Step 2: Name This Instance */}
+          {selectedTemplate && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">Step 2: Name This Instance (Optional)</h2>
+              <input
+                type="text"
+                value={instanceName}
+                onChange={(e) => setInstanceName(e.target.value)}
+                placeholder={`e.g., "John Smith Onboarding", "ACME Corp Contract Review"`}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={200}
+              />
+              <p className="mt-2 text-sm text-gray-600">
+                Give this instance a unique name to easily identify it later.
+                If left blank, only the workflow template name will be shown.
+              </p>
+            </div>
+          )}
+
+          {/* Step 3: Assign Stakeholders */}
           {selectedTemplate && getTaskNodes().length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Step 2: Assign Stakeholders to Tasks
+                Step 3: Assign Stakeholders to Tasks
               </h2>
 
               <div className="space-y-4">
@@ -315,10 +337,10 @@ export default function WorkflowInstanceCreationPage() {
             </div>
           )}
 
-          {/* Step 3: Initial Context (Optional) */}
+          {/* Step 4: Initial Context (Optional) */}
           {selectedTemplate && (
             <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Step 3: Initial Context (Optional)</h2>
+              <h2 className="text-xl font-semibold mb-4">Step 4: Initial Context (Optional)</h2>
               <p className="text-sm text-gray-600 mb-3">
                 Provide initial data for the workflow as JSON (e.g., document names, IDs, etc.)
               </p>

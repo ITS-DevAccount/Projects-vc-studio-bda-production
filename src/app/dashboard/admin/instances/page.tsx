@@ -16,6 +16,7 @@ interface WorkflowInstance {
   id: string;
   workflow_code: string;
   workflow_name: string;
+  instance_name: string | null;
   status: string;
   current_node_id: string | null;
   current_node_name: string | null;
@@ -201,9 +202,14 @@ export default function WorkflowInstancesListPage() {
                   <tr key={instance.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {instance.workflow_name}
+                        {instance.instance_name || instance.workflow_name}
                       </div>
-                      <div className="text-xs text-gray-500">{instance.workflow_code}</div>
+                      {instance.instance_name && (
+                        <div className="text-xs text-gray-600 mt-0.5">
+                          Template: {instance.workflow_name}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-0.5">{instance.workflow_code}</div>
                       <div className="text-xs text-gray-400 mt-0.5">ID: {instance.id.slice(0, 8)}...</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

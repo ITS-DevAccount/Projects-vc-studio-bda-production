@@ -57,6 +57,7 @@ export interface TaskAssignments {
  */
 export interface CreateInstanceInput {
   workflow_template_id: string;
+  instance_name?: string; // Optional user-provided name to identify this instance
   task_assignments: TaskAssignments;
   initial_context?: Record<string, any>;
 }
