@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 import type { CreateWorkflowTemplateInput } from '@/lib/types/workflow';
 
 function getAccessToken(req: NextRequest): string | undefined {
@@ -99,16 +100,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get app_uuid from user's stakeholder record
-    const { data: stakeholder } = await supabase
-      .from('stakeholders')
-      .select('app_uuid')
-      .eq('auth_user_id', user.id)
-      .single();
-
-    if (!stakeholder) {
-      return NextResponse.json({ error: 'User stakeholder not found' }, { status: 404 });
-    }
+    // Get app_uuid from site settings (not stakeholder - this is admin interface)
+    const app_uuid = await getAppUuid(accessToken);
 
     const insertData = {
       template_code: input.template_code,
@@ -118,7 +111,7 @@ export async function POST(request: NextRequest) {
       maturity_gate: input.maturity_gate || null,
       definition: input.definition,
       is_active: input.is_active !== undefined ? input.is_active : true,
-      app_uuid: stakeholder.app_uuid,
+      app_uuid,
     };
 
     const { data, error } = await supabase
