@@ -114,11 +114,14 @@ export async function POST(
     }
 
     // Update task to COMPLETED
+    console.log('Updating task to COMPLETED:', taskId);
+
     const { data: updatedTask, error: updateError } = await supabase
       .from('instance_tasks')
       .update({
         status: 'COMPLETED',
         output_data: input.output,
+        started_at: task.started_at || new Date().toISOString(), // Set if not already set
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -126,9 +129,20 @@ export async function POST(
       .select()
       .single();
 
+    console.log('Task update result:', { success: !updateError, taskId, updatedStatus: updatedTask?.status });
+
     if (updateError) {
       console.error('Error updating task:', updateError);
-      return NextResponse.json({ error: 'Failed to complete task' }, { status: 500 });
+      return NextResponse.json({
+        error: 'Failed to complete task',
+        details: updateError.message,
+        code: updateError.code
+      }, { status: 500 });
+    }
+
+    if (!updatedTask) {
+      console.error('Task update returned no data');
+      return NextResponse.json({ error: 'Task update failed - no data returned' }, { status: 500 });
     }
 
     // Update instance_context with output data
