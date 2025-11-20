@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck, Database } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Database, Workflow, Settings } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -34,6 +34,20 @@ export default function CommunityDashboard() {
       description: 'Manage system components, AI functions, and workflow tasks registry',
       icon: Database,
       href: '/dashboard/admin/registry'
+    },
+    {
+      id: 'function-registry',
+      label: 'Function Registry',
+      description: 'Manage workflow task definitions with input/output schemas (Sprint 1d.4)',
+      icon: Settings,
+      href: '/dashboard/admin/function-registry'
+    },
+    {
+      id: 'workflow-designer',
+      label: 'Workflow Designer',
+      description: 'Create and manage workflow templates with visual canvas (Sprint 1d.4)',
+      icon: Workflow,
+      href: '/dashboard/admin/workflow-designer'
     },
     {
       id: 'roles',
