@@ -146,8 +146,20 @@ export async function POST(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
     if (!serviceRoleKey || !supabaseUrl) {
-      console.error('Missing Supabase service role configuration for stakeholder provisioning');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      const missingVars = [];
+      if (!serviceRoleKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+      if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
+      
+      console.error('Missing Supabase service role configuration for stakeholder provisioning:', {
+        missing: missingVars,
+        hasServiceRoleKey: !!serviceRoleKey,
+        hasSupabaseUrl: !!supabaseUrl
+      });
+      
+      return NextResponse.json({ 
+        error: 'Server configuration error',
+        details: `Missing required environment variables: ${missingVars.join(', ')}. The service role key is required for creating stakeholder accounts with user authentication. Get it from: Supabase Dashboard → Settings → API → service_role key`
+      }, { status: 500 });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
