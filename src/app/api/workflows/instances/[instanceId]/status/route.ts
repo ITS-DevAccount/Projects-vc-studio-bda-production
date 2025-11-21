@@ -59,16 +59,10 @@ export async function GET(
       );
     }
 
-    // 2. Fetch all tasks for this instance (without stakeholder join to avoid FK issues)
+    // 2. Fetch all tasks for this instance (simple query without any joins)
     const { data: tasks, error: tasksError } = await supabase
       .from('instance_tasks')
-      .select(`
-        *,
-        function_registry:function_code (
-          function_code,
-          description
-        )
-      `)
+      .select('*')
       .eq('workflow_instance_id', instanceId)
       .order('created_at', { ascending: true });
 
@@ -110,10 +104,12 @@ export async function GET(
       console.log(`[Instance Status API] Matching node ${taskNode.id}: ${createdTask ? `FOUND (${createdTask.status})` : 'NOT FOUND'}`);
 
       if (createdTask) {
-        // Task has been created - fetch stakeholder info separately
+        // Task has been created - fetch related data separately
         let assignedToName = 'Unassigned';
         let assignedToEmail = '';
+        let taskDescription = taskNode.label || createdTask.function_code;
 
+        // Fetch stakeholder info
         if (createdTask.assigned_to) {
           const { data: stakeholder } = await supabase
             .from('stakeholders')
@@ -127,11 +123,24 @@ export async function GET(
           }
         }
 
+        // Fetch function description
+        if (createdTask.function_code) {
+          const { data: func } = await supabase
+            .from('function_registry')
+            .select('description')
+            .eq('function_code', createdTask.function_code)
+            .single();
+
+          if (func?.description) {
+            taskDescription = func.description;
+          }
+        }
+
         return {
           task_id: createdTask.id,
           node_id: createdTask.node_id,
           function_code: createdTask.function_code,
-          task_name: createdTask.function_registry?.description || taskNode.label || createdTask.function_code,
+          task_name: taskDescription,
           task_type: createdTask.task_type,
           status: createdTask.status,
           assigned_to_id: createdTask.assigned_to,
