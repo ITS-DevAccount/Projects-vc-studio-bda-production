@@ -11,7 +11,7 @@ import { processWorkflowQueue } from '@/lib/workflows/execution-worker';
  * POST /api/workflows/process-queue
  * Process pending workflow execution queue items
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('[Process Queue API] Starting queue processing...');
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
  * GET /api/workflows/process-queue
  * Get status of workflow execution queue
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // This could return queue statistics
     // For now, just trigger processing
