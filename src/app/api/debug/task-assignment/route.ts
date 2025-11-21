@@ -44,15 +44,24 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(20);
 
+    if (tasksError) {
+      console.error('Error fetching instance tasks:', tasksError);
+      const errorMessage = (tasksError as any)?.message || 'Unknown error';
+      return NextResponse.json(
+        { error: 'Failed to fetch instance tasks', details: errorMessage },
+        { status: 500 }
+      );
+    }
+
     // Get all stakeholders
-    const { data: allStakeholders, error: stakeholdersError } = await supabase
+    const { data: allStakeholders } = await supabase
       .from('stakeholders')
       .select('id, name, auth_user_id');
 
     // Get pending tasks for current user (if stakeholder exists)
     let pendingTasks = null;
     if (stakeholder) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('instance_tasks')
         .select('*')
         .eq('assigned_to', stakeholder.id)
