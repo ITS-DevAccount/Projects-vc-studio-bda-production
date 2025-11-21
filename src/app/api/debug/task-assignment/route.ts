@@ -38,11 +38,14 @@ export async function GET(request: NextRequest) {
       .single();
 
     // Get all instance tasks
-    const { data: allTasks, error: tasksError } = await supabase
+    const tasksResult = await supabase
       .from('instance_tasks')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(20);
+
+    const allTasks = tasksResult.data;
+    const tasksError = tasksResult.error;
 
     if (tasksError) {
       console.error('Error fetching instance tasks:', tasksError);
