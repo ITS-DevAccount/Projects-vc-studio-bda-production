@@ -27,22 +27,30 @@ export async function GET(req: NextRequest) {
     // Get app_uuid for multi-tenancy filtering
     const appUuid = await getAppUuid(accessToken);
 
-    // Use service role client to bypass RLS for admin operations
+    // Try to use service role client to bypass RLS for admin operations
+    // Fall back to authenticated client if service role key is not available
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    if (!serviceRoleKey || !supabaseUrl) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    let queryClient: any;
+
+    if (serviceRoleKey && supabaseUrl) {
+      // Use service role client if available
+      queryClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+    } else {
+      // Fall back to authenticated client
+      // Note: This requires proper RLS policies to allow access
+      // To get the service role key: Supabase Dashboard → Settings → API → service_role key
+      console.warn('SUPABASE_SERVICE_ROLE_KEY not found in environment variables. Using authenticated client. Ensure RLS policies allow access to relationship_types table.');
+      queryClient = supabase;
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
-
-    const { data, error } = await adminClient
+    const { data, error } = await queryClient
       .from('relationship_types')
       .select('*')
       .eq('app_uuid', appUuid) // SECURITY: Filter by app_uuid
@@ -83,22 +91,30 @@ export async function POST(req: NextRequest) {
       app_uuid: appUuid, // Always set app_uuid for new relationship types
     };
 
-    // Use service role client to bypass RLS for admin operations
+    // Try to use service role client to bypass RLS for admin operations
+    // Fall back to authenticated client if service role key is not available
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    if (!serviceRoleKey || !supabaseUrl) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    let queryClient: any;
+
+    if (serviceRoleKey && supabaseUrl) {
+      // Use service role client if available
+      queryClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+    } else {
+      // Fall back to authenticated client
+      // Note: This requires proper RLS policies to allow access
+      // To get the service role key: Supabase Dashboard → Settings → API → service_role key
+      console.warn('SUPABASE_SERVICE_ROLE_KEY not found in environment variables. Using authenticated client. Ensure RLS policies allow access to relationship_types table.');
+      queryClient = supabase;
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
-
-    const { data, error } = await adminClient
+    const { data, error } = await queryClient
       .from('relationship_types')
       .insert([relationshipTypeData])
       .select()

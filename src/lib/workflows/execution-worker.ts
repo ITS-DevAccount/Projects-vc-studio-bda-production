@@ -284,7 +284,7 @@ export async function processWorkflowQueue(limit: number = 10): Promise<{
  * Evaluate transition condition
  * For now, supports simple conditions or defaults to true
  */
-function evaluateCondition(condition: string | null | undefined, context: any): boolean {
+function evaluateCondition(condition: string | null | undefined, _context: any): boolean {
   // If no condition, always transition
   if (!condition || condition === '' || condition === 'true') {
     return true;

@@ -49,6 +49,14 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(5);
 
+    if (instancesError) {
+      console.error('Error fetching workflow instances:', instancesError);
+      return NextResponse.json(
+        { error: 'Failed to fetch workflow instances', details: instancesError.message },
+        { status: 500 }
+      );
+    }
+
     // For each instance, get detailed task info
     const instanceDetails = await Promise.all(
       (instances || []).map(async (instance) => {

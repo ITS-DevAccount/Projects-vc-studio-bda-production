@@ -65,7 +65,11 @@ const TaskFormModal = React.memo(({ task, onClose, onSuccess }: TaskFormModalPro
       const result: CompleteTaskResponse = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to complete task');
+        const errorMessage = result.message || 
+          (result.errors && result.errors.length > 0 
+            ? result.errors.map(e => `${e.field}: ${e.message}`).join(', ')
+            : 'Failed to complete task');
+        throw new Error(errorMessage);
       }
 
       // Success

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch workflow instances with template details
+    // Get all workflow instances with template info
     const { data: instances, error: instancesError } = await supabase
       .from('workflow_instances')
       .select(`
@@ -47,9 +47,9 @@ export async function GET(request: NextRequest) {
       .limit(100); // Limit to recent 100 instances
 
     if (instancesError) {
-      console.error('Error fetching instances:', instancesError);
+      console.error('Error fetching workflow instances:', instancesError);
       return NextResponse.json(
-        { error: 'Failed to fetch instances' },
+        { error: 'Failed to fetch workflow instances', details: instancesError.message },
         { status: 500 }
       );
     }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         const totalTasksInDefinition = taskNodes.length;
 
         // Get actual created task counts
-        const { data: tasks, error: tasksError } = await supabase
+        const { data: tasks } = await supabase
           .from('instance_tasks')
           .select('id, status, node_id')
           .eq('workflow_instance_id', instance.id);

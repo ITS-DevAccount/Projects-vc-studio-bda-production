@@ -96,6 +96,14 @@ export async function GET(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
 
+    // Verify user is authenticated
+    const supabase = await createServerClient(accessToken);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Get app_uuid for multi-tenancy filtering
     const appUuid = await getAppUuid(accessToken);
 
@@ -125,6 +133,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const accessToken = getAccessToken(req);
+
+    // Verify user is authenticated
+    const supabase = await createServerClient(accessToken);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Get app_uuid for multi-tenancy filtering
     const appUuid = await getAppUuid(accessToken);

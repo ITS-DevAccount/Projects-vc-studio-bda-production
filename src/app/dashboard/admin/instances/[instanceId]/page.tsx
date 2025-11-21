@@ -294,7 +294,7 @@ export default function InstanceStatusPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {instance.tasks.map((task, index) => (
+              {instance.tasks.map((task) => (
                 <tr
                   key={task.task_id || `not-started-${task.node_id}`}
                   className={`hover:bg-gray-50 ${task.status === 'NOT_STARTED' ? 'opacity-60' : ''}`}
