@@ -233,10 +233,14 @@ export async function processWorkflowQueue(limit: number = 10): Promise<{
   processed: number;
   succeeded: number;
   failed: number;
+  serviceTasks: number;
 }> {
   const supabase = getServiceClient();
 
   console.log('[Workflow Worker] Starting queue processing...');
+
+  // First, check for any orphaned SERVICE_TASKs that are stuck in PENDING
+  await processOrphanedServiceTasks();
 
   // Get pending queue items
   const { data: queueItems, error } = await supabase
@@ -248,12 +252,12 @@ export async function processWorkflowQueue(limit: number = 10): Promise<{
 
   if (error) {
     console.error('[Workflow Worker] Error fetching queue items:', error);
-    return { processed: 0, succeeded: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, failed: 0, serviceTasks: 0 };
   }
 
   if (!queueItems || queueItems.length === 0) {
     console.log('[Workflow Worker] No pending queue items');
-    return { processed: 0, succeeded: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, failed: 0, serviceTasks: 0 };
   }
 
   console.log(`[Workflow Worker] Found ${queueItems.length} pending queue items`);
@@ -277,7 +281,56 @@ export async function processWorkflowQueue(limit: number = 10): Promise<{
     processed: queueItems.length,
     succeeded,
     failed,
+    serviceTasks: 0,
   };
+}
+
+/**
+ * Process any SERVICE_TASKs or AI_AGENT_TASKs that are stuck in PENDING status
+ * This is a safety mechanism in case tasks were created but not executed
+ */
+async function processOrphanedServiceTasks(): Promise<number> {
+  const supabase = getServiceClient();
+
+  try {
+    console.log('[Workflow Worker] Checking for orphaned SERVICE_TASKs...');
+
+    // Find SERVICE_TASK and AI_AGENT_TASK types that are in PENDING status
+    const { data: tasks, error } = await supabase
+      .from('instance_tasks')
+      .select('*, function_registry:function_code(*)')
+      .in('task_type', ['SERVICE_TASK', 'AI_AGENT_TASK'])
+      .eq('status', 'PENDING')
+      .limit(10);
+
+    if (error || !tasks || tasks.length === 0) {
+      return 0;
+    }
+
+    console.log(`[Workflow Worker] Found ${tasks.length} orphaned service tasks, executing...`);
+
+    let executed = 0;
+    for (const task of tasks) {
+      try {
+        const func = Array.isArray(task.function_registry)
+          ? task.function_registry[0]
+          : task.function_registry;
+
+        if (func && func.endpoint_or_path) {
+          await executeServiceTask(task, func);
+          executed++;
+        }
+      } catch (error) {
+        console.error(`[Workflow Worker] Error executing orphaned task ${task.id}:`, error);
+      }
+    }
+
+    console.log(`[Workflow Worker] Executed ${executed} orphaned service tasks`);
+    return executed;
+  } catch (error) {
+    console.error('[Workflow Worker] Error processing orphaned service tasks:', error);
+    return 0;
+  }
 }
 
 /**
@@ -299,6 +352,137 @@ function evaluateCondition(condition: string | null | undefined, _context: any):
   // For now, just return true for any other condition
   console.log(`[Workflow Worker] Evaluating condition: ${condition} (defaulting to true)`);
   return true;
+}
+
+/**
+ * Execute a SERVICE_TASK or AI_AGENT_TASK by calling its endpoint
+ */
+async function executeServiceTask(task: any, func: any): Promise<void> {
+  const supabase = getServiceClient();
+
+  try {
+    console.log(`[Service Task Executor] Executing task ${task.id}: ${func.function_code}`);
+    console.log(`[Service Task Executor] Endpoint: ${func.endpoint_or_path}`);
+
+    // Update task status to IN_PROGRESS
+    await supabase
+      .from('instance_tasks')
+      .update({
+        status: 'IN_PROGRESS',
+        started_at: new Date().toISOString(),
+      })
+      .eq('id', task.id);
+
+    // Determine if endpoint is relative (internal API) or absolute (external URL)
+    const isAbsoluteUrl = func.endpoint_or_path.startsWith('http://') || func.endpoint_or_path.startsWith('https://');
+    const endpoint = isAbsoluteUrl
+      ? func.endpoint_or_path
+      : `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000'}${func.endpoint_or_path}`;
+
+    console.log(`[Service Task Executor] Calling endpoint: ${endpoint}`);
+
+    // Prepare request payload
+    const payload = {
+      task_id: task.id,
+      workflow_instance_id: task.workflow_instance_id,
+      function_code: task.function_code,
+      input_data: task.input_data,
+      context: {
+        app_code: task.app_code,
+        workflow_code: task.workflow_code,
+      },
+    };
+
+    // Call the service endpoint
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add service role authorization if calling internal API
+        ...(isAbsoluteUrl ? {} : {
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        }),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`Service task failed: ${responseData.error || response.statusText}`);
+    }
+
+    console.log(`[Service Task Executor] Task completed successfully: ${task.id}`);
+
+    // Update task status to COMPLETED with output data
+    await supabase
+      .from('instance_tasks')
+      .update({
+        status: 'COMPLETED',
+        output_data: responseData.output || responseData,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', task.id);
+
+    // Log task completion in workflow history
+    await supabase.from('workflow_history').insert([{
+      app_code: task.app_code,
+      workflow_instance_id: task.workflow_instance_id,
+      event_type: 'TASK_COMPLETED',
+      node_id: task.node_id,
+      description: `${func.implementation_type} completed: ${func.function_code}`,
+      metadata: {
+        task_id: task.id,
+        function_code: task.function_code,
+      },
+    }]);
+
+    // Queue workflow resumption to move to next node
+    await supabase.from('workflow_execution_queue').insert([{
+      app_code: task.app_code,
+      workflow_instance_id: task.workflow_instance_id,
+      trigger_type: 'TASK_COMPLETED',
+      trigger_node_id: task.node_id,
+      status: 'PENDING',
+      metadata: {
+        task_id: task.id,
+        task_type: func.implementation_type,
+      },
+    }]);
+
+    console.log(`[Service Task Executor] Queued workflow resumption for instance: ${task.workflow_instance_id}`);
+
+  } catch (error: any) {
+    console.error(`[Service Task Executor] Error executing task ${task.id}:`, error);
+
+    // Mark task as FAILED
+    await supabase
+      .from('instance_tasks')
+      .update({
+        status: 'FAILED',
+        error_message: error.message || 'Service task execution failed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', task.id);
+
+    // Log task failure
+    await supabase.from('workflow_history').insert([{
+      app_code: task.app_code,
+      workflow_instance_id: task.workflow_instance_id,
+      event_type: 'TASK_FAILED',
+      node_id: task.node_id,
+      description: `${func.implementation_type} failed: ${error.message}`,
+      metadata: {
+        task_id: task.id,
+        function_code: task.function_code,
+        error: error.message,
+      },
+    }]);
+
+    // Optionally suspend workflow on service task failure
+    // For now, we'll let it fail silently and the workflow will remain at this node
+    console.log(`[Service Task Executor] Workflow ${task.workflow_instance_id} suspended due to task failure`);
+  }
 }
 
 /**
@@ -328,7 +512,7 @@ async function createInstanceTask(instance: any, node: any): Promise<void> {
     console.log(`[Workflow Worker] Creating task for node ${node.id}, assigned to: ${assignedTo}`);
 
     // Create instance task
-    const { error: taskError } = await supabase
+    const { data: createdTask, error: taskError } = await supabase
       .from('instance_tasks')
       .insert([{
         app_code: instance.app_code,
@@ -340,7 +524,9 @@ async function createInstanceTask(instance: any, node: any): Promise<void> {
         status: 'PENDING',
         input_data: node.input_data || {},
         assigned_to: assignedTo,
-      }]);
+      }])
+      .select()
+      .single();
 
     if (taskError) {
       console.error('[Workflow Worker] Error creating instance task:', taskError);
@@ -348,6 +534,12 @@ async function createInstanceTask(instance: any, node: any): Promise<void> {
     }
 
     console.log(`[Workflow Worker] Created task for node ${node.id}, function ${node.function_code}, assigned to ${assignedTo}`);
+
+    // Auto-execute SERVICE_TASK and AI_AGENT_TASK types
+    if (func.implementation_type === 'SERVICE_TASK' || func.implementation_type === 'AI_AGENT_TASK') {
+      console.log(`[Workflow Worker] Auto-executing ${func.implementation_type}: ${createdTask.id}`);
+      await executeServiceTask(createdTask, func);
+    }
 
   } catch (error) {
     console.error('[Workflow Worker] Error in createInstanceTask:', error);
