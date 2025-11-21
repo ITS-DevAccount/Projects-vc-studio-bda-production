@@ -96,41 +96,73 @@ export async function GET(
     // 5. Get task assignments from instance input_data
     const taskAssignments = instance.input_data?._task_assignments || {};
 
-    // 6. Create task list showing ALL tasks from definition (created or not)
-    const allTasks = await Promise.all(taskNodes.map(async (taskNode: any) => {
+    // 6. Fetch all stakeholder and function data upfront (prevent N+1 queries)
+    const allStakeholderIds = new Set<string>();
+    const allFunctionCodes = new Set<string>();
+
+    // Collect all stakeholder IDs and function codes
+    tasksList.forEach(task => {
+      if (task.assigned_to) allStakeholderIds.add(task.assigned_to);
+      if (task.function_code) allFunctionCodes.add(task.function_code);
+    });
+    Object.values(taskAssignments).forEach((stakeholderId: any) => {
+      if (stakeholderId) allStakeholderIds.add(stakeholderId);
+    });
+    taskNodes.forEach((node: any) => {
+      if (node.function_code) allFunctionCodes.add(node.function_code);
+    });
+
+    // Fetch all stakeholders in ONE query
+    const stakeholdersMap = new Map();
+    if (allStakeholderIds.size > 0) {
+      const { data: stakeholders } = await supabase
+        .from('stakeholders')
+        .select('id, name, email')
+        .in('id', Array.from(allStakeholderIds));
+
+      if (stakeholders) {
+        stakeholders.forEach(s => stakeholdersMap.set(s.id, s));
+      }
+    }
+
+    // Fetch all function registry entries in ONE query
+    const functionsMap = new Map();
+    if (allFunctionCodes.size > 0) {
+      const { data: functions } = await supabase
+        .from('function_registry')
+        .select('function_code, description')
+        .in('function_code', Array.from(allFunctionCodes));
+
+      if (functions) {
+        functions.forEach(f => functionsMap.set(f.function_code, f));
+      }
+    }
+
+    // 7. Create task list showing ALL tasks from definition (created or not)
+    const allTasks = taskNodes.map((taskNode: any) => {
       // Find matching created instance_task
       const createdTask = tasksList.find(t => t.node_id === taskNode.id);
 
       console.log(`[Instance Status API] Matching node ${taskNode.id}: ${createdTask ? `FOUND (${createdTask.status})` : 'NOT FOUND'}`);
 
       if (createdTask) {
-        // Task has been created - fetch related data separately
+        // Task has been created - lookup related data from maps
         let assignedToName = 'Unassigned';
         let assignedToEmail = '';
         let taskDescription = taskNode.label || createdTask.function_code;
 
-        // Fetch stakeholder info
+        // Lookup stakeholder info from map
         if (createdTask.assigned_to) {
-          const { data: stakeholder } = await supabase
-            .from('stakeholders')
-            .select('name, email')
-            .eq('id', createdTask.assigned_to)
-            .single();
-
+          const stakeholder = stakeholdersMap.get(createdTask.assigned_to);
           if (stakeholder) {
             assignedToName = stakeholder.name || 'Unknown';
             assignedToEmail = stakeholder.email || '';
           }
         }
 
-        // Fetch function description
+        // Lookup function description from map
         if (createdTask.function_code) {
-          const { data: func } = await supabase
-            .from('function_registry')
-            .select('description')
-            .eq('function_code', createdTask.function_code)
-            .single();
-
+          const func = functionsMap.get(createdTask.function_code);
           if (func?.description) {
             taskDescription = func.description;
           }
@@ -159,14 +191,9 @@ export async function GET(
         let assignedToName = 'Not assigned';
         let assignedToEmail = '';
 
-        // Look up stakeholder name if assigned
+        // Look up stakeholder name from map
         if (expectedAssignmentId) {
-          const { data: stakeholder } = await supabase
-            .from('stakeholders')
-            .select('name, email')
-            .eq('id', expectedAssignmentId)
-            .single();
-
+          const stakeholder = stakeholdersMap.get(expectedAssignmentId);
           if (stakeholder) {
             assignedToName = stakeholder.name || 'Unknown';
             assignedToEmail = stakeholder.email || '';
@@ -191,16 +218,16 @@ export async function GET(
           error_message: null,
         };
       }
-    }));
+    });
 
-    // 7. Calculate progress
-    const completedTasks = allTasks.filter(t => t.status === 'COMPLETED').length;
+    // 8. Calculate progress
+    const completedTasks = allTasks.filter((t: any) => t.status === 'COMPLETED').length;
     const progressPercentage = totalTasksInDefinition > 0 ? Math.round((completedTasks / totalTasksInDefinition) * 100) : 0;
 
-    // 8. Find current node name from workflow definition
+    // 9. Find current node name from workflow definition
     const currentNode = workflowDef.nodes?.find((n: any) => n.id === instance.current_node_id);
 
-    // 9. Format response
+    // 10. Format response
     const response = NextResponse.json({
       instance_id: instance.id,
       workflow_code: instance.workflow_code,

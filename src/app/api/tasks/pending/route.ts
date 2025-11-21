@@ -45,29 +45,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
-    // Fetch pending tasks assigned to this user
-    // Join with function_registry and workflow_instances to get full context
+    // Fetch pending tasks assigned to this user (simple query without FK joins)
     const { data: tasks, error: tasksError } = await supabase
       .from('instance_tasks')
-      .select(`
-        *,
-        function_registry!inner (
-          function_code,
-          description,
-          input_schema,
-          output_schema,
-          ui_widget_id,
-          ui_definitions
-        ),
-        workflow_instances!inner (
-          id,
-          instance_name,
-          workflow_code,
-          workflow_templates:workflow_definition_id (
-            name
-          )
-        )
-      `)
+      .select('*')
       .eq('assigned_to', stakeholder.id)
       .eq('status', 'PENDING')
       .order('created_at', { ascending: true });
@@ -77,19 +58,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
     }
 
-    // Transform joined data into flat structure
-    const formattedTasks = (tasks || []).map((task: any) => {
-      const funcRegistry = Array.isArray(task.function_registry)
-        ? task.function_registry[0]
-        : task.function_registry;
+    const tasksList = tasks || [];
 
-      const workflowInstance = Array.isArray(task.workflow_instances)
-        ? task.workflow_instances[0]
-        : task.workflow_instances;
+    // Collect all unique function codes and workflow instance IDs
+    const functionCodes = new Set<string>();
+    const instanceIds = new Set<string>();
+    tasksList.forEach(task => {
+      if (task.function_code) functionCodes.add(task.function_code);
+      if (task.workflow_instance_id) instanceIds.add(task.workflow_instance_id);
+    });
 
-      const workflowTemplate = Array.isArray(workflowInstance?.workflow_templates)
-        ? workflowInstance.workflow_templates[0]
-        : workflowInstance?.workflow_templates;
+    // Fetch all function registry entries in ONE query
+    const functionsMap = new Map();
+    if (functionCodes.size > 0) {
+      const { data: functions } = await supabase
+        .from('function_registry')
+        .select('function_code, description, input_schema, output_schema, ui_widget_id, ui_definitions')
+        .in('function_code', Array.from(functionCodes));
+
+      if (functions) {
+        functions.forEach(f => functionsMap.set(f.function_code, f));
+      }
+    }
+
+    // Fetch all workflow instances in ONE query
+    const instancesMap = new Map();
+    const workflowDefIds = new Set<string>();
+    if (instanceIds.size > 0) {
+      const { data: instances } = await supabase
+        .from('workflow_instances')
+        .select('id, instance_name, workflow_code, workflow_definition_id')
+        .in('id', Array.from(instanceIds));
+
+      if (instances) {
+        instances.forEach(i => {
+          instancesMap.set(i.id, i);
+          if (i.workflow_definition_id) workflowDefIds.add(i.workflow_definition_id);
+        });
+      }
+    }
+
+    // Fetch all workflow templates in ONE query
+    const templatesMap = new Map();
+    if (workflowDefIds.size > 0) {
+      const { data: templates } = await supabase
+        .from('workflow_templates')
+        .select('id, name')
+        .in('id', Array.from(workflowDefIds));
+
+      if (templates) {
+        templates.forEach(t => templatesMap.set(t.id, t));
+      }
+    }
+
+    // Transform data using maps (no more FK joins)
+    const formattedTasks = tasksList.map((task: any) => {
+      const funcRegistry = functionsMap.get(task.function_code);
+      const workflowInstance = instancesMap.get(task.workflow_instance_id);
+      const workflowTemplate = workflowInstance?.workflow_definition_id
+        ? templatesMap.get(workflowInstance.workflow_definition_id)
+        : null;
 
       return {
         // Task fields
