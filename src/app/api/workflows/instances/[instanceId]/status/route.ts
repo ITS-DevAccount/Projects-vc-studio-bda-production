@@ -59,7 +59,7 @@ export async function GET(
       );
     }
 
-    // 2. Fetch all tasks for this instance with stakeholder details
+    // 2. Fetch all tasks for this instance (without stakeholder join to avoid FK issues)
     const { data: tasks, error: tasksError } = await supabase
       .from('instance_tasks')
       .select(`
@@ -67,11 +67,6 @@ export async function GET(
         function_registry:function_code (
           function_code,
           description
-        ),
-        stakeholders:assigned_to (
-          id,
-          name,
-          email
         )
       `)
       .eq('workflow_instance_id', instanceId)
@@ -115,7 +110,23 @@ export async function GET(
       console.log(`[Instance Status API] Matching node ${taskNode.id}: ${createdTask ? `FOUND (${createdTask.status})` : 'NOT FOUND'}`);
 
       if (createdTask) {
-        // Task has been created - return actual data
+        // Task has been created - fetch stakeholder info separately
+        let assignedToName = 'Unassigned';
+        let assignedToEmail = '';
+
+        if (createdTask.assigned_to) {
+          const { data: stakeholder } = await supabase
+            .from('stakeholders')
+            .select('name, email')
+            .eq('id', createdTask.assigned_to)
+            .single();
+
+          if (stakeholder) {
+            assignedToName = stakeholder.name || 'Unknown';
+            assignedToEmail = stakeholder.email || '';
+          }
+        }
+
         return {
           task_id: createdTask.id,
           node_id: createdTask.node_id,
@@ -124,8 +135,8 @@ export async function GET(
           task_type: createdTask.task_type,
           status: createdTask.status,
           assigned_to_id: createdTask.assigned_to,
-          assigned_to_name: createdTask.stakeholders?.name || 'Unassigned',
-          assigned_to_email: createdTask.stakeholders?.email || '',
+          assigned_to_name: assignedToName,
+          assigned_to_email: assignedToEmail,
           input_data: createdTask.input_data,
           output_data: createdTask.output_data,
           created_at: createdTask.created_at,
