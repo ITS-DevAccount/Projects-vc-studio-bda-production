@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle, Cloud, FileText } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -55,6 +55,20 @@ export default function CommunityDashboard() {
       description: 'Create executable workflow instances from templates with stakeholder assignments (Sprint 1d.4)',
       icon: PlayCircle,
       href: '/dashboard/admin/workflow-instances'
+    },
+    {
+      id: 'service-configurations',
+      label: 'Service Configurations',
+      description: 'Manage REAL and MOCK service configurations for workflow service tasks (Sprint 1d.5)',
+      icon: Cloud,
+      href: '/dashboard/admin/services'
+    },
+    {
+      id: 'service-logs',
+      label: 'Service Execution Logs',
+      description: 'View audit trail of all service executions with performance metrics (Sprint 1d.5)',
+      icon: FileText,
+      href: '/dashboard/admin/service-logs'
     },
     {
       id: 'roles',
