@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { validateAgainstSchema } from '@/lib/validators/schema-validator';
 import type { CompleteTaskInput } from '@/lib/types/task';
 
@@ -15,6 +16,18 @@ function getAccessToken(req: NextRequest): string | undefined {
     return authHeader.substring(7);
   }
   return undefined;
+}
+
+// Create service role client for operations that bypass RLS (like queue inserts)
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase service credentials not configured');
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey);
 }
 
 /**
@@ -187,28 +200,34 @@ export async function POST(
     }]);
 
     // Queue workflow resumption for async processing
+    // Use service role client to bypass RLS on workflow_execution_queue
     console.log('[Task Complete] Queueing workflow resumption for instance:', task.workflow_instance_id);
 
-    const { error: queueError } = await supabase
-      .from('workflow_execution_queue')
-      .insert([{
-        app_code: task.app_code,
-        workflow_instance_id: task.workflow_instance_id,
-        trigger_type: 'TASK_COMPLETED',
-        trigger_data: {
-          task_id: taskId,
-          node_id: task.node_id,
-          function_code: task.function_code,
-        },
-        status: 'PENDING',
-      }]);
+    try {
+      const serviceClient = getServiceClient();
+      const { error: queueError } = await serviceClient
+        .from('workflow_execution_queue')
+        .insert([{
+          app_code: task.app_code,
+          workflow_instance_id: task.workflow_instance_id,
+          trigger_type: 'TASK_COMPLETED',
+          trigger_data: {
+            task_id: taskId,
+            node_id: task.node_id,
+            function_code: task.function_code,
+          },
+          status: 'PENDING',
+        }]);
 
-    if (queueError) {
-      console.error('[Task Complete] Error queueing workflow resumption:', queueError);
-      // Don't fail the task completion if queueing fails - log and continue
-      // The task is already marked as completed
-    } else {
-      console.log('[Task Complete] Workflow resumption queued successfully');
+      if (queueError) {
+        console.error('[Task Complete] Error queueing workflow resumption:', queueError);
+        // Don't fail the task completion if queueing fails - log and continue
+        // The task is already marked as completed
+      } else {
+        console.log('[Task Complete] Workflow resumption queued successfully');
+      }
+    } catch (error) {
+      console.error('[Task Complete] Failed to get service client or queue resumption:', error);
     }
 
     return NextResponse.json({
