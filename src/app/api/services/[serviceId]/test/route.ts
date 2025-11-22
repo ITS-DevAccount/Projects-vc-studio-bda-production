@@ -16,11 +16,11 @@ import { ServiceConfiguration, ServiceTestResponse } from '@/lib/types/service';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { serviceId: string } }
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const serviceId = params.serviceId;
+    const { serviceId } = await params;
 
     // Get current user
     const {

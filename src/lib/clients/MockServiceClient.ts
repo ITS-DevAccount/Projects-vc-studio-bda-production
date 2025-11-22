@@ -30,8 +30,8 @@ export class MockServiceClient implements ServiceClient {
    * @returns Simulated service response
    */
   async execute(
-    endpoint: string,
-    input: object,
+    _endpoint: string,
+    _input: object,
     config: ServiceConfiguration
   ): Promise<ServiceResponse> {
     const startTime = Date.now();

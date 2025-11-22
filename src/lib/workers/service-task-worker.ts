@@ -89,9 +89,9 @@ export class ServiceTaskWorker {
   private async processPendingTasks(): Promise<void> {
     try {
       // Get next pending task (atomically locks it)
-      const { data: tasks, error } = await this.supabase.rpc(
+      const { data: tasks, error } = await (this.supabase.rpc as any)(
         'get_next_pending_service_task'
-      );
+      ) as { data: any[] | null; error: any };
 
       if (error) {
         console.error('[ServiceTaskWorker] Error fetching tasks:', error);
@@ -137,7 +137,7 @@ export class ServiceTaskWorker {
         .from('service_configurations')
         .select('*')
         .eq('service_config_id', service_config_id)
-        .single();
+        .single() as { data: ServiceConfiguration | null; error: any };
 
       if (configError || !serviceConfig) {
         throw new Error(
@@ -150,22 +150,20 @@ export class ServiceTaskWorker {
         .from('service_task_queue')
         .select('app_uuid')
         .eq('queue_id', queue_id)
-        .single();
+        .single() as { data: { app_uuid: string } | null };
 
-      const app_uuid = queueData?.app_uuid;
+      const app_uuid = queueData?.app_uuid || '';
 
       // Create service client (Mock or HTTP)
-      const client = await createServiceClient(
-        serviceConfig as ServiceConfiguration
-      );
+      const client = await createServiceClient(serviceConfig);
 
       // Execute service call
       const endpoint =
-        serviceConfig.endpoint_url || serviceConfig.service_name;
+        serviceConfig.endpoint_url || serviceConfig.service_name || '';
       const response = await client.execute(
         endpoint,
         input_data || {},
-        serviceConfig as ServiceConfiguration
+        serviceConfig
       );
 
       const executionTimeMs = Date.now() - startTime;
@@ -188,21 +186,21 @@ export class ServiceTaskWorker {
 
       if (response.status === 'success') {
         // Success - mark queue item as COMPLETED
-        await this.supabase
-          .from('service_task_queue')
+        await (this.supabase
+          .from('service_task_queue') as any)
           .update({
             status: 'COMPLETED',
-            output_data: response.data,
+            output_data: response.data || {},
             completed_at: new Date().toISOString(),
           })
           .eq('queue_id', queue_id);
 
         // Update instance_task status
-        await this.supabase
-          .from('instance_tasks')
+        await (this.supabase
+          .from('instance_tasks') as any)
           .update({
             status: 'COMPLETED',
-            output_data: response.data,
+            output_data: response.data || {},
             completed_at: new Date().toISOString(),
           })
           .eq('task_id', task_id);
@@ -217,8 +215,8 @@ export class ServiceTaskWorker {
 
         if (newRetryCount < max_retries) {
           // Retry - set back to PENDING
-          await this.supabase
-            .from('service_task_queue')
+          await (this.supabase
+            .from('service_task_queue') as any)
             .update({
               status: 'PENDING',
               retry_count: newRetryCount,
@@ -231,8 +229,8 @@ export class ServiceTaskWorker {
           );
         } else {
           // Max retries exceeded - mark as FAILED
-          await this.supabase
-            .from('service_task_queue')
+          await (this.supabase
+            .from('service_task_queue') as any)
             .update({
               status: 'FAILED',
               error_message: response.error,
@@ -241,8 +239,8 @@ export class ServiceTaskWorker {
             .eq('queue_id', queue_id);
 
           // Update instance_task status
-          await this.supabase
-            .from('instance_tasks')
+          await (this.supabase
+            .from('instance_tasks') as any)
             .update({
               status: 'FAILED',
               error_message: response.error,
@@ -258,8 +256,8 @@ export class ServiceTaskWorker {
       console.error(`[ServiceTaskWorker] Error processing task ${task_id}:`, error);
 
       // Mark queue item as FAILED
-      await this.supabase
-        .from('service_task_queue')
+      await (this.supabase
+        .from('service_task_queue') as any)
         .update({
           status: 'FAILED',
           error_message:
@@ -269,8 +267,8 @@ export class ServiceTaskWorker {
         .eq('queue_id', queue_id);
 
       // Update instance_task status
-      await this.supabase
-        .from('instance_tasks')
+      await (this.supabase
+        .from('instance_tasks') as any)
         .update({
           status: 'FAILED',
           error_message:
@@ -298,7 +296,7 @@ export class ServiceTaskWorker {
     retry_attempt: number
   ): Promise<void> {
     try {
-      await this.supabase.rpc('log_service_execution', {
+      await (this.supabase.rpc as any)('log_service_execution', {
         p_app_uuid: app_uuid,
         p_instance_id: instance_id,
         p_task_id: task_id,
@@ -323,7 +321,7 @@ export class ServiceTaskWorker {
   private async triggerWorkflowResumption(instance_id: string): Promise<void> {
     try {
       // Queue workflow resumption
-      await this.supabase.from('workflow_execution_queue').insert({
+      await (this.supabase.from('workflow_execution_queue') as any).insert({
         instance_id,
         priority: 1,
       });

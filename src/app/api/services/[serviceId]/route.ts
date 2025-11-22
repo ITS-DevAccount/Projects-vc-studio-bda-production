@@ -13,12 +13,12 @@ import { UpdateServiceConfigurationInput } from '@/lib/types/service';
  * Get single service configuration
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const serviceId = params.serviceId;
+    const { serviceId } = await params;
 
     // Get current user
     const {
@@ -74,11 +74,11 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { serviceId: string } }
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const serviceId = params.serviceId;
+    const { serviceId } = await params;
 
     // Get current user
     const {
@@ -187,12 +187,12 @@ export async function PATCH(
  * Delete service configuration (admin only)
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const serviceId = params.serviceId;
+    const { serviceId } = await params;
 
     // Get current user
     const {

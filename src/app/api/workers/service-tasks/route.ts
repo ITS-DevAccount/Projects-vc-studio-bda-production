@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'start') {
       // Start continuous worker
-      const worker = startServiceTaskWorker();
+      startServiceTaskWorker();
       return NextResponse.json({
         success: true,
         message: 'Service task worker started',
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
  * GET /api/workers/service-tasks
  * Get worker status (admin only)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
 

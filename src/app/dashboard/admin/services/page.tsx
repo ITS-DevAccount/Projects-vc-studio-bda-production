@@ -10,6 +10,7 @@ import {
   CreateServiceConfigurationInput,
   UpdateServiceConfigurationInput,
   ServiceType,
+  HttpMethod,
 } from '@/lib/types/service';
 import { getMockServiceTemplateOptions } from '@/lib/templates/mock-service-templates';
 
@@ -387,7 +388,7 @@ function ServiceFormModal({
                   <label className="block text-sm font-medium mb-1">HTTP Method</label>
                   <select
                     value={formData.http_method}
-                    onChange={(e) => setFormData({ ...formData, http_method: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, http_method: e.target.value as HttpMethod })}
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="GET">GET</option>
