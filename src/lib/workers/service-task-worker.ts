@@ -88,10 +88,22 @@ export class ServiceTaskWorker {
    */
   private async processPendingTasks(): Promise<void> {
     try {
-      // Get next pending task (atomically locks it)
-      const { data: tasks, error } = await (this.supabase.rpc as any)(
-        'get_next_pending_service_task'
-      ) as { data: any[] | null; error: any };
+      // Get next pending task directly from queue (service role bypasses RLS)
+      const { data: tasks, error } = await (this.supabase
+        .from('service_task_queue') as any)
+        .select(`
+          queue_id,
+          app_id,
+          instance_id,
+          task_id,
+          service_config_id,
+          input_data,
+          retry_count,
+          max_retries
+        `)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: true })
+        .limit(1) as { data: Array<{ queue_id: string; [key: string]: any }> | null; error: any };
 
       if (error) {
         console.error('[ServiceTaskWorker] Error fetching tasks:', error);
@@ -103,10 +115,24 @@ export class ServiceTaskWorker {
         return;
       }
 
-      // Process each task
-      for (const task of tasks) {
-        await this.processTask(task);
+      // Process the task
+      const task = tasks[0];
+
+      // Mark as RUNNING before processing
+      const { error: updateError } = await (this.supabase
+        .from('service_task_queue') as any)
+        .update({
+          status: 'RUNNING',
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('queue_id', task.queue_id);
+
+      if (updateError) {
+        console.error('[ServiceTaskWorker] Error marking task as running:', updateError);
+        return;
       }
+
+      await this.processTask(task, task.app_id);
     } catch (error) {
       console.error('[ServiceTaskWorker] Error in processPendingTasks:', error);
     }
@@ -115,7 +141,7 @@ export class ServiceTaskWorker {
   /**
    * Process a single service task
    */
-  private async processTask(queueItem: any): Promise<void> {
+  private async processTask(queueItem: any, appId: string): Promise<void> {
     const startTime = Date.now();
     const {
       queue_id,
@@ -145,14 +171,8 @@ export class ServiceTaskWorker {
         );
       }
 
-      // Get app_uuid from queue item
-      const { data: queueData } = await this.supabase
-        .from('service_task_queue')
-        .select('app_uuid')
-        .eq('queue_id', queue_id)
-        .single() as { data: { app_uuid: string } | null };
-
-      const app_uuid = queueData?.app_uuid || '';
+      // Use the appId passed from the context
+      const app_uuid = appId;
 
       // Create service client (Mock or HTTP)
       const client = await createServiceClient(serviceConfig);
