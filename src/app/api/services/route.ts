@@ -34,21 +34,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's app_uuid
-    const { data: stakeholder } = await supabase
-      .from('stakeholders')
-      .select('app_uuid')
-      .eq('id', user.id)
+    // Get app_id by looking up VC_STUDIO application code
+    const { data: app, error: appError } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('app_code', 'VC_STUDIO')
       .single();
 
-    if (!stakeholder) {
+    if (appError || !app) {
       return NextResponse.json(
-        { error: 'Stakeholder not found' },
-        { status: 404 }
+        { error: 'Application VC_STUDIO not found' },
+        { status: 500 }
       );
     }
 
-    const app_uuid = stakeholder.app_uuid;
+    const appId = app.id;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('service_configurations')
       .select('*', { count: 'exact' })
-      .eq('app_uuid', app_uuid)
+      .eq('app_id', appId)
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -124,24 +124,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's stakeholder record
+    // Get app_id by looking up VC_STUDIO application code
+    const { data: app, error: appError } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('app_code', 'VC_STUDIO')
+      .single();
+
+    if (appError || !app) {
+      return NextResponse.json(
+        { error: 'Application VC_STUDIO not found' },
+        { status: 500 }
+      );
+    }
+
+    const appId = app.id;
+
+    // Check if user is admin via database function or stakeholder_type
+    const { data: isAdminResult } = await supabase.rpc('is_user_admin');
+
+    if (!isAdminResult) {
+      return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
+    }
+
+    // Get stakeholder ID for created_by field
     const { data: stakeholder } = await supabase
       .from('stakeholders')
-      .select('app_uuid, core_config')
-      .eq('id', user.id)
+      .select('id')
+      .eq('auth_user_id', user.id)
       .single();
 
     if (!stakeholder) {
       return NextResponse.json(
-        { error: 'Stakeholder not found' },
+        { error: 'Stakeholder record not found' },
         { status: 404 }
       );
-    }
-
-    // Check if user is admin
-    const isAdmin = stakeholder.core_config?.permissions?.is_admin === true;
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
     }
 
     // Parse request body
@@ -178,7 +195,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from('service_configurations')
       .select('service_config_id')
-      .eq('app_uuid', stakeholder.app_uuid)
+      .eq('app_id', appId)
       .eq('service_name', body.service_name)
       .single();
 
@@ -193,7 +210,7 @@ export async function POST(request: NextRequest) {
     const { data: newService, error: createError } = await supabase
       .from('service_configurations')
       .insert({
-        app_uuid: stakeholder.app_uuid,
+        app_id: appId,
         service_name: body.service_name,
         service_type: body.service_type,
         endpoint_url: body.endpoint_url,
@@ -205,7 +222,7 @@ export async function POST(request: NextRequest) {
         mock_definition: body.mock_definition,
         is_active: body.is_active !== undefined ? body.is_active : true,
         description: body.description,
-        created_by: user.id,
+        created_by: stakeholder.id,
       })
       .select()
       .single();

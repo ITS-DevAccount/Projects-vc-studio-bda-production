@@ -79,9 +79,9 @@ export default function ServiceConfigurationPage() {
 
       const result = await response.json();
       alert(
-        result.success
-          ? `Test successful!\n\nExecution time: ${result.execution_time_ms}ms\n\nResponse: ${JSON.stringify(result.data, null, 2)}`
-          : `Test failed: ${result.error}`
+        result.status === 'success'
+          ? `Test successful!\n\nExecution time: ${result.execution_time_ms}ms\n\nResponse: ${JSON.stringify(result.response, null, 2)}`
+          : `Test failed: ${result.response?.error || 'Unknown error'}`
       );
     } catch (err) {
       alert('Test failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -272,6 +272,7 @@ function ServiceFormModal({
     max_retries: service?.max_retries || 3,
     mock_template_id: service?.mock_template_id || '',
     is_active: service?.is_active !== false,
+    authentication: service?.authentication || { type: 'none' },
   });
 
   const [saving, setSaving] = useState(false);
@@ -299,6 +300,9 @@ function ServiceFormModal({
         max_retries: formData.max_retries,
         mock_template_id: formData.service_type === 'MOCK' ? formData.mock_template_id : undefined,
         is_active: formData.is_active,
+        authentication: formData.service_type === 'REAL' && formData.authentication?.type !== 'none'
+          ? formData.authentication
+          : undefined,
       };
 
       const response = await fetch(url, {
@@ -456,6 +460,173 @@ function ServiceFormModal({
                 <span className="text-sm font-medium">Active</span>
               </label>
             </div>
+
+            {/* Authentication Section */}
+            {formData.service_type === 'REAL' && (
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold mb-4">Authentication</h3>
+
+                <label className="block mb-4">
+                  <span className="text-sm font-medium text-gray-700 mb-2 block">
+                    Authentication Type (Optional)
+                  </span>
+                  <select
+                    value={formData.authentication?.type || 'none'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      authentication: {
+                        type: e.target.value
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="none">None</option>
+                    <option value="api_key">API Key</option>
+                    <option value="bearer_token">Bearer Token</option>
+                    <option value="basic_auth">Basic Auth</option>
+                    <option value="custom_header">Custom Header</option>
+                  </select>
+                </label>
+
+                {/* API Key Fields */}
+                {formData.authentication?.type === 'api_key' && (
+                  <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">API Key</span>
+                      <input
+                        type="password"
+                        placeholder="Enter your API key"
+                        value={(formData.authentication as any)?.api_key || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            api_key: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">
+                        Header Name (default: X-API-Key)
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="X-API-Key"
+                        value={(formData.authentication as any)?.header_name || 'X-API-Key'}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            header_name: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Bearer Token Fields */}
+                {formData.authentication?.type === 'bearer_token' && (
+                  <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">Bearer Token</span>
+                      <input
+                        type="password"
+                        placeholder="Enter your bearer token"
+                        value={(formData.authentication as any)?.token || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            token: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Basic Auth Fields */}
+                {formData.authentication?.type === 'basic_auth' && (
+                  <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">Username</span>
+                      <input
+                        type="text"
+                        placeholder="Username"
+                        value={(formData.authentication as any)?.username || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            username: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">Password</span>
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={(formData.authentication as any)?.password || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            password: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Custom Header Fields */}
+                {formData.authentication?.type === 'custom_header' && (
+                  <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">Header Name</span>
+                      <input
+                        type="text"
+                        placeholder="e.g., Authorization, X-Custom-Auth"
+                        value={(formData.authentication as any)?.header_name || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            header_name: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 mb-2 block">Header Value</span>
+                      <input
+                        type="password"
+                        placeholder="Header value"
+                        value={(formData.authentication as any)?.header_value || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            header_value: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 mt-6">
               <button

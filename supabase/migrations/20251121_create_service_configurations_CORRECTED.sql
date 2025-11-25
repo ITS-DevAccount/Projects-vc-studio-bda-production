@@ -1,11 +1,12 @@
 -- Sprint 1d.5: Service Task Execution System
 -- Migration 1/3: Create service_configurations table
+-- CORRECTED: Simplified RLS policies (stakeholders are global, not app-specific)
 
 -- Service Configurations Table
 -- Stores both REAL (external API) and MOCK (simulated) service definitions
 CREATE TABLE IF NOT EXISTS service_configurations (
   service_config_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  app_uuid UUID NOT NULL REFERENCES applications(app_uuid) ON DELETE CASCADE,
+  app_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
   service_name TEXT NOT NULL,
   service_type TEXT NOT NULL CHECK (service_type IN ('REAL', 'MOCK')),
 
@@ -30,7 +31,7 @@ CREATE TABLE IF NOT EXISTS service_configurations (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
   -- Constraints
-  CONSTRAINT service_name_unique_per_app UNIQUE (app_uuid, service_name),
+  CONSTRAINT service_name_unique_per_app UNIQUE (app_id, service_name),
   CONSTRAINT real_service_has_endpoint CHECK (
     service_type != 'REAL' OR endpoint_url IS NOT NULL
   ),
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS service_configurations (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_service_config_app_uuid ON service_configurations(app_uuid);
+CREATE INDEX idx_service_config_app_id ON service_configurations(app_id);
 CREATE INDEX idx_service_config_type ON service_configurations(service_type);
 CREATE INDEX idx_service_config_active ON service_configurations(is_active) WHERE is_active = TRUE;
 CREATE INDEX idx_service_config_name ON service_configurations(service_name);
@@ -48,50 +49,33 @@ CREATE INDEX idx_service_config_name ON service_configurations(service_name);
 -- RLS Policies
 ALTER TABLE service_configurations ENABLE ROW LEVEL SECURITY;
 
--- Admin can view all services for their app
+-- Policy: Only access services for current application context
+-- Assumes app.current_app_id is set by application on each request
 CREATE POLICY service_config_select_policy ON service_configurations
   FOR SELECT
   USING (
-    app_uuid = current_setting('app.current_app_uuid')::UUID
+    app_id = current_setting('app.current_app_id')::UUID
   );
 
--- Admin can insert services for their app
+-- Policy: Only insert services for current application context
 CREATE POLICY service_config_insert_policy ON service_configurations
   FOR INSERT
   WITH CHECK (
-    app_uuid = current_setting('app.current_app_uuid')::UUID
-    AND EXISTS (
-      SELECT 1 FROM stakeholders
-      WHERE id = auth.uid()
-      AND stakeholders.app_uuid = current_setting('app.current_app_uuid')::UUID
-      AND (core_config->'permissions'->>'is_admin')::boolean = TRUE
-    )
+    app_id = current_setting('app.current_app_id')::UUID
   );
 
--- Admin can update services for their app
+-- Policy: Only update services for current application context
 CREATE POLICY service_config_update_policy ON service_configurations
   FOR UPDATE
   USING (
-    app_uuid = current_setting('app.current_app_uuid')::UUID
-    AND EXISTS (
-      SELECT 1 FROM stakeholders
-      WHERE id = auth.uid()
-      AND stakeholders.app_uuid = current_setting('app.current_app_uuid')::UUID
-      AND (core_config->'permissions'->>'is_admin')::boolean = TRUE
-    )
+    app_id = current_setting('app.current_app_id')::UUID
   );
 
--- Admin can delete services for their app
+-- Policy: Only delete services for current application context
 CREATE POLICY service_config_delete_policy ON service_configurations
   FOR DELETE
   USING (
-    app_uuid = current_setting('app.current_app_uuid')::UUID
-    AND EXISTS (
-      SELECT 1 FROM stakeholders
-      WHERE id = auth.uid()
-      AND stakeholders.app_uuid = current_setting('app.current_app_uuid')::UUID
-      AND (core_config->'permissions'->>'is_admin')::boolean = TRUE
-    )
+    app_id = current_setting('app.current_app_id')::UUID
   );
 
 -- Function to update updated_at timestamp

@@ -162,37 +162,41 @@ export class HttpServiceClient implements ServiceClient {
 
     // Add authentication headers
     if (config.authentication) {
-      const auth = config.authentication;
+      const auth = config.authentication as any;
+      const authType = auth.type;
+      console.log('[HttpServiceClient] Full auth config:', JSON.stringify(auth, null, 2));
 
-      switch (auth.type) {
-        case 'api_key':
-          if (auth.api_key) {
-            headers.set('X-API-Key', auth.api_key);
-          }
-          break;
+      if (authType === 'api_key') {
+        const headerName = auth.header_name || 'X-API-Key';
+        const apiKey = auth.api_key || '';
+        if (apiKey) {
+          headers.set(headerName, apiKey);
+        }
+      } else if (authType === 'bearer_token') {
+        const token = auth.token || '';
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+      } else if (authType === 'basic_auth') {
+        const username = auth.username || '';
+        const password = auth.password || '';
 
-        case 'bearer':
-          if (auth.bearer_token) {
-            headers.set('Authorization', `Bearer ${auth.bearer_token}`);
-          }
-          break;
+        console.log('[HttpServiceClient] Basic Auth - Username:', username ? `${username.substring(0, 10)}...` : 'empty');
+        console.log('[HttpServiceClient] Basic Auth - Password:', password ? 'present (length: ' + password.length + ')' : 'empty');
 
-        case 'custom_header':
-          if (auth.headers) {
-            Object.entries(auth.headers).forEach(([key, value]) => {
-              headers.set(key, value);
-            });
-          }
-          break;
-      }
-
-      // Also add any custom headers regardless of auth type
-      if (auth.headers) {
-        Object.entries(auth.headers).forEach(([key, value]) => {
-          if (!headers.has(key)) {
-            headers.set(key, value);
-          }
-        });
+        if (username || password) {
+          // Combine username:password and base64 encode
+          const credentials = `${username}:${password}`;
+          const encoded = Buffer.from(credentials).toString('base64');
+          console.log('[HttpServiceClient] Basic Auth - Encoded header:', `Basic ${encoded.substring(0, 20)}...`);
+          headers.set('Authorization', `Basic ${encoded}`);
+        }
+      } else if (authType === 'custom_header') {
+        const headerName = auth.header_name || '';
+        const headerValue = auth.header_value || '';
+        if (headerName && headerValue) {
+          headers.set(headerName, headerValue);
+        }
       }
     }
 

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Monitoring Dashboard - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #1a202c;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        /* Navigation Tabs */
+        .tab-navigation {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            background: #f7fafc;
+            color: #4a5568;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: #2d3748;
+            border-bottom-color: #3182ce;
+        }
+        
+        .tab-button:hover {
+            background: #edf2f7;
+        }
+        
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 0 0 8px 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card.running {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card.completed {
+            background: linear-gradient(135deg, #52c77e 0%, #3caa60 100%);
+        }
+        
+        .card.failed {
+            background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        }
+        
+        .card.paused {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+        
+        .card-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .card-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* Filter Section */
+        .filter-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3182ce;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2c5aa0;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        /* Table */
+        .instances-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .instances-table thead {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .instances-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .instances-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .instances-table tbody tr {
+            transition: background-color 0.2s;
+        }
+        
+        .instances-table tbody tr:hover {
+            background-color: #f7fafc;
+        }
+        
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-running {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .badge-completed {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .badge-failed {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .badge-paused {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+        
+        /* Instance Card */
+        .instance-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .instance-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #cbd5e0;
+        }
+        
+        .instance-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .instance-card-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a202c;
+        }
+        
+        .instance-card-subtitle {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 2px;
+        }
+        
+        .instance-card-meta {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .meta-label {
+            color: #718096;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .meta-value {
+            color: #1a202c;
+            font-weight: 600;
+        }
+        
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid #cbd5e0;
+            background: white;
+            color: #2d3748;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-sm:hover {
+            background: #f7fafc;
+            border-color: #a0aec0;
+        }
+        
+        .btn-sm-primary {
+            background: #3182ce;
+            color: white;
+            border-color: #3182ce;
+        }
+        
+        .btn-sm-primary:hover {
+            background: #2c5aa0;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #718096;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 20px;
+        }
+        
+        .pagination button {
+            padding: 6px 10px;
+            border: 1px solid #cbd5e0;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .pagination button.active {
+            background: #3182ce;
+            color: white;
+            border-color: #3182ce;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .summary-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .filter-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .instances-table {
+                font-size: 12px;
+            }
+            
+            .instance-card-meta {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .tab-button {
+                font-size: 12px;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Workflow Monitoring Dashboard</h1>
+            <p>Real-time visibility into workflow execution, bottleneck analysis, and compliance tracking</p>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active">Active Instances</button>
+            <button class="tab-button">Bottleneck Analysis</button>
+            <button class="tab-button">Cycle Time Report</button>
+            <button class="tab-button">Audit History</button>
+            <button class="tab-button">Compliance</button>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="card running">
+                    <div class="card-value">12</div>
+                    <div class="card-label">Running Workflows</div>
+                </div>
+                <div class="card completed">
+                    <div class="card-value">247</div>
+                    <div class="card-label">Completed (This Week)</div>
+                </div>
+                <div class="card failed">
+                    <div class="card-value">3</div>
+                    <div class="card-label">Failed (Needs Attention)</div>
+                </div>
+                <div class="card paused">
+                    <div class="card-value">2</div>
+                    <div class="card-label">Paused</div>
+                </div>
+            </div>
+            
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label>Workflow Type</label>
+                    <select>
+                        <option>All Types</option>
+                        <option>Document Approval</option>
+                        <option>Data Processing</option>
+                        <option>Report Generation</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select>
+                        <option>All Status</option>
+                        <option>Running</option>
+                        <option>Completed</option>
+                        <option>Failed</option>
+                        <option>Paused</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Date Range</label>
+                    <input type="date" value="2025-11-15">
+                </div>
+                <div class="filter-group">
+                    <label>Search</label>
+                    <input type="text" placeholder="Instance name or ID...">
+                </div>
+                <div class="filter-buttons">
+                    <button class="btn btn-primary">Apply Filters</button>
+                    <button class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+            
+            <!-- Active Instances List -->
+            <div style="margin-bottom: 24px;">
+                <h2 style="font-size: 18px; margin-bottom: 16px; color: #1a202c;">Active Instances (12)</h2>
+                
+                <!-- Instance Card 1 -->
+                <div class="instance-card">
+                    <div class="instance-card-header">
+                        <div>
+                            <div class="instance-card-title">Q4 Budget Review - Finance Dept</div>
+                            <div class="instance-card-subtitle">Document Approval Workflow</div>
+                        </div>
+                        <span class="badge badge-running">RUNNING</span>
+                    </div>
+                    
+                    <div class="instance-card-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Current Node</div>
+                            <div class="meta-value">Review by Manager</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Progress</div>
+                            <div class="meta-value">60% (3/5 tasks)</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Elapsed Time</div>
+                            <div class="meta-value">2h 15m</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Assigned To</div>
+                            <div class="meta-value">Sarah Johnson</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 60%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn-sm btn-sm-primary">View Details</button>
+                        <button class="btn-sm">View Audit Trail</button>
+                        <button class="btn-sm">Pause Workflow</button>
+                    </div>
+                </div>
+                
+                <!-- Instance Card 2 -->
+                <div class="instance-card">
+                    <div class="instance-card-header">
+                        <div>
+                            <div class="instance-card-title">Tender Response - Project Alpha</div>
+                            <div class="instance-card-subtitle">Procurement Workflow</div>
+                        </div>
+                        <span class="badge badge-running">RUNNING</span>
+                    </div>
+                    
+                    <div class="instance-card-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Current Node</div>
+                            <div class="meta-value">Document Generation</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Progress</div>
+                            <div class="meta-value">40% (2/5 tasks)</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Elapsed Time</div>
+                            <div class="meta-value">45m</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Assigned To</div>
+                            <div class="meta-value">System (Service Task)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%; background: linear-gradient(90deg, #52c77e, #3caa60);"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn-sm btn-sm-primary">View Details</button>
+                        <button class="btn-sm">View Audit Trail</button>
+                        <button class="btn-sm">Pause Workflow</button>
+                    </div>
+                </div>
+                
+                <!-- Instance Card 3 (Failed) -->
+                <div class="instance-card">
+                    <div class="instance-card-header">
+                        <div>
+                            <div class="instance-card-title">Data Integration - Monthly Sync</div>
+                            <div class="instance-card-subtitle">System Integration Workflow</div>
+                        </div>
+                        <span class="badge badge-failed">FAILED</span>
+                    </div>
+                    
+                    <div class="instance-card-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Current Node</div>
+                            <div class="meta-value">API Service Call</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Progress</div>
+                            <div class="meta-value">50% (Error at task 3)</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Elapsed Time</div>
+                            <div class="meta-value">5m 32s</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Error</div>
+                            <div class="meta-value">Connection Timeout</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 50%; background: linear-gradient(90deg, #f56565, #c53030);"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn-sm btn-sm-primary">View Details</button>
+                        <button class="btn-sm">View Audit Trail</button>
+                        <button class="btn-sm">Retry Workflow</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                <button>← Prev</button>
+                <button class="active">1</button>
+                <button>2</button>
+                <button>3</button>
+                <button>Next →</button>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>

@@ -7,12 +7,16 @@
 
 export type ServiceType = 'REAL' | 'MOCK';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-export type AuthenticationType = 'api_key' | 'bearer' | 'custom_header';
+export type AuthenticationType = 'api_key' | 'bearer' | 'custom_header' | 'basic_auth';
 
 export interface ServiceAuthentication {
   type?: AuthenticationType;
   api_key?: string;
   bearer_token?: string;
+  username?: string; // For basic_auth
+  password?: string; // For basic_auth
+  header_name?: string; // For api_key or custom_header
+  header_value?: string; // For custom_header
   headers?: Record<string, string>;
 }
 
@@ -197,11 +201,9 @@ export interface ServiceExecutionLogsResponse {
 }
 
 export interface ServiceTestResponse {
-  success: boolean;
-  data?: object;
-  error?: string;
-  execution_time_ms?: number;
-  http_status_code?: number;
+  status: 'success' | 'error';
+  response: object;
+  execution_time_ms: number;
 }
 
 // ============================================================================
