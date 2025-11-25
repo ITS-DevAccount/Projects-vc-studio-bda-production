@@ -272,7 +272,7 @@ function ServiceFormModal({
     max_retries: service?.max_retries || 3,
     mock_template_id: service?.mock_template_id || '',
     is_active: service?.is_active !== false,
-    authentication: service?.authentication || { type: 'none' },
+    authentication: service?.authentication || undefined,
   });
 
   const [saving, setSaving] = useState(false);
@@ -300,7 +300,7 @@ function ServiceFormModal({
         max_retries: formData.max_retries,
         mock_template_id: formData.service_type === 'MOCK' ? formData.mock_template_id : undefined,
         is_active: formData.is_active,
-        authentication: formData.service_type === 'REAL' && formData.authentication?.type !== 'none'
+        authentication: formData.service_type === 'REAL' && formData.authentication
           ? formData.authentication
           : undefined,
       };
@@ -472,17 +472,28 @@ function ServiceFormModal({
                   </span>
                   <select
                     value={formData.authentication?.type || 'none'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      authentication: {
-                        type: e.target.value
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === 'none') {
+                        setFormData({
+                          ...formData,
+                          authentication: undefined
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          authentication: {
+                            ...formData.authentication,
+                            type: value as 'api_key' | 'bearer' | 'custom_header' | 'basic_auth'
+                          }
+                        });
                       }
-                    })}
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="none">None</option>
                     <option value="api_key">API Key</option>
-                    <option value="bearer_token">Bearer Token</option>
+                    <option value="bearer">Bearer Token</option>
                     <option value="basic_auth">Basic Auth</option>
                     <option value="custom_header">Custom Header</option>
                   </select>
@@ -529,19 +540,19 @@ function ServiceFormModal({
                 )}
 
                 {/* Bearer Token Fields */}
-                {formData.authentication?.type === 'bearer_token' && (
+                {formData.authentication?.type === 'bearer' && (
                   <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded">
                     <label className="block">
                       <span className="text-sm font-medium text-gray-700 mb-2 block">Bearer Token</span>
                       <input
                         type="password"
                         placeholder="Enter your bearer token"
-                        value={(formData.authentication as any)?.token || ''}
+                        value={(formData.authentication as any)?.bearer_token || ''}
                         onChange={(e) => setFormData({
                           ...formData,
                           authentication: {
                             ...formData.authentication,
-                            token: e.target.value
+                            bearer_token: e.target.value
                           }
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
