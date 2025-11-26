@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle, Cloud, FileText } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle, Cloud, FileText, Sparkles } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -69,6 +69,13 @@ export default function CommunityDashboard() {
       description: 'View audit trail of all service executions with performance metrics (Sprint 1d.5)',
       icon: FileText,
       href: '/dashboard/admin/service-logs'
+    },
+    {
+      id: 'ai-prompts',
+      label: 'AI Prompt Library',
+      description: 'Manage AI prompt templates for FLM creation and document generation (Sprint 1d.7)',
+      icon: Sparkles,
+      href: '/dashboard/admin/prompts'
     },
     {
       id: 'roles',
