@@ -3,14 +3,14 @@
 
 -- Register Claude as a service in service_configurations
 INSERT INTO service_configurations (
-  app_uuid,
+  app_id,
   service_name,
   service_type,
   description,
   is_active,
   config
 ) VALUES (
-  (SELECT app_uuid FROM applications WHERE app_code = 'VC_STUDIO'),
+  (SELECT id FROM applications WHERE app_code = 'VC_STUDIO'),
   'Claude AI - Prompt Execution',
   'REAL',
   'Execute prompts from prompt library via Claude API for FLM creation',
@@ -28,7 +28,7 @@ INSERT INTO service_configurations (
 
 -- Register BUILD_FLM workflow
 INSERT INTO workflow_definitions (
-  app_uuid,
+  app_id,
   workflow_code,
   workflow_name,
   description,
@@ -36,7 +36,7 @@ INSERT INTO workflow_definitions (
   is_active,
   config
 ) VALUES (
-  (SELECT app_uuid FROM applications WHERE app_code = 'VC_STUDIO'),
+  (SELECT id FROM applications WHERE app_code = 'VC_STUDIO'),
   'BUILD_FLM',
   'Build Framework Level Model',
   'Create L0-L2 Value Chain Model for any business through AI-assisted workflow',
@@ -50,13 +50,13 @@ INSERT INTO workflow_definitions (
     "version": "1.0",
     "phases": ["BVS Capture", "DBS Generation", "L0 Domain", "L1 Pillars", "L2 Capabilities"]
   }'::jsonb
-) ON CONFLICT (app_uuid, workflow_code) DO UPDATE SET
+) ON CONFLICT (app_id, workflow_code) DO UPDATE SET
   description = EXCLUDED.description,
   config = EXCLUDED.config;
 
 -- Register GENERATE_FINANCE_DOCS workflow
 INSERT INTO workflow_definitions (
-  app_uuid,
+  app_id,
   workflow_code,
   workflow_name,
   description,
@@ -64,7 +64,7 @@ INSERT INTO workflow_definitions (
   is_active,
   config
 ) VALUES (
-  (SELECT app_uuid FROM applications WHERE app_code = 'VC_STUDIO'),
+  (SELECT id FROM applications WHERE app_code = 'VC_STUDIO'),
   'GENERATE_FINANCE_DOCS',
   'Generate Investment Documents',
   'Create investment documentation from completed FLM (Blueprint, One-Pager, Pitch Deck)',
@@ -79,23 +79,23 @@ INSERT INTO workflow_definitions (
     "version": "1.0",
     "documents": ["Business Blueprint", "One-Pager", "Pitch Deck"]
   }'::jsonb
-) ON CONFLICT (app_uuid, workflow_code) DO UPDATE SET
+) ON CONFLICT (app_id, workflow_code) DO UPDATE SET
   description = EXCLUDED.description,
   config = EXCLUDED.config;
 
 -- Get the workflow definition IDs for creating nodes
 DO $$
 DECLARE
-  v_app_uuid UUID;
+  v_app_id UUID;
   v_build_flm_id UUID;
   v_finance_docs_id UUID;
 BEGIN
-  -- Get app UUID
-  SELECT app_uuid INTO v_app_uuid FROM applications WHERE app_code = 'VC_STUDIO';
+  -- Get app ID
+  SELECT id INTO v_app_id FROM applications WHERE app_code = 'VC_STUDIO';
 
   -- Get workflow IDs
-  SELECT id INTO v_build_flm_id FROM workflow_definitions WHERE workflow_code = 'BUILD_FLM' AND app_uuid = v_app_uuid;
-  SELECT id INTO v_finance_docs_id FROM workflow_definitions WHERE workflow_code = 'GENERATE_FINANCE_DOCS' AND app_uuid = v_app_uuid;
+  SELECT id INTO v_build_flm_id FROM workflow_definitions WHERE workflow_code = 'BUILD_FLM' AND app_id = v_app_id;
+  SELECT id INTO v_finance_docs_id FROM workflow_definitions WHERE workflow_code = 'GENERATE_FINANCE_DOCS' AND app_id = v_app_id;
 
   -- BUILD_FLM Workflow Nodes
 
