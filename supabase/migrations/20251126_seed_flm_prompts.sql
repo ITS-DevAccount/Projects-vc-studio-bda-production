@@ -73,7 +73,7 @@ Output format:
     '{"type": "object", "properties": {"schema": {"type": "object"}, "prefill": {"type": "object"}}, "required": ["schema", "prefill"]}'::jsonb,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -154,7 +154,7 @@ Output as structured JSON with clear sections.',
     8192,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -226,7 +226,7 @@ Output as structured JSON array of pillar definitions.',
     8192,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -310,7 +310,7 @@ Output as structured JSON with capabilities grouped by L1 pillar.',
     12000,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -377,7 +377,7 @@ Output as well-structured Markdown.',
     16000,
     'markdown',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -441,7 +441,7 @@ Output as structured JSON for layout purposes.',
     4096,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
@@ -504,7 +504,7 @@ Output as structured JSON array of slides.',
     12000,
     'json',
     true
-  ) ON CONFLICT (prompt_code) DO UPDATE SET
+  ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
     user_prompt_template = EXCLUDED.user_prompt_template,
     system_prompt = EXCLUDED.system_prompt;
 
