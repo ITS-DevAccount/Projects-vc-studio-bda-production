@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Get VC Studio app_uuid
     const { data: app } = await supabase
       .from('applications')
-      .select('app_uuid')
+      .select('id')
       .eq('app_code', 'VC_STUDIO')
       .single();
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     const { data: prompt, error } = await supabase
       .from('prompt_templates')
       .insert({
-        app_uuid: app.app_uuid,
+        app_id: app.id,
         prompt_code: body.prompt_code,
         prompt_name: body.prompt_name,
         description: body.description,
