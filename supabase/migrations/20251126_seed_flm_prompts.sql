@@ -3,14 +3,14 @@
 
 DO $$
 DECLARE
-  v_app_uuid UUID;
+  v_app_id UUID;
 BEGIN
-  -- Get app UUID
-  SELECT app_uuid INTO v_app_uuid FROM applications WHERE app_code = 'VC_STUDIO';
+  -- Get app ID
+  SELECT id INTO v_app_id FROM applications WHERE app_code = 'VC_STUDIO';
 
   -- Prompt 1: BVS_TO_DBS
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -25,7 +25,7 @@ BEGIN
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'BVS_TO_DBS',
     'Business Value Summary to Domain Business Summary',
     'Analyzes natural language business descriptions and creates structured data requirements',
@@ -79,7 +79,7 @@ Output format:
 
   -- Prompt 2: DBS_TO_L0
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -92,7 +92,7 @@ Output format:
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'DBS_TO_L0',
     'Domain Business Summary to L0 Domain Study',
     'Creates comprehensive L0 Domain Study from business information',
@@ -160,7 +160,7 @@ Output as structured JSON with clear sections.',
 
   -- Prompt 3: L0_TO_L1
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -173,7 +173,7 @@ Output as structured JSON with clear sections.',
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'L0_TO_L1',
     'L0 Domain Study to L1 Business Pillars',
     'Creates L1 Sub-Domain definitions from L0 context and defined pillars',
@@ -232,7 +232,7 @@ Output as structured JSON array of pillar definitions.',
 
   -- Prompt 4: L1_TO_L2
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -245,7 +245,7 @@ Output as structured JSON array of pillar definitions.',
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'L1_TO_L2',
     'L1 Business Pillars to L2 Capabilities Matrix',
     'Creates L2 Component/Capability definitions from complete FLM context',
@@ -316,7 +316,7 @@ Output as structured JSON with capabilities grouped by L1 pillar.',
 
   -- Prompt 5: FLM_TO_BLUEPRINT
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -329,7 +329,7 @@ Output as structured JSON with capabilities grouped by L1 pillar.',
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'FLM_TO_BLUEPRINT',
     'FLM to Business Blueprint',
     'Creates comprehensive Business Blueprint document from complete FLM',
@@ -383,7 +383,7 @@ Output as well-structured Markdown.',
 
   -- Prompt 6: FLM_TO_ONE_PAGER
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -396,7 +396,7 @@ Output as well-structured Markdown.',
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'FLM_TO_ONE_PAGER',
     'FLM to One-Page Visual Summary',
     'Creates compelling one-page visual summary for investor engagement',
@@ -447,7 +447,7 @@ Output as structured JSON for layout purposes.',
 
   -- Prompt 7: FLM_TO_PITCH_DECK
   INSERT INTO prompt_templates (
-    app_uuid,
+    app_id,
     prompt_code,
     prompt_name,
     description,
@@ -460,7 +460,7 @@ Output as structured JSON for layout purposes.',
     output_format,
     is_active
   ) VALUES (
-    v_app_uuid,
+    v_app_id,
     'FLM_TO_PITCH_DECK',
     'FLM to Pitch Deck Structure',
     'Creates comprehensive pitch deck structure with slide-by-slide content',
