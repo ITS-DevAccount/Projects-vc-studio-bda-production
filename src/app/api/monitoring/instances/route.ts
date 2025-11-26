@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Enrich instances with task metrics
-    const enrichedInstances: MonitoringInstanceSummary[] = await Promise.all(
+    const enrichedInstances = await Promise.all(
       (instances || []).map(async (instance) => {
         const template = Array.isArray(instance.workflow_templates)
           ? instance.workflow_templates[0]

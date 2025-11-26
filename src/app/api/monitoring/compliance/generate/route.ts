@@ -123,21 +123,23 @@ export async function POST(request: NextRequest) {
 
         if (error) throw error;
 
-        reportData = (tasks || []).map((task) => ({
-          task_id: task.id,
-          node_id: task.node_id,
-          function_code: task.function_code,
-          workflow_instance_id: Array.isArray(task.workflow_instance)
-            ? task.workflow_instance[0]?.id
-            : task.workflow_instance?.id,
-          workflow_code: Array.isArray(task.workflow_instance)
-            ? task.workflow_instance[0]?.workflow_code
-            : task.workflow_instance?.workflow_code,
-          data_inputs: include_pii ? task.input_data : Object.keys(task.input_data || {}),
-          data_outputs: include_pii ? task.output_data : Object.keys(task.output_data || {}),
-          created_at: task.created_at,
-          completed_at: task.completed_at,
-        }));
+        reportData = (tasks || []).map((task: any) => {
+          const workflowInstance = Array.isArray(task.workflow_instance)
+            ? task.workflow_instance[0]
+            : task.workflow_instance;
+
+          return {
+            task_id: task.id,
+            node_id: task.node_id,
+            function_code: task.function_code,
+            workflow_instance_id: workflowInstance?.id,
+            workflow_code: workflowInstance?.workflow_code,
+            data_inputs: include_pii ? task.input_data : Object.keys(task.input_data || {}),
+            data_outputs: include_pii ? task.output_data : Object.keys(task.output_data || {}),
+            created_at: task.created_at,
+            completed_at: task.completed_at,
+          };
+        });
 
         recordCount = reportData.length;
         break;

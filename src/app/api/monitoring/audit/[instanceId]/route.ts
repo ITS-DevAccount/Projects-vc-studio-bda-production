@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import type { AuditHistoryResponse, AuditEventDetail } from '@/lib/types/monitoring';
+import type { AuditHistoryResponse, AuditEventDetail, WorkflowEventType } from '@/lib/types/monitoring';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
@@ -153,11 +153,34 @@ export async function GET(
       })
     );
 
+    // Validate eventType is a valid WorkflowEventType
+    const validEventTypes: WorkflowEventType[] = [
+      'INSTANCE_CREATED',
+      'NODE_TRANSITION',
+      'TASK_CREATED',
+      'TASK_ASSIGNED',
+      'TASK_STARTED',
+      'TASK_COMPLETED',
+      'TASK_FAILED',
+      'TASK_RETRIED',
+      'SERVICE_CALLED',
+      'SERVICE_RESPONSE',
+      'WORKFLOW_COMPLETED',
+      'WORKFLOW_FAILED',
+      'WORKFLOW_PAUSED',
+      'WORKFLOW_RESUMED',
+      'CONTEXT_UPDATED',
+    ];
+    const validatedEventType: WorkflowEventType | undefined = 
+      eventType && validEventTypes.includes(eventType as WorkflowEventType)
+        ? (eventType as WorkflowEventType)
+        : undefined;
+
     const response: AuditHistoryResponse = {
       events: enrichedEvents,
       count: enrichedEvents.length,
       filters: {
-        event_type: eventType || undefined,
+        event_type: validatedEventType,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
         user_id: userId || undefined,

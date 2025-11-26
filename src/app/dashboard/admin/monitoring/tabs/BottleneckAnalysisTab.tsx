@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, TrendingUp, RefreshCw } from 'lucide-react';
 import type { BottleneckAnalysisResponse } from '@/lib/types/monitoring';
 
 export default function BottleneckAnalysisTab() {

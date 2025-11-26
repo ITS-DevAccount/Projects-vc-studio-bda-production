@@ -6,8 +6,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Download, Search, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
-import type { AuditHistoryResponse, AuditEventDetail } from '@/lib/types/monitoring';
+import { Download, Search, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import type { AuditHistoryResponse } from '@/lib/types/monitoring';
 
 export default function AuditHistoryTab() {
   const [selectedInstanceId, setSelectedInstanceId] = useState('');

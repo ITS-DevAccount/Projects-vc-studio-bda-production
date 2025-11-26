@@ -17,7 +17,7 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
-import type { MonitoringInstancesResponse, MonitoringInstanceSummary } from '@/lib/types/monitoring';
+import type { MonitoringInstancesResponse } from '@/lib/types/monitoring';
 
 export default function ActiveInstancesTab() {
   const router = useRouter();
