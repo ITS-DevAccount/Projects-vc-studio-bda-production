@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 
 export interface TableViewerProps {
   data: any[];
@@ -8,7 +8,7 @@ export interface TableViewerProps {
     columns?: Array<{
       key: string;
       label: string;
-      format?: (value: any) => React.ReactNode;
+      format?: (value: any) => ReactNode;
     }>;
     showIndex?: boolean;
     responsive?: boolean;

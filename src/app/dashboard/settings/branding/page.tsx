@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/hooks/useTheme';

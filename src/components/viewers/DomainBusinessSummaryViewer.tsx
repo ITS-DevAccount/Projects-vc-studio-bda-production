@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import Card from './shared/Card';
 import ValueDisplay from './shared/ValueDisplay';
 

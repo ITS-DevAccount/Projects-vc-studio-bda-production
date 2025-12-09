@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAppUuid } from '@/contexts/AppContext';
 import Link from 'next/link';
-import Image from 'next/image';
 import VideoPlayer from '@/components/media/VideoPlayer';
 import ImageGallery from '@/components/media/ImageGallery';
 import Logo from '@/components/branding/Logo';

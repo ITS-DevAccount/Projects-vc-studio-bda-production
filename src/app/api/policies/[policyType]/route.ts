@@ -7,14 +7,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { policyType: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ policyType: string }> }
 ) {
   try {
+    const { policyType } = await params;
     const { data, error } = await supabase
       .from('policies')
       .select('*')
-      .eq('policy_type', params.policyType)
+      .eq('policy_type', policyType)
       .eq('is_active', true)
       .order('version', { ascending: false })
       .limit(1);

@@ -60,13 +60,6 @@ export default function ImageGallery({
     lg: 'gap-6',
   };
 
-  // Aspect ratio map
-  const aspectRatioMap = {
-    square: 'aspect-square',
-    landscape: 'aspect-video',
-    portrait: 'aspect-[3/4]',
-  };
-
   // Generate Cloudinary URL with transformations
   const getImageUrl = (publicId: string, transformation: 'thumbnail' | 'full') => {
     const transforms = {

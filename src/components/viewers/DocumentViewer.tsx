@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import type { ReactNode } from 'react';
 
 export interface DocumentViewerProps {
   data: string | any;
@@ -54,7 +54,7 @@ export default function DocumentViewer({ data, config = {} }: DocumentViewerProp
  */
 function MarkdownContent({ content }: { content: string }) {
   const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
+  const elements: ReactNode[] = [];
   let currentParagraph: string[] = [];
   let inCodeBlock = false;
   let codeBlockContent: string[] = [];

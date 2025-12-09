@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -30,12 +29,6 @@ export default function Logo({
   showTagline = false,
 }: LogoProps) {
   const { settings, loading } = useTheme();
-
-  const sizeClasses = {
-    default: 'h-12',
-    compact: 'h-8',
-    'icon-only': 'h-10 w-10',
-  };
 
   const textSizeClasses = {
     default: 'text-xl',
