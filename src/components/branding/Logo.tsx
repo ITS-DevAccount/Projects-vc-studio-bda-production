@@ -98,15 +98,36 @@ export default function Logo({
 
       // Only render image if we have a valid source
       if (logoSrc) {
+        // Use configured dimensions, but allow variant to scale them proportionally
+        const getDimensions = () => {
+          if (variant === 'icon-only') {
+            return { width: 40, height: 40 };
+          }
+          if (variant === 'compact') {
+            // Compact is 2/3 of default size
+            return {
+              width: Math.round(settings.logo_width * 0.67),
+              height: Math.round(settings.logo_height * 0.67),
+            };
+          }
+          // Default: use configured dimensions
+          return {
+            width: settings.logo_width,
+            height: settings.logo_height,
+          };
+        };
+
+        const dimensions = getDimensions();
+
         return (
           <div className={`flex flex-col ${className}`}>
             <img
               src={logoSrc}
               alt={settings.site_name}
-              className={`${sizeClasses[variant]} w-auto object-contain`}
+              className="object-contain"
               style={{
-                maxWidth: variant === 'icon-only' ? '40px' : `${settings.logo_width}px`,
-                maxHeight: variant === 'icon-only' ? '40px' : `${settings.logo_height}px`,
+                width: `${dimensions.width}px`,
+                height: `${dimensions.height}px`,
               }}
               onError={() => {
                 console.error('Logo failed to load:', logoSrc);

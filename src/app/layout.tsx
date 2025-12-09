@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProviderWrapper } from "@/components/providers/AuthProviderWrapper";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -7,6 +7,12 @@ import { AppProvider } from "@/contexts/AppContext";
 export const metadata: Metadata = {
   title: "VC Studio",
   description: "Value Chain Studio - Business transformation",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

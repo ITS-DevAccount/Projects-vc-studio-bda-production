@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useAppUuid } from '@/contexts/AppContext';
 import { ChevronRight, Calendar, User, ArrowLeft, Home } from 'lucide-react';
 import Link from 'next/link';
+import Logo from '@/components/branding/Logo';
 
 interface BlogPost {
   id: string;
@@ -102,12 +103,7 @@ export default function BlogDetailPage() {
       <nav className="sticky top-0 z-50 bg-section-light border-b border-section-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-sm">VC</span>
-              </div>
-              <span className="text-xl font-bold text-brand-text">VC Studio</span>
-            </Link>
+            <Logo variant="compact" linkTo="/" />
             <Link
               href="/"
               className="text-brand-text-light hover:text-accent-primary transition font-medium flex items-center gap-2"
@@ -289,16 +285,16 @@ export default function BlogDetailPage() {
             <div>
               <h4 className="font-semibold mb-4 text-brand-text">Company</h4>
               <ul className="space-y-2 text-brand-text-muted text-sm">
-                <li><a href="#" className="hover:text-accent-primary transition">About</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Blog</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Contact</a></li>
+                <li><Link href="/#info" className="hover:text-accent-primary transition">About</Link></li>
+                <li><Link href="/blog" className="hover:text-accent-primary transition">Blog</Link></li>
+                <li><Link href="/#enquiry" className="hover:text-accent-primary transition">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-brand-text">Legal</h4>
               <ul className="space-y-2 text-brand-text-muted text-sm">
-                <li><a href="#" className="hover:text-accent-primary transition">Privacy</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Terms</a></li>
+                <li><Link href="/privacy-policy" className="hover:text-accent-primary transition">Privacy Policy</Link></li>
+                <li><Link href="/terms-of-service" className="hover:text-accent-primary transition">Terms of Service</Link></li>
               </ul>
             </div>
           </div>

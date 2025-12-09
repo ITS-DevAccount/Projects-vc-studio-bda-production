@@ -14,7 +14,6 @@ export class ClaudeClient {
   private client: Anthropic;
   private defaultModel: string;
   private maxRetries: number;
-  private timeout: number;
 
   constructor(config: ClaudeClientConfig) {
     this.client = new Anthropic({
@@ -22,7 +21,7 @@ export class ClaudeClient {
     });
     this.defaultModel = config.defaultModel || MODEL_MAP.standard;
     this.maxRetries = config.maxRetries || 3;
-    this.timeout = config.timeout || 60000;
+    // Note: timeout is stored in config but not currently used in API calls
   }
 
   /**

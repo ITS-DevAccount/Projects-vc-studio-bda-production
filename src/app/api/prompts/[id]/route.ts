@@ -6,7 +6,7 @@ import { createServerClient } from '@/lib/supabase/server';
 
 // GET /api/prompts/[id] - Get single prompt template
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -99,7 +99,7 @@ export async function PUT(
 
 // DELETE /api/prompts/[id] - Delete prompt template
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

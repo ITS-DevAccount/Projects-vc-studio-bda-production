@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: FileUploadConfig = {
 export default function FileUploader({
   config = DEFAULT_CONFIG,
   onUpload,
-  stakeholderId
+  stakeholderId: _stakeholderId
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

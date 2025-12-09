@@ -72,7 +72,6 @@ export default function DynamicFormRenderer({
   };
 
   const renderField = (fieldName: string, fieldSchema: any) => {
-    const isRequired = schema.required?.includes(fieldName);
     const value = formData[fieldName] || '';
     const error = errors[fieldName];
 

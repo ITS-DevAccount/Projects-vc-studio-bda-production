@@ -139,14 +139,17 @@ export default function VideoPlayer({
     }
   }, [loop]);
 
+  // Check if this is a background video (no controls, full container)
+  const isBackgroundVideo = !controls && className.includes('!bg-transparent');
+  
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border border-section-border shadow-md bg-neutral-900 ${className}`}
+      className={`relative overflow-hidden ${isBackgroundVideo ? 'rounded-none border-0 shadow-none bg-transparent' : 'rounded-xl border border-section-border shadow-md bg-neutral-900'} ${className}`}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
       {/* Video Element */}
-      <div className={`w-full ${aspectRatioMap[aspectRatio]}`}>
+      <div className={`w-full ${isBackgroundVideo ? 'h-full' : aspectRatioMap[aspectRatio]}`}>
         {videoUrl ? (
           <video
             key={videoUrl}

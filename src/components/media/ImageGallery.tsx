@@ -70,7 +70,9 @@ export default function ImageGallery({
   // Generate Cloudinary URL with transformations
   const getImageUrl = (publicId: string, transformation: 'thumbnail' | 'full') => {
     const transforms = {
-      thumbnail: 'w_800,h_600,c_fill,q_auto,f_auto',
+      thumbnail: aspectRatio === 'square' 
+        ? 'w_800,h_800,c_fit,q_auto,f_auto' 
+        : 'w_800,h_600,c_fill,q_auto,f_auto',
       full: 'w_1920,h_1080,c_fit,q_auto,f_auto',
     };
 
@@ -124,17 +126,17 @@ export default function ImageGallery({
       {/* Gallery Grid */}
       <div className={`grid ${columnClasses[columns]} ${gapClasses[gap]} ${className}`}>
         {images.map((image, index) => (
-          <div key={index} className="group cursor-pointer" onClick={() => openLightbox(index)}>
-            {/* Image Container */}
-            <div
-              className={`relative overflow-hidden rounded-lg border border-section-border bg-section-subtle ${aspectRatioMap[aspectRatio]} transition-all duration-300 hover:border-accent-primary hover:shadow-lg`}
-            >
-              <img
-                src={getImageUrl(image.publicId, 'thumbnail')}
-                alt={image.alt}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                loading="lazy"
-              />
+          <div key={index} className="group cursor-pointer flex flex-col bg-section-light rounded-lg border border-section-border overflow-hidden transition-all duration-300 hover:border-accent-primary hover:shadow-lg" onClick={() => openLightbox(index)}>
+            {/* Image Container - Reduced height, maintains square aspect */}
+            <div className="relative w-full bg-section-subtle flex items-center justify-center transition-all duration-300" style={{ aspectRatio: '1 / 1', maxHeight: '200px' }}>
+              <div className="w-full h-full flex items-center justify-center p-3 sm:p-4">
+                <img
+                  src={getImageUrl(image.publicId, 'thumbnail')}
+                  alt={image.alt}
+                  className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                  loading="lazy"
+                />
+              </div>
 
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -144,14 +146,17 @@ export default function ImageGallery({
               </div>
             </div>
 
-            {/* Caption */}
-            {showCaptions && (image.title || image.caption) && (
-              <div className="mt-2 px-1">
+            {/* Caption - Increased padding and prominence */}
+            {showCaptions && (
+              <div className="flex-1 flex flex-col justify-center p-4 sm:p-5 lg:p-6 min-h-[120px] sm:min-h-[140px]">
                 {image.title && (
-                  <h3 className="text-sm font-semibold text-brand-text">{image.title}</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-brand-text mb-2 sm:mb-3 line-clamp-2 leading-tight">{image.title}</h3>
+                )}
+                {image.alt && (
+                  <p className="text-sm sm:text-base text-brand-text-light mb-2 sm:mb-3 line-clamp-2 leading-relaxed">{image.alt}</p>
                 )}
                 {image.caption && (
-                  <p className="text-xs text-brand-text-muted mt-1">{image.caption}</p>
+                  <p className="text-xs sm:text-sm text-brand-text-muted line-clamp-3 leading-relaxed">{image.caption}</p>
                 )}
               </div>
             )}

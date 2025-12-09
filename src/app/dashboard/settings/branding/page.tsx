@@ -32,20 +32,43 @@ export default function BrandingSettings() {
     loadSettings();
   }, [site_code]);
 
+  // Sync local settings with theme settings when they change
+  useEffect(() => {
+    if (currentSettings && currentSettings.id) {
+      setSettings(currentSettings);
+    }
+  }, [currentSettings]);
+
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('*')
-        .eq('site_code', site_code)
+      
+      // Try to load by site_code first, fall back to is_active if that fails
+      let query = supabase.from('site_settings').select('*');
+      
+      // Try filtering by site_code if available, otherwise use is_active
+      const { data, error } = await query
+        .or(`site_code.eq.${site_code},is_active.eq.true`)
+        .limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
+        // If site_code query fails, try with is_active as fallback
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+          
+        if (fallbackError) {
+          throw fallbackError;
+        }
+        
+        if (fallbackData) {
+          setSettings(fallbackData);
+        }
+      } else if (data) {
         setSettings(data);
       }
     } catch (err) {
@@ -117,6 +140,7 @@ export default function BrandingSettings() {
         const updateData = sanitizeSettingsForSave(settings, {
           updated_at: new Date().toISOString(),
           updated_by: user.id,
+          is_active: true, // Ensure the record is active after update
         });
         console.log('Update data:', updateData);
 
@@ -144,6 +168,7 @@ export default function BrandingSettings() {
         console.log('Inserting new setting');
         const insertData = sanitizeSettingsForSave(settings, {
           created_by: user.id,
+          is_active: true, // Ensure new record is active
         });
         console.log('Insert data:', insertData);
         const { data: resultData, error: insertError } = await supabase

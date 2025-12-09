@@ -1,71 +1,81 @@
-// Sprint 1d.7: FLM Building Workflow - Prompt Library Page
-// Phase A: AI Interface Foundation
+'use client';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import PromptLibraryList from '@/components/ai/PromptLibraryList';
 import Link from 'next/link';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, Settings } from 'lucide-react';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMenu from '@/components/admin/AdminMenu';
 
-export default async function PromptsPage() {
-  const supabase = await createServerClient();
+export default function PromptsPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  // Check authentication
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/auth/login');
+    }
+  }, [loading, user, router]);
 
-  if (!user) {
-    redirect('/auth/login');
-  }
+  if (loading || !user) return null;
 
-  // Check if user is admin
-  const { data: isAdmin } = await supabase.rpc('is_user_admin');
-
-  if (!isAdmin) {
-    redirect('/dashboard');
-  }
-
-  // Fetch all prompts
-  const { data: prompts, error } = await supabase
-    .from('prompt_templates')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching prompts:', error);
-  }
+  const sections = [
+    {
+      id: 'ai-prompt-library',
+      label: 'AI Prompt Library',
+      description: 'Manage prompt templates for FLM creation and document generation',
+      icon: Sparkles,
+      href: '/dashboard/admin/prompts/library'
+    },
+    {
+      id: 'configuration-editor',
+      label: 'Configuration Editor',
+      description: 'Edit and configure AI prompt settings and parameters',
+      icon: Settings,
+      href: '/dashboard/admin/prompts/configuration'
+    },
+  ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">AI Prompt Library</h1>
-            <p className="text-gray-600 mt-1">
-              Manage prompt templates for FLM creation and document generation
-            </p>
-          </div>
-          <Link
-            href="/dashboard/admin/prompts/test"
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Test Harness
-          </Link>
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <AdminMenu />
+
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Prompts</h1>
+          <p className="text-gray-600 mb-8">Manage AI prompt templates and configurations</p>
         </div>
 
-        {/* Breadcrumb */}
-        <div className="text-sm text-gray-600">
-          <Link href="/dashboard/admin" className="hover:text-gray-900">
-            Admin
-          </Link>
-          {' / '}
-          <span className="text-gray-900 font-medium">AI Prompts</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {sections.map(section => {
+            const Icon = section.icon;
+            return (
+              <Link
+                key={section.id}
+                href={section.href}
+                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <Icon className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{section.label}</h3>
+                    <p className="text-sm text-gray-600">{section.description}</p>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-blue-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
-      </div>
-
-      {/* List */}
-      <PromptLibraryList prompts={prompts || []} />
+      </main>
     </div>
   );
 }

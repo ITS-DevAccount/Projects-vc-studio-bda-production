@@ -15,6 +15,7 @@ interface PromptTemplateFormProps {
 const STANDARD_TEMPLATE = {
   prompt_code: 'NEW_PROMPT_001',
   prompt_name: 'New Prompt',
+  description: '',
   category: 'FLM' as const,
   system_prompt: 'You are an expert business analyst working within the Value Chain Evolution Framework (VCEF). Your role is to [DESCRIBE ROLE]. You must output [FORMAT].',
   user_prompt_template: 'Analyse the following input:\n\n{{input}}\n\nProvide your analysis covering:\n\n1. [ASPECT 1]\n2. [ASPECT 2]\n3. [ASPECT 3]\n\nOutput format:\n```json\n{\n  "field1": "...",\n  "field2": "..."\n}\n```',

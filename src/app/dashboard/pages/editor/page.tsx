@@ -618,46 +618,54 @@ export default function PageEditor() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-brand-text-muted mb-1">Base URL (Optional)</label>
-                            <input
-                              type="text"
+                            <textarea
                               value={image.cloudinary_url}
                               onChange={(e) => handleImageChange(index, 'cloudinary_url', e.target.value)}
                               placeholder="https://res.cloudinary.com/.../upload"
-                              className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                              rows={2}
+                              className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted resize-none"
                             />
                           </div>
                           <div>
                             <label className="block text-xs text-brand-text-muted mb-1">Public ID or Full URL</label>
-                            <input
-                              type="text"
+                            <textarea
                               value={image.public_id}
                               onChange={(e) => handleImageChange(index, 'public_id', e.target.value)}
                               placeholder="image_id or full Cloudinary URL"
-                              className="px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                              rows={2}
+                              className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted resize-none"
                             />
                           </div>
                         </div>
-                        <input
-                          type="text"
-                          value={image.title}
-                          onChange={(e) => handleImageChange(index, 'title', e.target.value)}
-                          placeholder="Image title"
-                          className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
-                        />
-                        <input
-                          type="text"
-                          value={image.alt_text}
-                          onChange={(e) => handleImageChange(index, 'alt_text', e.target.value)}
-                          placeholder="Alt text"
-                          className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
-                        />
-                        <input
-                          type="text"
-                          value={image.caption}
-                          onChange={(e) => handleImageChange(index, 'caption', e.target.value)}
-                          placeholder="Caption"
-                          className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
-                        />
+                        <div>
+                          <input
+                            type="text"
+                            value={image.title}
+                            onChange={(e) => handleImageChange(index, 'title', e.target.value)}
+                            placeholder="Image title"
+                            className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-brand-text-muted mb-1">Alt Text</label>
+                          <textarea
+                            value={image.alt_text}
+                            onChange={(e) => handleImageChange(index, 'alt_text', e.target.value)}
+                            placeholder="Alt text description"
+                            rows={2}
+                            className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-brand-text-muted mb-1">Caption</label>
+                          <textarea
+                            value={image.caption}
+                            onChange={(e) => handleImageChange(index, 'caption', e.target.value)}
+                            placeholder="Image caption"
+                            rows={2}
+                            className="w-full px-3 py-2 text-sm bg-section-light border border-section-border rounded-lg focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 text-brand-text placeholder-brand-text-muted resize-none"
+                          />
+                        </div>
                         <label className="flex items-center gap-2 text-sm text-brand-text">
                           <input
                             type="checkbox"

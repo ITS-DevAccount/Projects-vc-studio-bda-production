@@ -23,10 +23,10 @@ interface VCModelViewerProps {
 }
 
 export default function VCModelViewer({
-  stakeholderId,
+  stakeholderId: _stakeholderId,
   modelData,
   viewMode,
-  showDrafts = false,
+  showDrafts: _showDrafts = false,
   showCompletion = true,
   expandedByDefault = false
 }: VCModelViewerProps) {

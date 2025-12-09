@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { PromptTemplate } from '@/lib/ai/types';
-import JsonView from '@uiw/react-json-view';
+import ViewerRegistry from '@/components/viewers/ViewerRegistry';
 
 interface PromptTestHarnessProps {
   prompts: PromptTemplate[];
@@ -38,6 +38,8 @@ export default function PromptTestHarness({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [showRendered, setShowRendered] = useState(false);
+  const [selectedViewer, setSelectedViewer] = useState<string | null>(null);
+  const [showRawResponse, setShowRawResponse] = useState(false);
 
   useEffect(() => {
     if (selectedPromptCode) {
@@ -102,6 +104,12 @@ export default function PromptTestHarness({
 
       const data = await response.json();
       setResult(data);
+      
+      // Set viewer code from prompt template's default_viewer_code
+      if (data.success && selectedPrompt) {
+        const viewerCode = (selectedPrompt as any).default_viewer_code || 'JSON_TREE_VIEWER';
+        setSelectedViewer(viewerCode);
+      }
     } catch (error) {
       setResult({
         success: false,
@@ -313,23 +321,59 @@ export default function PromptTestHarness({
                 </div>
               )}
 
-              {/* Parsed Output */}
-              {result.success && selectedPrompt.output_format === 'json' && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Parsed Output:</h4>
-                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    <JsonView value={result.data} />
+              {/* Rendered Output */}
+              {result.success && result.data && (
+                <div className="mt-6 border-t pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Rendered Output</h4>
+                    
+                    {/* Viewer selector */}
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="viewer-select" className="text-sm text-gray-600">
+                        Viewer:
+                      </label>
+                      <select
+                        id="viewer-select"
+                        value={selectedViewer || 'JSON_TREE_VIEWER'}
+                        onChange={(e) => setSelectedViewer(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="DBS_CARD_VIEW">Card View</option>
+                        <option value="L0_DOMAIN_VIEWER">L0 Domain Viewer</option>
+                        <option value="JSON_TREE_VIEWER">JSON Tree</option>
+                        <option value="TABLE_VIEWER">Table</option>
+                        <option value="DOCUMENT_VIEWER">Document</option>
+                      </select>
+                    </div>
                   </div>
+                  
+                  {/* Viewer rendering */}
+                  <ViewerRegistry 
+                    viewerCode={selectedViewer || 'JSON_TREE_VIEWER'}
+                    data={result.data}
+                  />
                 </div>
               )}
 
-              {/* Raw Response */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Raw Response:</h4>
-                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre-wrap border border-gray-200">
-                  {result.rawResponse}
-                </pre>
-              </div>
+              {/* Raw Response Toggle */}
+              {result.success && (
+                <div className="mt-6 border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Raw Response</h4>
+                    <button
+                      onClick={() => setShowRawResponse(!showRawResponse)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {showRawResponse ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {showRawResponse && (
+                    <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre-wrap border border-gray-200">
+                      {result.rawResponse}
+                    </pre>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </>
