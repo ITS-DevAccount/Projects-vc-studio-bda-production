@@ -32,11 +32,12 @@ export default function AdminMenu() {
       pathname.startsWith('/dashboard/admin/stakeholder-types')
     )) return true
     
-    // Content section - matches content, pages, and blog-posts routes
+    // Content section - matches content, pages, blog-posts, and cta-buttons routes
     if (href === '/dashboard/admin/content' && (
       pathname.startsWith('/dashboard/admin/content') ||
       pathname.startsWith('/dashboard/admin/pages') ||
-      pathname.startsWith('/dashboard/admin/blog-posts')
+      pathname.startsWith('/dashboard/admin/blog-posts') ||
+      pathname.startsWith('/dashboard/admin/cta-buttons')
     )) return true
     
     // Enquiries section

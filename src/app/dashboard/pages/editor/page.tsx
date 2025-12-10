@@ -16,6 +16,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { CTAPlacementsSection } from '@/components/page-editor/CTAPlacementsSection';
 
 interface PageSettings {
   id?: string;
@@ -694,6 +695,9 @@ export default function PageEditor() {
                 )}
               </div>
             </section>
+
+            {/* CTA Button Placements */}
+            {settings.id && <CTAPlacementsSection pageSettingsId={settings.id} />}
 
             {/* Publishing */}
             <section className="bg-section-light rounded-xl p-6 border border-section-border shadow-sm">

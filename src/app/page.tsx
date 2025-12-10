@@ -56,6 +56,131 @@ interface PageImage {
 
 type EnquiryStatus = 'idle' | 'loading' | 'success' | 'error';
 
+/**
+ * HeroButtons Component
+ * Fetches and renders CTA buttons from page_cta_placements table
+ * Uses the Page Editor system - no config files or env vars needed
+ */
+// Type for RPC response format (flattened structure)
+interface RPCPlacement {
+  placement_id: string;
+  cta_button_id: string;
+  section: string;
+  sort_order: number;
+  // Flattened button fields
+  label?: string;
+  href?: string;
+  variant?: string;
+  icon_name?: string;
+  analytics_event?: string;
+}
+
+interface HeroButtonsProps {
+  pageSettingsId?: string;
+}
+
+function HeroButtons({ pageSettingsId }: HeroButtonsProps) {
+  const [placements, setPlacements] = useState<RPCPlacement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPlacements = async () => {
+      try {
+        // Use pageSettingsId prop (from page settings already fetched)
+        if (!pageSettingsId) {
+          // No page ID available - silently skip (no buttons will show)
+          if (isMounted) setLoading(false);
+          return;
+        }
+
+        console.log('[HeroButtons] Fetching placements for page:', pageSettingsId);
+        const res = await fetch(`/api/page-settings/${pageSettingsId}/cta-placements`);
+        const data = await res.json();
+
+        console.log('[HeroButtons] API Response:', data);
+
+        if (isMounted && data.success) {
+          // Filter for hero section and sort by sort_order
+          // Handle RPC response format (flattened structure with placement_id)
+          const heroPlacements = (data.data || [])
+            .filter((p: any) => (p.section || (p as any).section) === 'hero')
+            .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          
+          console.log('[HeroButtons] Filtered hero placements:', heroPlacements);
+          setPlacements(heroPlacements);
+        }
+      } catch (err) {
+        console.error('[HeroButtons Error]:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchPlacements();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pageSettingsId]);
+
+  // Always return a stable container to prevent layout shifts
+  return (
+    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {loading ? (
+        <>
+          <div className="h-12 w-32 bg-white/20 rounded-lg animate-pulse" />
+          <div className="h-12 w-32 bg-white/20 rounded-lg animate-pulse" />
+        </>
+      ) : placements && placements.length > 0 ? (
+        placements.map((placement) => {
+          // Handle RPC response format (flattened structure)
+          const placementId = (placement as any).placement_id || (placement as any).id;
+          const label = placement.label || 'Button';
+          const href = placement.href || '#';
+          const variant = placement.variant || 'primary';
+          const iconName = placement.icon_name;
+          const analyticsEvent = placement.analytics_event;
+          const isPrimary = variant === 'primary';
+
+          // Check if link is external (starts with http:// or https:// and is not same domain)
+          const isExternal = href.startsWith('http://') || href.startsWith('https://');
+          const isSameDomain = isExternal && typeof window !== 'undefined' 
+            ? new URL(href, window.location.origin).hostname === window.location.hostname
+            : false;
+          const shouldOpenNewTab = isExternal && !isSameDomain;
+
+          console.log('[HeroButtons] Rendering button:', { placementId, label, href, variant, isExternal, shouldOpenNewTab });
+
+          return (
+            <a
+              key={placementId || `hero-cta-${placement.sort_order}`}
+              href={href}
+              {...(shouldOpenNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              onClick={() => {
+                if (analyticsEvent) {
+                  console.log('[Analytics]:', analyticsEvent);
+                  // Send to analytics service here
+                }
+              }}
+              className={
+                isPrimary
+                  ? 'bg-accent-primary hover:bg-accent-primary-hover text-white px-8 py-3 rounded-lg font-bold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+                  : 'bg-white/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white/30 px-8 py-3 rounded-lg font-bold transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+              }
+            >
+              {label}
+              {isPrimary && !iconName && <ChevronRight size={20} />}
+              {iconName && <span>{iconName}</span>}
+            </a>
+          );
+        })
+      ) : null}
+    </div>
+  );
+}
+
 export default function VCStudioLanding() {
   const appUuid = useAppUuid();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -416,7 +541,7 @@ export default function VCStudioLanding() {
               <a href="#hero" className="text-brand-text-light hover:text-accent-primary transition font-medium">Home</a>
               <a href="#info" className="text-brand-text-light hover:text-accent-primary transition font-medium">About</a>
               <a href="#blogs" className="text-brand-text-light hover:text-accent-primary transition font-medium">Resources</a>
-              <a href="#enquiry" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
+              <a href="#contact" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
               <Link href="/auth/login" className="text-brand-text-light hover:text-accent-primary transition font-medium">Sign In</Link>
             </div>
 
@@ -435,7 +560,7 @@ export default function VCStudioLanding() {
               <a href="#hero" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Home</a>
               <a href="#info" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">About</a>
               <a href="#blogs" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Resources</a>
-              <a href="#enquiry" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
+              <a href="#contact" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
               <Link href="/auth/login" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Sign In</Link>
             </div>
           )}
@@ -443,9 +568,9 @@ export default function VCStudioLanding() {
       </nav>
 
       {/* Hero Section with Video Background */}
-      <section id="hero" className="relative px-4 sm:px-6 lg:px-8 overflow-hidden min-h-[715px] pb-[50px]">
+      <section id="hero" className="relative px-4 sm:px-6 lg:px-8 min-h-screen flex items-center justify-center">
         {/* Video Background Container */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <VideoPlayer
             cloudinaryUrl={pageSettings?.hero_video_url || "https://res.cloudinary.com/demo/video/upload"}
             publicId={pageSettings?.hero_video_public_id || "dog"}
@@ -453,15 +578,13 @@ export default function VCStudioLanding() {
             loop={true}
             muted={true}
             controls={false}
-            className="w-full h-full !rounded-none !border-0 !shadow-none !bg-transparent"
+            className="!rounded-none !border-0 !shadow-none !bg-transparent"
             aspectRatio="16:9"
           />
-          {/* Dark overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/30 z-10"></div>
         </div>
 
         {/* Content - now on top of video */}
-        <div className="relative z-20 max-w-7xl mx-auto text-center pt-[413px] pb-20">
+        <div className="relative z-20 max-w-7xl mx-auto text-center py-20 px-4 mt-[300px]">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
             {pageSettings?.hero_title || 'Value Chain Studio'}
           </h1>
@@ -473,14 +596,8 @@ export default function VCStudioLanding() {
               {pageSettings.hero_description}
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-accent-primary hover:bg-accent-primary-hover text-white px-8 py-3 rounded-lg font-bold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-              {pageSettings?.hero_cta_primary_text || 'Get Started'} <ChevronRight size={20} />
-            </button>
-            <button className="bg-white/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white/30 px-8 py-3 rounded-lg font-bold transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-              {pageSettings?.hero_cta_secondary_text || 'Learn More'}
-            </button>
-          </div>
+          {/* CTA Buttons - Database-driven via Page Editor */}
+          <HeroButtons pageSettingsId={pageSettings?.id} />
         </div>
       </section>
 
@@ -631,7 +748,7 @@ export default function VCStudioLanding() {
       </section>
 
       {/* Enquiry Section */}
-      <section id="enquiry" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
+      <section id="contact" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-2xl mx-auto">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold mb-2 text-brand-text">Get in Touch</h2>
@@ -738,7 +855,7 @@ export default function VCStudioLanding() {
               <ul className="space-y-2 text-white text-sm">
                 <li><a href="#info" className="hover:text-accent-primary transition">About</a></li>
                 <li><Link href="/blog" className="hover:text-accent-primary transition">Blog</Link></li>
-                <li><a href="#enquiry" className="hover:text-accent-primary transition">Contact</a></li>
+                <li><a href="#contact" className="hover:text-accent-primary transition">Contact</a></li>
               </ul>
             </div>
             <div>

@@ -35,6 +35,13 @@ export default function ContentPage() {
       icon: FileText,
       href: '/dashboard/admin/blog-posts'
     },
+    {
+      id: 'cta-buttons',
+      label: 'CTA Buttons',
+      description: 'Manage call-to-action buttons for pages',
+      icon: FileText,
+      href: '/dashboard/admin/cta-buttons'
+    },
   ]
 
   return (
