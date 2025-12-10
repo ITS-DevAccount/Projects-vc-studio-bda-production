@@ -26,6 +26,7 @@ interface EnquiryForm {
 }
 
 interface PageSettings {
+  id?: string;
   hero_video_url: string;
   hero_video_public_id: string;
   hero_title: string;
