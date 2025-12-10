@@ -14,6 +14,7 @@ interface CTAPlacementsSectionProps {
  */
 // Type for RPC response format (has placement_id instead of id, and flattened button fields)
 interface RPCPlacementResponse {
+  id: string; // Added to match PageCTAPlacement interface
   placement_id: string;
   page_settings_id: string;
   cta_button_id: string;
