@@ -26,7 +26,6 @@ interface EnquiryForm {
 }
 
 interface PageSettings {
-  id?: string;
   hero_video_url: string;
   hero_video_public_id: string;
   hero_title: string;
@@ -491,41 +490,49 @@ export default function VCStudioLanding() {
       return;
     }
 
-    try {
-      setEnquiryStatus('loading');
-      const { error } = await supabase
-        .from('enquiries')
-        .insert([
-          {
-            app_uuid: appUuid, // Required: Links enquiry to the current app
-            name: enquiryForm.name,
-            email: enquiryForm.email,
-            subject: enquiryForm.subject,
-            message: enquiryForm.message,
-            enquiry_type: 'general',
-            status: 'new',
-            priority: 'medium'
-          }
-        ]);
+    // Commented out Supabase submission - can be re-enabled later
+    // try {
+    //   setEnquiryStatus('loading');
+    //   const { error } = await supabase
+    //     .from('enquiries')
+    //     .insert([
+    //       {
+    //         app_uuid: appUuid, // Required: Links enquiry to the current app
+    //         name: enquiryForm.name,
+    //         email: enquiryForm.email,
+    //         subject: enquiryForm.subject,
+    //         message: enquiryForm.message,
+    //         enquiry_type: 'general',
+    //         status: 'new',
+    //         priority: 'medium'
+    //       }
+    //     ]);
 
-      if (error) {
-        console.error('Error submitting enquiry:', {
-          message: (error as any).message || 'Unknown error',
-          details: (error as any).details || null,
-          hint: (error as any).hint || null,
-          code: (error as any).code || null
-        });
-        throw error;
-      }
+    //   if (error) {
+    //     console.error('Error submitting enquiry:', {
+    //       message: (error as any).message || 'Unknown error',
+    //       details: (error as any).details || null,
+    //       hint: (error as any).hint || null,
+    //       code: (error as any).code || null
+    //     });
+    //     throw error;
+    //   }
 
-      setEnquiryStatus('success');
-      setEnquiryForm({ name: '', email: '', subject: '', message: '' });
-      setTimeout(() => setEnquiryStatus('idle'), 5000);
-    } catch (err: any) {
-      console.error('Error submitting enquiry:', err);
-      setEnquiryStatus('error');
-      setTimeout(() => setEnquiryStatus('idle'), 5000);
-    }
+    //   setEnquiryStatus('success');
+    //   setEnquiryForm({ name: '', email: '', subject: '', message: '' });
+    //   setTimeout(() => setEnquiryStatus('idle'), 5000);
+    // } catch (err: any) {
+    //   console.error('Error submitting enquiry:', err);
+    //   setEnquiryStatus('error');
+    //   setTimeout(() => setEnquiryStatus('idle'), 5000);
+    // }
+
+    setEnquiryStatus('success');
+    setEnquiryForm({ name: '', email: '', subject: '', message: '' });
+    setTimeout(() => {
+      setEnquiryStatus('idle');
+      window.location.href = '#contact';
+    }, 10000);
   };
 
   return (
@@ -573,7 +580,7 @@ export default function VCStudioLanding() {
         {/* Video Background Container */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <VideoPlayer
-            cloudinaryUrl={pageSettings?.hero_video_url || "https://res.cloudinary.com/demo/video/upload"}
+            cloudinaryUrl={pageSettings?.hero_video_url || ""}
             publicId={pageSettings?.hero_video_public_id || "dog"}
             autoplay={true}
             loop={true}
@@ -813,7 +820,7 @@ export default function VCStudioLanding() {
               {/* Status Messages */}
               {enquiryStatus === 'success' && (
                 <div className="bg-semantic-success-bg border border-semantic-success text-semantic-success px-4 py-3 rounded-lg">
-                  Thank you! Your enquiry has been submitted successfully.
+                  For new user signup please use contact form and the team will respond
                 </div>
               )}
               {enquiryStatus === 'error' && (
@@ -838,18 +845,10 @@ export default function VCStudioLanding() {
       {/* Footer */}
       <footer className="bg-section-emphasis border-t border-section-border py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-xl mb-4 text-white">VC Studio</h3>
               <p className="text-white text-sm">Systematic business transformation methodology</p>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-white">Quick Links</h4>
-              <ul className="space-y-2 text-white text-sm">
-                <li><a href="#" className="hover:text-accent-primary transition">Documentation</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Pricing</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Support</a></li>
-              </ul>
             </div>
             <div>
               <h4 className="font-bold text-lg mb-4 text-white">Company</h4>

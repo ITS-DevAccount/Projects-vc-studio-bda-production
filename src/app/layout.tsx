@@ -7,6 +7,9 @@ import { AppProvider } from "@/contexts/AppContext";
 export const metadata: Metadata = {
   title: "VC Studio",
   description: "Value Chain Studio - Business transformation",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export const viewport: Viewport = {
