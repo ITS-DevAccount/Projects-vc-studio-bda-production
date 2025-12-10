@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAppUuid } from '@/contexts/AppContext';
@@ -55,6 +55,131 @@ interface PageImage {
 }
 
 type EnquiryStatus = 'idle' | 'loading' | 'success' | 'error';
+
+/**
+ * HeroButtons Component
+ * Fetches and renders CTA buttons from page_cta_placements table
+ * Uses the Page Editor system - no config files or env vars needed
+ */
+// Type for RPC response format (flattened structure)
+interface RPCPlacement {
+  placement_id: string;
+  cta_button_id: string;
+  section: string;
+  sort_order: number;
+  // Flattened button fields
+  label?: string;
+  href?: string;
+  variant?: string;
+  icon_name?: string;
+  analytics_event?: string;
+}
+
+interface HeroButtonsProps {
+  pageSettingsId?: string;
+}
+
+function HeroButtons({ pageSettingsId }: HeroButtonsProps) {
+  const [placements, setPlacements] = useState<RPCPlacement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPlacements = async () => {
+      try {
+        // Use pageSettingsId prop (from page settings already fetched)
+        if (!pageSettingsId) {
+          // No page ID available - silently skip (no buttons will show)
+          if (isMounted) setLoading(false);
+          return;
+        }
+
+        console.log('[HeroButtons] Fetching placements for page:', pageSettingsId);
+        const res = await fetch(`/api/page-settings/${pageSettingsId}/cta-placements`);
+        const data = await res.json();
+
+        console.log('[HeroButtons] API Response:', data);
+
+        if (isMounted && data.success) {
+          // Filter for hero section and sort by sort_order
+          // Handle RPC response format (flattened structure with placement_id)
+          const heroPlacements = (data.data || [])
+            .filter((p: any) => (p.section || (p as any).section) === 'hero')
+            .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          
+          console.log('[HeroButtons] Filtered hero placements:', heroPlacements);
+          setPlacements(heroPlacements);
+        }
+      } catch (err) {
+        console.error('[HeroButtons Error]:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchPlacements();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pageSettingsId]);
+
+  // Always return a stable container to prevent layout shifts
+  return (
+    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {loading ? (
+        <>
+          <div className="h-12 w-32 bg-white/20 rounded-lg animate-pulse" />
+          <div className="h-12 w-32 bg-white/20 rounded-lg animate-pulse" />
+        </>
+      ) : placements && placements.length > 0 ? (
+        placements.map((placement) => {
+          // Handle RPC response format (flattened structure)
+          const placementId = (placement as any).placement_id || (placement as any).id;
+          const label = placement.label || 'Button';
+          const href = placement.href || '#';
+          const variant = placement.variant || 'primary';
+          const iconName = placement.icon_name;
+          const analyticsEvent = placement.analytics_event;
+          const isPrimary = variant === 'primary';
+
+          // Check if link is external (starts with http:// or https:// and is not same domain)
+          const isExternal = href.startsWith('http://') || href.startsWith('https://');
+          const isSameDomain = isExternal && typeof window !== 'undefined' 
+            ? new URL(href, window.location.origin).hostname === window.location.hostname
+            : false;
+          const shouldOpenNewTab = isExternal && !isSameDomain;
+
+          console.log('[HeroButtons] Rendering button:', { placementId, label, href, variant, isExternal, shouldOpenNewTab });
+
+          return (
+            <a
+              key={placementId || `hero-cta-${placement.sort_order}`}
+              href={href}
+              {...(shouldOpenNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              onClick={() => {
+                if (analyticsEvent) {
+                  console.log('[Analytics]:', analyticsEvent);
+                  // Send to analytics service here
+                }
+              }}
+              className={
+                isPrimary
+                  ? 'bg-accent-primary hover:bg-accent-primary-hover text-white px-8 py-3 rounded-lg font-bold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+                  : 'bg-white/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white/30 px-8 py-3 rounded-lg font-bold transition drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+              }
+            >
+              {label}
+              {isPrimary && !iconName && <ChevronRight size={20} />}
+              {iconName && <span>{iconName}</span>}
+            </a>
+          );
+        })
+      ) : null}
+    </div>
+  );
+}
 
 export default function VCStudioLanding() {
   const appUuid = useAppUuid();
@@ -416,8 +541,7 @@ export default function VCStudioLanding() {
               <a href="#hero" className="text-brand-text-light hover:text-accent-primary transition font-medium">Home</a>
               <a href="#info" className="text-brand-text-light hover:text-accent-primary transition font-medium">About</a>
               <a href="#blogs" className="text-brand-text-light hover:text-accent-primary transition font-medium">Resources</a>
-              <a href="#enquiry" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
-              <Link href="/onboarding" className="bg-accent-primary hover:bg-accent-primary-hover text-white px-4 py-2 rounded-lg transition font-medium">Register</Link>
+              <a href="#contact" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
               <Link href="/auth/login" className="text-brand-text-light hover:text-accent-primary transition font-medium">Sign In</Link>
             </div>
 
@@ -436,8 +560,7 @@ export default function VCStudioLanding() {
               <a href="#hero" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Home</a>
               <a href="#info" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">About</a>
               <a href="#blogs" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Resources</a>
-              <a href="#enquiry" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
-              <Link href="/onboarding" className="block px-2 py-2 bg-accent-primary text-white rounded text-center font-medium">Register</Link>
+              <a href="#contact" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
               <Link href="/auth/login" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Sign In</Link>
             </div>
           )}
@@ -445,9 +568,9 @@ export default function VCStudioLanding() {
       </nav>
 
       {/* Hero Section with Video Background */}
-      <section id="hero" className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section id="hero" className="relative px-4 sm:px-6 lg:px-8 min-h-screen flex items-center justify-center">
         {/* Video Background Container */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <VideoPlayer
             cloudinaryUrl={pageSettings?.hero_video_url || "https://res.cloudinary.com/demo/video/upload"}
             publicId={pageSettings?.hero_video_public_id || "dog"}
@@ -455,34 +578,26 @@ export default function VCStudioLanding() {
             loop={true}
             muted={true}
             controls={false}
-            className="w-full h-full"
+            className="!rounded-none !border-0 !shadow-none !bg-transparent"
             aspectRatio="16:9"
           />
-          {/* Overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-text/80 via-brand-text/70 to-brand-text/60"></div>
         </div>
 
         {/* Content - now on top of video */}
-        <div className="relative z-10 max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+        <div className="relative z-20 max-w-7xl mx-auto text-center py-20 px-4 mt-[300px]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
             {pageSettings?.hero_title || 'Value Chain Studio'}
           </h1>
-          <p className="text-xl sm:text-2xl text-white mb-8 max-w-3xl mx-auto font-semibold drop-shadow-md">
+          <p className="text-xl sm:text-2xl text-white mb-8 max-w-3xl mx-auto font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
             {pageSettings?.hero_subtitle || 'Systematic business transformation through Value Chain Excellence Framework'}
           </p>
           {pageSettings?.hero_description && (
-            <p className="text-white/90 mb-12 max-w-2xl mx-auto text-lg drop-shadow-md">
+            <p className="text-white mb-12 max-w-2xl mx-auto text-lg font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
               {pageSettings.hero_description}
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-accent-primary hover:bg-accent-primary-hover text-white px-8 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-              {pageSettings?.hero_cta_primary_text || 'Get Started'} <ChevronRight size={20} />
-            </button>
-            <button className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white/20 px-8 py-3 rounded-lg font-semibold transition">
-              {pageSettings?.hero_cta_secondary_text || 'Learn More'}
-            </button>
-          </div>
+          {/* CTA Buttons - Database-driven via Page Editor */}
+          <HeroButtons pageSettingsId={pageSettings?.id} />
         </div>
       </section>
 
@@ -490,7 +605,7 @@ export default function VCStudioLanding() {
       <section id="info" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-7xl mx-auto">
           <div className="bg-section-subtle rounded-xl p-8 sm:p-12 border border-section-border shadow-sm">
-            <h2 className="text-3xl font-bold mb-6 text-brand-text">
+            <h2 className="text-3xl font-bold mb-6 text-brand-text text-center">
               {pageSettings?.info_section_title || 'What is VC Studio?'}
             </h2>
             <div className="grid md:grid-cols-2 gap-8">
@@ -550,7 +665,7 @@ export default function VCStudioLanding() {
                 caption: img.caption,
               }))}
               columns={3}
-              aspectRatio="landscape"
+              aspectRatio="square"
               gap="md"
               showCaptions={true}
             />
@@ -565,40 +680,55 @@ export default function VCStudioLanding() {
       {/* Blog Section */}
       <section id="blogs" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-12">
+          <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold mb-2 text-brand-text">Latest Resources</h2>
             <p className="text-brand-text-muted">Featured articles and insights</p>
           </div>
 
           {blogsLoading ? (
-            <div className="text-center py-12">
-              <p className="text-brand-text-muted">Loading resources...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-full max-w-sm bg-section-light rounded-lg overflow-hidden border border-section-border shadow-sm animate-pulse">
+                  <div className="aspect-[16/9] bg-section-subtle" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-4 bg-section-subtle rounded w-3/4 mx-auto" />
+                    <div className="h-3 bg-section-subtle rounded w-full" />
+                    <div className="h-3 bg-section-subtle rounded w-5/6 mx-auto" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : blogs.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {blogs.map((blog) => (
                 <Link
                   key={blog.id}
                   href={`/blog/${blog.id}`}
+                  className="w-full max-w-sm h-full"
                 >
-                  <article className="bg-section-light rounded-lg overflow-hidden border border-section-border hover:border-accent-primary transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md h-full">
-                    {blog.featured_image_url && (
-                      <div className="h-48 bg-gradient-to-br from-accent-primary to-accent-secondary overflow-hidden">
-                        <img
-                          src={blog.featured_image_url}
+                  <article className="bg-section-light rounded-lg overflow-hidden border border-section-border hover:border-accent-primary transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md h-full flex flex-col">
+                    {blog.featured_image_url ? (
+                      <div className="w-full aspect-video bg-gradient-to-br from-accent-primary to-accent-secondary overflow-hidden flex items-center justify-center">
+                        <img 
+                          src={blog.featured_image_url} 
                           alt={blog.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-contain group-hover:scale-105 transition"
+                          loading="lazy"
                         />
                       </div>
+                    ) : (
+                      <div className="aspect-video bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center">
+                        <ChevronRight className="w-12 h-12 text-white opacity-50" />
+                      </div>
                     )}
-                    <div className="p-6">
+                    <div className="p-6 flex-1 flex flex-col text-center">
                       <h3 className="text-lg font-semibold mb-2 text-brand-text group-hover:text-accent-primary transition">
                         {blog.title}
                       </h3>
-                      <p className="text-brand-text-muted text-sm mb-4 line-clamp-2">
+                      <p className="text-brand-text-muted text-sm mb-4 line-clamp-2 flex-1">
                         {blog.excerpt || 'Read full article for details...'}
                       </p>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-auto">
                         <span className="text-xs text-brand-text-muted">
                           {new Date(blog.published_at).toLocaleDateString()}
                         </span>
@@ -618,7 +748,7 @@ export default function VCStudioLanding() {
       </section>
 
       {/* Enquiry Section */}
-      <section id="enquiry" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
+      <section id="contact" className="py-16 px-4 sm:px-6 lg:px-8 bg-section-light border-t border-section-border">
         <div className="max-w-2xl mx-auto">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold mb-2 text-brand-text">Get in Touch</h2>
@@ -709,34 +839,34 @@ export default function VCStudioLanding() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <h3 className="font-semibold mb-4 text-brand-text">VC Studio</h3>
-              <p className="text-brand-text-muted text-sm">Systematic business transformation methodology</p>
+              <h3 className="font-bold text-xl mb-4 text-white">VC Studio</h3>
+              <p className="text-white text-sm">Systematic business transformation methodology</p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-brand-text">Quick Links</h4>
-              <ul className="space-y-2 text-brand-text-muted text-sm">
+              <h4 className="font-bold text-lg mb-4 text-white">Quick Links</h4>
+              <ul className="space-y-2 text-white text-sm">
                 <li><a href="#" className="hover:text-accent-primary transition">Documentation</a></li>
                 <li><a href="#" className="hover:text-accent-primary transition">Pricing</a></li>
                 <li><a href="#" className="hover:text-accent-primary transition">Support</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-brand-text">Company</h4>
-              <ul className="space-y-2 text-brand-text-muted text-sm">
-                <li><a href="#" className="hover:text-accent-primary transition">About</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Blog</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Contact</a></li>
+              <h4 className="font-bold text-lg mb-4 text-white">Company</h4>
+              <ul className="space-y-2 text-white text-sm">
+                <li><a href="#info" className="hover:text-accent-primary transition">About</a></li>
+                <li><Link href="/blog" className="hover:text-accent-primary transition">Blog</Link></li>
+                <li><a href="#contact" className="hover:text-accent-primary transition">Contact</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-brand-text">Legal</h4>
-              <ul className="space-y-2 text-brand-text-muted text-sm">
-                <li><a href="#" className="hover:text-accent-primary transition">Privacy</a></li>
-                <li><a href="#" className="hover:text-accent-primary transition">Terms</a></li>
+              <h4 className="font-bold text-lg mb-4 text-white">Legal</h4>
+              <ul className="space-y-2 text-white text-sm">
+                <li><Link href="/privacy-policy" className="hover:text-accent-primary transition">Privacy Policy</Link></li>
+                <li><Link href="/terms-of-service" className="hover:text-accent-primary transition">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-section-border pt-8 text-center text-brand-text-muted text-sm">
+          <div className="border-t border-section-border pt-8 text-center text-white text-sm">
             <p>&copy; 2025 VC Studio. Powered by ITS Group. All rights reserved.</p>
           </div>
         </div>

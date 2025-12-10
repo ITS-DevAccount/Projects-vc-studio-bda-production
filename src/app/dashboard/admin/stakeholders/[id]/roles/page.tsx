@@ -9,9 +9,13 @@ import { ArrowLeft, Loader, Shield } from 'lucide-react';
 
 interface StakeholderRole {
   id: string;
-  role_type: string;
-  role_id?: string | null;
-  label?: string | null;
+  role_id: string;
+  role?: {
+    id: string;
+    code: string;
+    label: string;
+    description?: string | null;
+  };
   assigned_at: string;
 }
 
@@ -20,7 +24,7 @@ interface AvailableRole {
   code: string;
   label: string;
   description?: string | null;
-  is_default: boolean;
+  is_active: boolean;
 }
 
 export default function ManageRolesPage() {
@@ -87,19 +91,11 @@ export default function ManageRolesPage() {
 
       const rolesData: StakeholderRole[] = await rolesRes.json();
       setCurrentRoles(rolesData || []);
-      const assignedRoleTypes = (rolesData || []).map((r) => r.role_type);
-      setSelectedRoles(assignedRoleTypes);
+      const assignedRoleIds = (rolesData || []).map((r) => r.role_id).filter(Boolean);
+      setSelectedRoles(assignedRoleIds);
 
-      if (stakeholderData.stakeholder_type_id) {
-        await fetchAvailableRolesForType(
-          stakeholderData.stakeholder_type_id,
-          accessToken,
-          stakeholderData.primary_role_id || '',
-          assignedRoleTypes
-        );
-      } else {
-        setAvailableRoles([]);
-      }
+      // Fetch all active roles from database (not filtered by stakeholder type)
+      await fetchAllActiveRoles(accessToken, stakeholderData.primary_role_id || '', assignedRoleIds);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading roles');
     } finally {
@@ -107,14 +103,14 @@ export default function ManageRolesPage() {
     }
   }
 
-  async function fetchAvailableRolesForType(
-    typeId: string,
+  async function fetchAllActiveRoles(
     accessToken?: string,
     stakeholderPrimaryRoleId?: string,
-    initiallySelectedRoleTypes: string[] = []
+    initiallySelectedRoleIds: string[] = []
   ) {
     try {
-      const res = await fetch(`/api/stakeholder-types/${typeId}/roles`, {
+      // Fetch all active roles from the roles table (not filtered by stakeholder type)
+      const res = await fetch('/api/roles?active_only=true', {
         headers: {
           ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
@@ -128,21 +124,14 @@ export default function ManageRolesPage() {
       const roles: AvailableRole[] = await res.json();
       setAvailableRoles(roles || []);
 
+      // Set selected roles based on current assignments
       setSelectedRoles((prevSelected) => {
-        const baseSelected = prevSelected.length ? prevSelected : initiallySelectedRoleTypes;
-        const filtered = baseSelected.filter((code) => roles.some((role) => role.code === code));
-
-        // Ensure default role is included when nothing selected
-        if (filtered.length === 0) {
-          const defaultRole = roles.find((role) => role.is_default);
-          if (defaultRole) {
-            return [defaultRole.code];
-          }
-        }
-
-        return filtered;
+        const baseSelected = prevSelected.length ? prevSelected : initiallySelectedRoleIds;
+        // Filter to only include role IDs that exist in available roles
+        return baseSelected.filter((roleId) => roles.some((role) => role.id === roleId));
       });
 
+      // Set primary role ID if it exists in available roles
       setPrimaryRoleId((prevPrimary) => {
         if (prevPrimary && roles.some((role) => role.id === prevPrimary)) {
           return prevPrimary;
@@ -150,8 +139,14 @@ export default function ManageRolesPage() {
         if (stakeholderPrimaryRoleId && roles.some((role) => role.id === stakeholderPrimaryRoleId)) {
           return stakeholderPrimaryRoleId;
         }
-        const defaultRole = roles.find((role) => role.is_default);
-        return defaultRole ? defaultRole.id : '';
+        // If no primary role set and we have selected roles, use the first one
+        if (initiallySelectedRoleIds.length > 0) {
+          const firstSelected = initiallySelectedRoleIds[0];
+          if (roles.some((role) => role.id === firstSelected)) {
+            return firstSelected;
+          }
+        }
+        return '';
       });
     } catch (err) {
       console.error('Error fetching available roles:', err);
@@ -161,13 +156,17 @@ export default function ManageRolesPage() {
 
   const handleRoleToggle = (role: AvailableRole) => {
     setSelectedRoles((prev) => {
-      const isSelected = prev.includes(role.code);
-      const updated = isSelected ? prev.filter((r) => r !== role.code) : [...prev, role.code];
+      const isSelected = prev.includes(role.id);
+      const updated = isSelected ? prev.filter((r) => r !== role.id) : [...prev, role.id];
 
+      // If removing the primary role, clear primary role selection
       if (isSelected && primaryRoleId === role.id) {
-        setPrimaryRoleId('');
+        // Set to first remaining selected role, or empty if none
+        const remaining = updated.filter((id) => id !== role.id);
+        setPrimaryRoleId(remaining.length > 0 ? remaining[0] : '');
       }
 
+      // If adding first role and no primary role set, make it primary
       if (!isSelected && !primaryRoleId) {
         setPrimaryRoleId(role.id);
       }
@@ -188,9 +187,10 @@ export default function ManageRolesPage() {
     }
 
     setPrimaryRoleId(roleId);
+    // Ensure the role is in selected roles
     setSelectedRoles((prev) => {
-      if (prev.includes(role.code)) return prev;
-      return [...prev, role.code];
+      if (prev.includes(role.id)) return prev;
+      return [...prev, role.id];
     });
   };
 
@@ -203,24 +203,24 @@ export default function ManageRolesPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      // Determine which roles to add and remove
-      const currentRoleTypes = currentRoles.map((r) => r.role_type);
-      const toAdd = selectedRoles.filter((r) => !currentRoleTypes.includes(r));
-      const toRemove = currentRoleTypes.filter((r) => !selectedRoles.includes(r));
+      // Determine which roles to add and remove (using role_id, not role_type)
+      const currentRoleIds = currentRoles.map((r) => r.role_id).filter(Boolean);
+      const toAdd = selectedRoles.filter((roleId) => !currentRoleIds.includes(roleId));
+      const toRemove = currentRoleIds.filter((roleId) => !selectedRoles.includes(roleId));
 
       if (selectedRoles.length > 0 && !primaryRoleId) {
         throw new Error('Please select a primary role for this stakeholder.');
       }
 
+      // Update stakeholder_roles table using role_id (Phase 1b specification)
       if (toAdd.length > 0 || toRemove.length > 0) {
-        const res = await fetch('/api/roles/assign', {
+        const res = await fetch(`/api/stakeholders/${stakeholderId}/roles/update`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
           },
           body: JSON.stringify({
-            stakeholderId,
             add: toAdd,
             remove: toRemove,
           }),
@@ -295,12 +295,15 @@ export default function ManageRolesPage() {
                   <label key={role.id} className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={selectedRoles.includes(role.code)}
+                      checked={selectedRoles.includes(role.id)}
                       onChange={() => handleRoleToggle(role)}
                       className="w-5 h-5 bg-section-light border border-section-border rounded cursor-pointer accent-accent-primary"
                     />
                     <span className="text-brand-text">
                       {role.label}
+                      {role.id === primaryRoleId && (
+                        <span className="ml-2 text-xs font-semibold text-accent-primary">(Primary)</span>
+                      )}
                       <span className="block text-xs text-brand-text-muted">{role.description || ''}</span>
                     </span>
                   </label>
@@ -338,9 +341,14 @@ export default function ManageRolesPage() {
                 {currentRoles.map((role) => (
                   <span
                     key={role.id}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      role.role_id === primaryRoleId
+                        ? 'bg-accent-primary text-white'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}
                   >
-                    {role.label || availableRoles.find((r) => r.code === role.role_type)?.label || role.role_type}
+                    {role.role?.label || availableRoles.find((r) => r.id === role.role_id)?.label || 'Unknown Role'}
+                    {role.role_id === primaryRoleId && ' (Primary)'}
                   </span>
                 ))}
               </div>

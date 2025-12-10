@@ -38,10 +38,15 @@ interface StakeholderType {
 
 interface StakeholderRole {
   id: string;
-  role_type: string;
-  role_id?: string | null;
-  label?: string | null;
+  role_id: string;
+  role?: {
+    id: string;
+    code: string;
+    label: string;
+    description?: string | null;
+  } | null;
   assigned_at: string;
+  app_uuid?: string;
 }
 
 interface Relationship {
@@ -137,7 +142,7 @@ export default function ViewStakeholderPage() {
         if (stakeholderData.primary_role_id) {
           const primaryRole = (rolesData || []).find((role: StakeholderRole) => role.role_id === stakeholderData.primary_role_id);
           if (primaryRole) {
-            setPrimaryRoleLabel(primaryRole.label || primaryRole.role_type);
+            setPrimaryRoleLabel(primaryRole.role?.label || primaryRole.role?.code || 'Unknown Role');
           } else {
             setPrimaryRoleLabel(null);
           }
@@ -374,7 +379,7 @@ export default function ViewStakeholderPage() {
                   key={role.id}
                   className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
                 >
-                  {role.label || BDA_ROLES[role.role_type] || role.role_type}
+                  {role.role?.label || BDA_ROLES[role.role?.code || ''] || role.role?.code || 'Unknown Role'}
                 </span>
               ))}
             </div>

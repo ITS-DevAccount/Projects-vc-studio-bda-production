@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck, Database, Workflow, Settings, PlayCircle, Cloud, FileText } from 'lucide-react';
+import { Users, Shield, Network, UserCheck } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -29,48 +29,6 @@ export default function CommunityDashboard() {
       href: '/dashboard/admin/stakeholders'
     },
     {
-      id: 'component-registry',
-      label: 'Component Registry',
-      description: 'Manage system components, AI functions, and workflow tasks registry',
-      icon: Database,
-      href: '/dashboard/admin/registry'
-    },
-    {
-      id: 'function-registry',
-      label: 'Function Registry',
-      description: 'Manage workflow task definitions with input/output schemas (Sprint 1d.4)',
-      icon: Settings,
-      href: '/dashboard/admin/function-registry'
-    },
-    {
-      id: 'workflow-designer',
-      label: 'Workflow Designer',
-      description: 'Create and manage workflow templates with visual canvas (Sprint 1d.4)',
-      icon: Workflow,
-      href: '/dashboard/admin/workflow-designer'
-    },
-    {
-      id: 'workflow-instances',
-      label: 'Create Workflow Instance',
-      description: 'Create executable workflow instances from templates with stakeholder assignments (Sprint 1d.4)',
-      icon: PlayCircle,
-      href: '/dashboard/admin/workflow-instances'
-    },
-    {
-      id: 'service-configurations',
-      label: 'Service Configurations',
-      description: 'Manage REAL and MOCK service configurations for workflow service tasks (Sprint 1d.5)',
-      icon: Cloud,
-      href: '/dashboard/admin/services'
-    },
-    {
-      id: 'service-logs',
-      label: 'Service Execution Logs',
-      description: 'View audit trail of all service executions with performance metrics (Sprint 1d.5)',
-      icon: FileText,
-      href: '/dashboard/admin/service-logs'
-    },
-    {
       id: 'roles',
       label: 'Roles',
       description: 'Define and manage role types that can be assigned to stakeholders',
@@ -79,7 +37,7 @@ export default function CommunityDashboard() {
     },
     {
       id: 'relationship-types',
-      label: 'Relationship Types',
+      label: 'Relationship Type',
       description: 'Define types of relationships between stakeholders (supplier, customer, etc.)',
       icon: Network,
       href: '/dashboard/admin/relationship-types'
@@ -100,8 +58,8 @@ export default function CommunityDashboard() {
       
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Community Dashboard</h1>
-          <p className="text-gray-600 mb-8">Manage system settings and community structure</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Community</h1>
+          <p className="text-gray-600 mb-8">Manage stakeholders, roles, and relationships</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

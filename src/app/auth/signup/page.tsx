@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Mail, Lock, User, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import Logo from '@/components/branding/Logo';
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState('');
@@ -73,11 +74,7 @@ export default function SignupPage() {
 
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <Link href="/">
-            <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center cursor-pointer hover:scale-105 transition">
-              <ChevronRight className="w-6 h-6" />
-            </div>
-          </Link>
+          <Logo variant="default" linkTo="/" />
         </div>
 
         {/* Title */}
@@ -159,7 +156,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent-primary hover:bg-accent-primary-hover disabled:bg-neutral-400 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 mt-6"
+            className="w-full bg-accent-primary hover:bg-accent-primary-hover disabled:bg-neutral-400 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 mt-6 shadow-md hover:shadow-lg"
           >
             {loading ? 'Creating account...' : 'Sign Up'}
             {!loading && <ChevronRight className="w-5 h-5" />}

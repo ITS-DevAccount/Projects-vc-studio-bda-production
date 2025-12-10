@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -139,19 +139,34 @@ export default function VideoPlayer({
     }
   }, [loop]);
 
+  // Check if this is a background video (no controls, full container)
+  const isBackgroundVideo = !controls && className.includes('!bg-transparent');
+  
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border border-section-border shadow-md bg-neutral-900 ${className}`}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
+      className={`relative overflow-hidden ${isBackgroundVideo ? 'absolute inset-0 w-full h-full rounded-none border-0 shadow-none bg-transparent' : 'rounded-xl border border-section-border shadow-md bg-neutral-900'} ${className}`}
+      onMouseEnter={isBackgroundVideo ? undefined : () => setShowControls(true)}
+      onMouseLeave={isBackgroundVideo ? undefined : () => setShowControls(false)}
     >
       {/* Video Element */}
-      <div className={`w-full ${aspectRatioMap[aspectRatio]}`}>
-        {videoUrl ? (
+      {isBackgroundVideo ? (
+        // Background video: fill entire container, ensure consistent sizing
+        videoUrl ? (
           <video
             key={videoUrl}
             ref={videoRef}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              minWidth: '100%',
+              minHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              filter: 'brightness(0.7)',
+              transition: 'none',
+            }}
             autoPlay={autoplay}
             loop={loop}
             muted={muted}
@@ -169,11 +184,41 @@ export default function VideoPlayer({
             Your browser does not support the video tag.
           </video>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-white">
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-neutral-800 text-white">
             Loading video...
           </div>
-        )}
-      </div>
+        )
+      ) : (
+        // Regular video: use aspect ratio
+        <div className={`w-full ${aspectRatioMap[aspectRatio]}`}>
+          {videoUrl ? (
+            <video
+              key={videoUrl}
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              autoPlay={autoplay}
+              loop={loop}
+              muted={muted}
+              playsInline
+              poster={poster}
+              aria-label={title}
+              onError={() => {
+                console.error('Video failed to load:', videoUrl);
+              }}
+              onLoadedData={() => {
+                console.log('Video loaded successfully:', videoUrl);
+              }}
+            >
+              <source src={videoUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-white">
+              Loading video...
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Custom Controls Overlay */}
       {controls && (

@@ -20,25 +20,54 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Get app_uuid for multi-tenancy filtering
     const appUuid = await getAppUuid(accessToken);
 
-    const { data, error } = await supabase
+    // Query stakeholder_roles with role details (Phase 1b specification - using role_id)
+    // First get stakeholder_roles records
+    const { data: stakeholderRoles, error: rolesError } = await supabase
       .from('stakeholder_roles')
-      .select('id, role_type, role_id, assigned_at, app_uuid, role:role_id(code, label)')
+      .select('id, role_id, assigned_at, app_uuid')
       .eq('stakeholder_id', id)
       .eq('app_uuid', appUuid); // SECURITY: Only get roles for current app
 
-    if (error) {
-      console.error('Error fetching roles:', error);
-      throw error;
+    if (rolesError) {
+      console.error('Error fetching stakeholder roles:', rolesError);
+      throw rolesError;
     }
 
-    const roles = (data || []).map((item: any) => ({
-      id: item.id,
-      role_type: item.role_type,
-      role_id: item.role_id,
-      label: item.role?.label || item.role_type,
-      assigned_at: item.assigned_at,
-      app_uuid: item.app_uuid,
-    }));
+    // Then fetch role details for each role_id
+    const roleIds = (stakeholderRoles || []).map((sr: any) => sr.role_id).filter(Boolean);
+    let rolesData: any[] = [];
+    
+    if (roleIds.length > 0) {
+      const { data: roles, error: rolesLookupError } = await supabase
+        .from('roles')
+        .select('id, code, label, description')
+        .in('id', roleIds)
+        .eq('app_uuid', appUuid);
+
+      if (rolesLookupError) {
+        console.error('Error fetching role details:', rolesLookupError);
+        throw rolesLookupError;
+      }
+
+      rolesData = roles || [];
+    }
+
+    // Combine stakeholder_roles with role details
+    const roles = (stakeholderRoles || []).map((sr: any) => {
+      const role = rolesData.find((r: any) => r.id === sr.role_id);
+      return {
+        id: sr.id,
+        role_id: sr.role_id,
+        role: role ? {
+          id: role.id,
+          code: role.code,
+          label: role.label,
+          description: role.description,
+        } : null,
+        assigned_at: sr.assigned_at,
+        app_uuid: sr.app_uuid,
+      };
+    });
 
     return NextResponse.json(roles);
   } catch (e: any) {

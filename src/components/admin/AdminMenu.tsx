@@ -10,22 +10,62 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
+  { id: 'content', label: 'Content', href: '/dashboard/admin/content' },
+  { id: 'enquiries', label: 'Enquiries', href: '/dashboard/admin/enquiries' },
   { id: 'community', label: 'Community', href: '/dashboard/admin' },
   { id: 'workflows', label: 'Workflows', href: '/dashboard/admin/workflows' },
   { id: 'monitoring', label: 'Monitoring', href: '/dashboard/admin/monitoring' },
-  { id: 'content', label: 'Content', href: '/dashboard/admin/content' },
-  { id: 'enquiries', label: 'Enquiries', href: '/dashboard/admin/enquiries' },
-  { id: 'json-tools', label: 'JSON Tools', href: '/dashboard/admin/json-viewer' },
+  { id: 'ai-prompts', label: 'AI Prompts', href: '/dashboard/admin/prompts' },
+  { id: 'json-tools', label: 'JSON Tools', href: '/dashboard/admin/json-tools' },
 ]
 
 export default function AdminMenu() {
   const pathname = usePathname()
 
   const isActive = (href: string) => {
-    if (href === '/dashboard/admin' && pathname === '/dashboard/admin') return true
-    if (href === '/dashboard/admin/content' && (pathname.startsWith('/dashboard/admin/content') || pathname.startsWith('/dashboard/admin/blog-posts') || pathname.startsWith('/dashboard/admin/pages'))) return true
-    if (href === '/dashboard/admin/json-viewer' && (pathname.startsWith('/dashboard/admin/json-viewer') || pathname.startsWith('/dashboard/admin/json-editor'))) return true
-    if (href !== '/dashboard/admin' && pathname.startsWith(href)) return true
+    // Community section - matches /dashboard/admin and community sub-routes
+    if (href === '/dashboard/admin' && (
+      pathname === '/dashboard/admin' ||
+      pathname.startsWith('/dashboard/admin/stakeholders') ||
+      pathname.startsWith('/dashboard/admin/roles') ||
+      pathname.startsWith('/dashboard/admin/relationship-types') ||
+      pathname.startsWith('/dashboard/admin/stakeholder-types')
+    )) return true
+    
+    // Content section - matches content, pages, blog-posts, and cta-buttons routes
+    if (href === '/dashboard/admin/content' && (
+      pathname.startsWith('/dashboard/admin/content') ||
+      pathname.startsWith('/dashboard/admin/pages') ||
+      pathname.startsWith('/dashboard/admin/blog-posts') ||
+      pathname.startsWith('/dashboard/admin/cta-buttons')
+    )) return true
+    
+    // Enquiries section
+    if (href === '/dashboard/admin/enquiries' && pathname.startsWith('/dashboard/admin/enquiries')) return true
+    
+    // Workflows section - matches workflows and all workflow-related routes
+    if (href === '/dashboard/admin/workflows' && (
+      pathname.startsWith('/dashboard/admin/workflows') ||
+      pathname.startsWith('/dashboard/admin/workflow') ||
+      pathname.startsWith('/dashboard/admin/function-registry') ||
+      pathname.startsWith('/dashboard/admin/registry') ||
+      pathname.startsWith('/dashboard/admin/services') ||
+      pathname.startsWith('/dashboard/admin/service-logs')
+    )) return true
+    
+    // Monitoring section
+    if (href === '/dashboard/admin/monitoring' && pathname.startsWith('/dashboard/admin/monitoring')) return true
+    
+    // AI Prompts section
+    if (href === '/dashboard/admin/prompts' && pathname.startsWith('/dashboard/admin/prompts')) return true
+    
+    // JSON Tools section - matches json-tools, json-editor, and json-viewer routes
+    if (href === '/dashboard/admin/json-tools' && (
+      pathname.startsWith('/dashboard/admin/json-tools') ||
+      pathname.startsWith('/dashboard/admin/json-editor') ||
+      pathname.startsWith('/dashboard/admin/json-viewer')
+    )) return true
+    
     return false
   }
 

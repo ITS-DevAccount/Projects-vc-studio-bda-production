@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, BarChart3, Workflow, PlayCircle, Settings } from 'lucide-react';
+import { Settings, Database, Workflow, PlayCircle, Cloud, FileText } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -22,39 +22,46 @@ export default function WorkflowsPage() {
 
   const sections = [
     {
-      id: 'my-tasks',
-      label: 'My Tasks',
-      description: 'View and complete tasks assigned to you',
-      icon: CheckSquare,
-      href: '/dashboard/admin/my-tasks'
+      id: 'function-registry',
+      label: 'Function Registry',
+      description: 'Manage workflow task definitions with input/output schemas',
+      icon: Settings,
+      href: '/dashboard/admin/function-registry'
     },
     {
-      id: 'running-instances',
-      label: 'Running Instances',
-      description: 'Monitor active workflow instances and their progress',
-      icon: BarChart3,
-      href: '/dashboard/admin/instances'
-    },
-    {
-      id: 'create-instance',
-      label: 'Create Instance',
-      description: 'Create new workflow instances from templates',
-      icon: PlayCircle,
-      href: '/dashboard/admin/workflow-instances'
+      id: 'component-register',
+      label: 'Component Register',
+      description: 'Manage system components, AI functions, and workflow tasks registry',
+      icon: Database,
+      href: '/dashboard/admin/registry'
     },
     {
       id: 'workflow-designer',
       label: 'Workflow Designer',
-      description: 'Create and edit workflow templates',
+      description: 'Create and manage workflow templates with visual canvas',
       icon: Workflow,
       href: '/dashboard/admin/workflow-designer'
     },
     {
-      id: 'function-registry',
-      label: 'Function Registry',
-      description: 'Manage workflow task definitions and schemas',
-      icon: Settings,
-      href: '/dashboard/admin/function-registry'
+      id: 'workflow-instances',
+      label: 'Create Workflow Instance',
+      description: 'Create executable workflow instances from templates with stakeholder assignments',
+      icon: PlayCircle,
+      href: '/dashboard/admin/workflow-instances'
+    },
+    {
+      id: 'service-configurations',
+      label: 'Service Configurations',
+      description: 'Manage REAL and MOCK service configurations for workflow service tasks',
+      icon: Cloud,
+      href: '/dashboard/admin/services'
+    },
+    {
+      id: 'service-logs',
+      label: 'Service Execution Logs',
+      description: 'View audit trail of all service executions with performance metrics',
+      icon: FileText,
+      href: '/dashboard/admin/service-logs'
     },
   ];
 
@@ -66,7 +73,7 @@ export default function WorkflowsPage() {
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Workflows</h1>
-          <p className="text-gray-600 mb-8">Manage workflow tasks, instances, and templates</p>
+          <p className="text-gray-600 mb-8">Manage workflow templates, instances, and configurations</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -16,10 +16,17 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
-  background-color: #f4f8fa;  /* Brand background - pale blue-grey */
-  color: #032c60;             /* Brand text - dark blue */
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+  width: 100%;
+  min-width: 320px;
+  background-color: var(--color-background, #f4f8fa);  /* Brand background - from theme */
+  color: var(--color-text-primary, #032c60);             /* Brand text - from theme */
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif);
 }
 
 /* Smooth scrolling for better UX */
@@ -33,14 +40,106 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f4f8fa;
+  background: var(--color-background, #f4f8fa);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #0369a1;
+  background: var(--color-primary, #0369a1);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0284c7;
+  background: var(--color-primary-hover, #0284c7);
+}
+
+/* Prose styling for policy pages */
+.prose {
+  color: var(--color-text-primary, #032c60);
+}
+
+.prose h1 {
+  color: var(--color-text-primary, #032c60);
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.875rem;
+  line-height: 1.2;
+}
+
+.prose h2 {
+  color: var(--color-text-primary, #032c60);
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.prose h3 {
+  color: var(--color-text-primary, #032c60);
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.prose p {
+  color: var(--color-text-light, #2a5a8f);
+  margin-bottom: 1rem;
+  line-height: 1.75;
+}
+
+.prose ul,
+.prose ol {
+  color: var(--color-text-light, #2a5a8f);
+  margin-bottom: 1rem;
+  padding-left: 1.25rem;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+  line-height: 1.75;
+}
+
+.prose a {
+  color: var(--color-primary, #0369a1);
+  text-decoration: underline;
+  transition: color 0.2s;
+  word-break: break-word;
+}
+
+.prose a:hover {
+  color: var(--color-primary-hover, #0284c7);
+}
+
+.prose strong {
+  color: var(--color-text-primary, #032c60);
+  font-weight: 600;
+}
+
+/* Responsive prose adjustments */
+@media (max-width: 640px) {
+  .prose {
+    font-size: 0.875rem;
+  }
+  
+  .prose h1 {
+    font-size: 1.5rem;
+    margin-top: 1.25rem;
+  }
+  
+  .prose h2 {
+    font-size: 1.25rem;
+    margin-top: 1rem;
+  }
+  
+  .prose h3 {
+    font-size: 1.125rem;
+  }
+  
+  .prose ul,
+  .prose ol {
+    padding-left: 1rem;
+  }
 }
