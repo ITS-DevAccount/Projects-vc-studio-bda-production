@@ -54,11 +54,39 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     // Update favicon if configured
     if (settings.favicon_url) {
-      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-      if (favicon) {
-        favicon.href = settings.favicon_url;
+      // Find existing favicon link tag (if any)
+      const existingFavicon = document.querySelector("link[rel='icon']") as HTMLLinkElement;
+      
+      if (existingFavicon) {
+        // Update existing favicon href
+        existingFavicon.href = settings.favicon_url;
+        // Update type if needed
+        if (settings.favicon_url.endsWith('.svg')) {
+          existingFavicon.type = 'image/svg+xml';
+        } else if (settings.favicon_url.endsWith('.png')) {
+          existingFavicon.type = 'image/png';
+        } else {
+          existingFavicon.type = 'image/x-icon';
+        }
+      } else {
+        // Create new favicon link tag only if it doesn't exist
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        // Determine MIME type based on file extension
+        if (settings.favicon_url.endsWith('.svg')) {
+          link.type = 'image/svg+xml';
+        } else if (settings.favicon_url.endsWith('.png')) {
+          link.type = 'image/png';
+        } else {
+          link.type = 'image/x-icon'; // Default for .ico
+        }
+        link.href = settings.favicon_url;
+        document.head.appendChild(link);
       }
+      
+      console.log('[ThemeProvider] Favicon updated:', settings.favicon_url);
     }
+    // Note: We don't remove favicons when none configured - let Next.js handle default favicon
 
     // Update document title
     if (settings.site_name) {

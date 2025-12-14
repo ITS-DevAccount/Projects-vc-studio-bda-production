@@ -12,6 +12,15 @@ interface PromptTestHarnessProps {
   initialPromptCode?: string;
 }
 
+interface LLMInterface {
+  id: string;
+  provider: string;
+  name: string;
+  default_model: string;
+  is_active: boolean;
+  is_default: boolean;
+}
+
 interface TestResult {
   success: boolean;
   data: any;
@@ -35,11 +44,79 @@ export default function PromptTestHarness({
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [modelOverride, setModelOverride] = useState<string>('');
+  const [selectedLLMInterfaceId, setSelectedLLMInterfaceId] = useState<string>('');
+  const [llmInterfaces, setLlmInterfaces] = useState<LLMInterface[]>([]);
+  const [loadingInterfaces, setLoadingInterfaces] = useState(true);
+
+  // Available models per provider
+  const getAvailableModels = (provider: string): Array<{ value: string; label: string }> => {
+    switch (provider) {
+      case 'anthropic':
+        return [
+          { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Fast, Simple)' },
+          { value: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5 (Standard)' },
+          { value: 'claude-opus-4-1-20250514', label: 'Claude Opus 4.1 (Complex)' },
+        ];
+      case 'deepseek':
+        return [
+          { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+          { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+        ];
+      case 'openai':
+        return [
+          { value: 'gpt-4o', label: 'GPT-4o' },
+          { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+          { value: 'gpt-4', label: 'GPT-4' },
+          { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+        ];
+      case 'gemini':
+        return [
+          { value: 'gemini-pro', label: 'Gemini Pro' },
+          { value: 'gemini-pro-vision', label: 'Gemini Pro Vision' },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const selectedInterface = llmInterfaces.find(i => i.id === selectedLLMInterfaceId);
+  const availableModels = selectedInterface ? getAvailableModels(selectedInterface.provider) : [];
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [showRendered, setShowRendered] = useState(false);
   const [selectedViewer, setSelectedViewer] = useState<string | null>(null);
   const [showRawResponse, setShowRawResponse] = useState(false);
+
+  // Load LLM interfaces
+  useEffect(() => {
+    const loadLLMInterfaces = async () => {
+      try {
+        const response = await fetch('/api/llm-interfaces');
+        if (response.ok) {
+          const result = await response.json();
+          // API returns { interfaces: [...] }
+          const interfaces = result.interfaces || result || [];
+          setLlmInterfaces(Array.isArray(interfaces) ? interfaces : []);
+          
+          // Set default to prompt's interface or first default interface
+          if (selectedPrompt?.default_llm_interface_id) {
+            setSelectedLLMInterfaceId(selectedPrompt.default_llm_interface_id);
+          } else if (Array.isArray(interfaces) && interfaces.length > 0) {
+            const defaultInterface = interfaces.find((i: LLMInterface) => i.is_default && i.is_active);
+            if (defaultInterface) {
+              setSelectedLLMInterfaceId(defaultInterface.id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading LLM interfaces:', error);
+        setLlmInterfaces([]);
+      } finally {
+        setLoadingInterfaces(false);
+      }
+    };
+    loadLLMInterfaces();
+  }, []);
 
   useEffect(() => {
     if (selectedPromptCode) {
@@ -56,6 +133,11 @@ export default function PromptTestHarness({
           initialVars[v] = '';
         });
         setVariables(initialVars);
+        
+        // Set default LLM interface from prompt template
+        if (prompt.default_llm_interface_id) {
+          setSelectedLLMInterfaceId(prompt.default_llm_interface_id);
+        }
       }
     }
   }, [selectedPromptCode, prompts]);
@@ -98,11 +180,56 @@ export default function PromptTestHarness({
         body: JSON.stringify({
           promptCode: selectedPromptCode,
           inputData: variables,
-          modelOverride: modelOverride || undefined
+          modelOverride: modelOverride || undefined,
+          llmInterfaceId: selectedLLMInterfaceId || undefined
         })
       });
 
-      const data = await response.json();
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use status text
+          const text = await response.text().catch(() => '');
+          errorMessage = text || errorMessage;
+        }
+        
+        setResult({
+          success: false,
+          data: null,
+          rawResponse: '',
+          tokensUsed: { input: 0, output: 0 },
+          costEstimate: 0,
+          durationMs: 0,
+          error: errorMessage
+        });
+        return;
+      }
+
+      // Parse JSON response
+      let data;
+      try {
+        const text = await response.text();
+        if (!text) {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(text);
+      } catch (parseError) {
+        setResult({
+          success: false,
+          data: null,
+          rawResponse: '',
+          tokensUsed: { input: 0, output: 0 },
+          costEstimate: 0,
+          durationMs: 0,
+          error: `Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+        });
+        return;
+      }
+      
       setResult(data);
       
       // Set viewer code from prompt template's default_viewer_code
@@ -111,6 +238,7 @@ export default function PromptTestHarness({
         setSelectedViewer(viewerCode);
       }
     } catch (error) {
+      console.error('Error executing prompt:', error);
       setResult({
         success: false,
         data: null,
@@ -214,24 +342,86 @@ export default function PromptTestHarness({
             </div>
           )}
 
-          {/* Model Override */}
+          {/* LLM Interface Selection */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuration</h3>
-            <div>
-              <label htmlFor="modelOverride" className="block text-sm font-medium text-gray-700 mb-1">
-                Model Override (optional)
-              </label>
-              <select
-                id="modelOverride"
-                value={modelOverride}
-                onChange={(e) => setModelOverride(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Use default ({selectedPrompt.default_model.includes('haiku') ? 'Haiku' : selectedPrompt.default_model.includes('sonnet') ? 'Sonnet' : 'Opus'})</option>
-                <option value="claude-haiku-4-5-20251001">Haiku (Fast, Low Cost)</option>
-                <option value="claude-sonnet-4-5-20250929">Sonnet (Balanced)</option>
-                <option value="claude-opus-4-1-20250514">Opus (Complex)</option>
-              </select>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">LLM Configuration</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="llmInterface" className="block text-sm font-medium text-gray-700 mb-1">
+                  LLM Interface *
+                </label>
+                <select
+                  id="llmInterface"
+                  value={selectedLLMInterfaceId}
+                  onChange={(e) => setSelectedLLMInterfaceId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loadingInterfaces}
+                >
+                  <option value="">-- Select LLM Interface --</option>
+                  {Array.isArray(llmInterfaces) && llmInterfaces
+                    .filter(i => i.is_active)
+                    .map((interfaceItem) => (
+                      <option key={interfaceItem.id} value={interfaceItem.id}>
+                        {interfaceItem.name} ({interfaceItem.provider}) - {interfaceItem.default_model}
+                        {interfaceItem.is_default ? ' [Default]' : ''}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select which LLM interface to use for this test. The prompt template's default interface is pre-selected if available.
+                </p>
+              </div>
+              
+              <div>
+                <label htmlFor="modelOverride" className="block text-sm font-medium text-gray-700 mb-1">
+                  Model Override (optional)
+                </label>
+                {selectedLLMInterfaceId && availableModels.length > 0 ? (
+                  <>
+                    <select
+                      id="modelOverride"
+                      value={modelOverride}
+                      onChange={(e) => setModelOverride(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Use interface default ({selectedInterface?.default_model})</option>
+                      {availableModels.map((model) => (
+                        <option key={model.value} value={model.value}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Select a model or leave as default. You can also type a custom model name below.
+                    </p>
+                    <input
+                      type="text"
+                      value={modelOverride}
+                      onChange={(e) => setModelOverride(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Or type a custom model name..."
+                    />
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      id="modelOverride"
+                      value={modelOverride}
+                      onChange={(e) => setModelOverride(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={selectedLLMInterfaceId 
+                        ? llmInterfaces.find(i => i.id === selectedLLMInterfaceId)?.default_model || selectedPrompt?.default_model || ''
+                        : selectedPrompt?.default_model || ''}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedLLMInterfaceId 
+                        ? 'Select an LLM interface above to see available models'
+                        : 'Override the default model (e.g., claude-sonnet-4-5-20250929, gpt-4, deepseek-chat, gemini-pro)'}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -257,11 +447,14 @@ export default function PromptTestHarness({
           <div className="flex justify-end">
             <button
               onClick={handleExecute}
-              disabled={loading || Object.values(variables).some((v) => !v)}
+              disabled={loading || Object.values(variables).some((v) => !v) || !selectedLLMInterfaceId}
               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? 'Executing...' : 'Execute Prompt'}
             </button>
+            {!selectedLLMInterfaceId && (
+              <p className="text-sm text-red-600 mt-2">Please select an LLM interface to test</p>
+            )}
           </div>
 
           {/* Results */}

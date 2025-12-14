@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { useApp } from '@/contexts/AppContext';
 import PromptLibraryList from '@/components/ai/PromptLibraryList';
 import Link from 'next/link';
 import AdminHeader from '@/components/admin/AdminHeader';
@@ -11,36 +12,84 @@ import AdminMenu from '@/components/admin/AdminMenu';
 
 export default function PromptLibraryPage() {
   const { user, loading: authLoading } = useAuth();
+  const { app_uuid, isLoading: appLoading } = useApp();
   const router = useRouter();
   const [prompts, setPrompts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     if (!authLoading && !user) {
       router.replace('/auth/login');
       return;
     }
-    if (user) {
+    if (user && app_uuid && !appLoading) {
       loadPrompts();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, app_uuid, appLoading, mounted]);
 
   const loadPrompts = async () => {
+    if (!app_uuid) {
+      console.warn('Cannot load prompts: app_uuid not available');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('prompt_templates')
         .select('*')
+        .eq('app_uuid', app_uuid)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        const errorDetails = {
+          message: error?.message || 'Unknown error',
+          details: error?.details || null,
+          hint: error?.hint || null,
+          code: error?.code || null
+        };
+        console.error('Supabase error fetching prompts:', errorDetails);
+        setError(`Failed to load prompts: ${errorDetails.message}`);
+        setPrompts([]);
+        return;
+      }
       setPrompts(data || []);
-    } catch (err) {
-      console.error('Error fetching prompts:', err);
+      setError(null);
+    } catch (err: any) {
+      const errorMessage = err?.message || err?.error?.message || 'Failed to load prompts. Please check your connection and try again.';
+      console.error('Error fetching prompts:', {
+        message: errorMessage,
+        error: err,
+        app_uuid: app_uuid,
+        errorType: typeof err,
+        errorString: String(err)
+      });
+      setError(errorMessage);
+      setPrompts([]);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || !user) return null;
 
@@ -76,6 +125,17 @@ export default function PromptLibraryPage() {
             </Link>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+            <p className="font-medium">Error</p>
+            <p className="text-sm mt-1">{error}</p>
+            {app_uuid && (
+              <p className="text-xs mt-2 text-red-600">App UUID: {app_uuid}</p>
+            )}
+          </div>
+        )}
 
         {/* List */}
         {loading ? (

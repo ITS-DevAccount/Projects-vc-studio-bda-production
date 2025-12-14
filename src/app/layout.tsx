@@ -8,7 +8,10 @@ export const metadata: Metadata = {
   title: "VC Studio",
   description: "Value Chain Studio - Business transformation",
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
   },
 };
 

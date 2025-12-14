@@ -33,14 +33,14 @@ export async function getAppUuid(accessToken?: string): Promise<string> {
 export async function getAppContext(accessToken?: string): Promise<AppContext> {
   const supabase = await createServerClient(accessToken);
 
-  // Get site_code from environment variable
-  const siteCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO';
+  // Get app_code from environment variable
+  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO';
 
-  // Query site_settings for the active app
+  // Query applications table: SELECT id as app_uuid FROM applications WHERE app_code = $1 LIMIT 1
   const { data, error } = await supabase
-    .from('site_settings')
-    .select('app_uuid, site_code, domain_code, site_name, is_active_app, is_active')
-    .or(`site_code.eq.${siteCode},is_active_app.eq.true`)
+    .from('applications')
+    .select('id, app_code, app_name')
+    .eq('app_code', appCode)
     .limit(1)
     .maybeSingle();
 
@@ -50,32 +50,31 @@ export async function getAppContext(accessToken?: string): Promise<AppContext> {
   }
 
   if (!data) {
-    // Fallback: try to get any active app
+    // Fallback: try to get any app
     const { data: fallbackData, error: fallbackError } = await supabase
-      .from('site_settings')
-      .select('app_uuid, site_code, domain_code, site_name, is_active_app, is_active')
-      .eq('is_active_app', true)
+      .from('applications')
+      .select('id, app_code, app_name')
       .limit(1)
       .maybeSingle();
 
     if (fallbackError || !fallbackData) {
-      throw new Error('No active application found in site_settings. Please configure an active app.');
+      throw new Error(`No application found with app_code: ${appCode}. Please configure an application in the applications table.`);
     }
 
     return {
-      app_uuid: fallbackData.app_uuid || '',
-      site_code: fallbackData.site_code || siteCode,
-      domain_code: fallbackData.domain_code || 'BDA',
-      site_name: fallbackData.site_name || 'VC Studio',
-      is_active_app: fallbackData.is_active_app !== undefined ? fallbackData.is_active_app : (fallbackData.is_active || false),
+      app_uuid: fallbackData.id,
+      site_code: fallbackData.app_code,
+      domain_code: 'BDA',
+      site_name: fallbackData.app_name || 'VC Studio',
+      is_active_app: true,
     };
   }
 
   return {
-    app_uuid: data.app_uuid || '',
-    site_code: data.site_code || siteCode,
-    domain_code: data.domain_code || 'BDA',
-    site_name: data.site_name || 'VC Studio',
-    is_active_app: data.is_active_app !== undefined ? data.is_active_app : (data.is_active || false),
+    app_uuid: data.id,
+    site_code: data.app_code,
+    domain_code: 'BDA',
+    site_name: data.app_name || 'VC Studio',
+    is_active_app: true,
   };
 }

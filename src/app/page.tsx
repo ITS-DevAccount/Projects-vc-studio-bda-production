@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
-import { useAppUuid } from '@/contexts/AppContext';
+import { useApp } from '@/contexts/AppContext';
+import { useTheme } from '@/hooks/useTheme';
 import Link from 'next/link';
 import VideoPlayer from '@/components/media/VideoPlayer';
 import ImageGallery from '@/components/media/ImageGallery';
@@ -26,6 +27,7 @@ interface EnquiryForm {
 }
 
 interface PageSettings {
+  id?: string;
   hero_video_url: string;
   hero_video_public_id: string;
   hero_title: string;
@@ -182,8 +184,25 @@ function HeroButtons({ pageSettingsId }: HeroButtonsProps) {
 }
 
 export default function VCStudioLanding() {
-  const appUuid = useAppUuid();
+  const { app_uuid: appUuid, isLoading: appContextLoading } = useApp();
+  const { settings: siteSettings } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Update favicon dynamically from site settings
+  useEffect(() => {
+    if (siteSettings?.favicon_url) {
+      // Remove existing favicon links
+      const existingLinks = document.querySelectorAll("link[rel~='icon']");
+      existingLinks.forEach(link => link.remove());
+      
+      // Add new favicon link
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.type = 'image/svg+xml';
+      newLink.href = siteSettings.favicon_url;
+      document.getElementsByTagName('head')[0].appendChild(newLink);
+    }
+  }, [siteSettings?.favicon_url]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [pageSettings, setPageSettings] = useState<PageSettings | null>(null);
   const [galleryImages, setGalleryImages] = useState<PageImage[]>([]);
@@ -195,45 +214,60 @@ export default function VCStudioLanding() {
   });
   const [enquiryStatus, setEnquiryStatus] = useState<EnquiryStatus>('idle');
   const [blogsLoading, setBlogsLoading] = useState(true);
+  const fetchingPageSettingsRef = useRef(false); // Prevent concurrent fetches
 
   // Fetch page settings and data on mount
   useEffect(() => {
     // Fetch blogs even if appUuid is not available (has fallback logic)
     fetchBlogs();
     
-    // Fetch page settings (will try with appUuid if available, fallback if not)
-    fetchPageSettings();
-  }, [appUuid]); // Still depend on appUuid to refetch when it becomes available
+    // Wait for app context to finish loading and appUuid to be available
+    // This ensures we always fetch with the correct app_uuid filter
+    if (!appContextLoading && appUuid && !fetchingPageSettingsRef.current) {
+      fetchPageSettings();
+    }
+  }, [appUuid, appContextLoading]); // Depend on both appUuid and loading state
 
   const fetchPageSettings = async () => {
+    // Prevent concurrent fetches
+    if (fetchingPageSettingsRef.current) {
+      console.log('⚠️ Page settings fetch already in progress, skipping...');
+      return;
+    }
+    
+    fetchingPageSettingsRef.current = true;
+    
     try {
-      console.log('🔍 Fetching page settings for: home');
+      console.log('🔍 Fetching page settings for: home', { appUuid });
 
-      // Fetch page settings for current app
-      let settingsData = null;
-      let settingsError = null;
-
-      if (appUuid) {
-        const result = await supabase
-          .from('page_settings')
-          .select('*')
-          .eq('page_name', 'home')
-          .eq('app_uuid', appUuid)
-          .eq('is_published', true)
-          .single();
-        settingsData = result.data;
-        settingsError = result.error;
-      } else {
-        // No appUuid, try without filter
-        const result = await supabase
-          .from('page_settings')
-          .select('*')
-          .eq('page_name', 'home')
-          .eq('is_published', true)
-          .single();
-        settingsData = result.data;
-        settingsError = result.error;
+      // First, check if there are multiple records (for debugging)
+      const { data: allRecords, error: countError } = await supabase
+        .from('page_settings')
+        .select('id, page_name, app_uuid, is_published, updated_at')
+        .eq('page_name', 'home')
+        .eq('app_uuid', appUuid)
+        .eq('is_published', true)
+        .order('updated_at', { ascending: false });
+      
+      if (!countError && allRecords && allRecords.length > 1) {
+        console.warn(`⚠️ Found ${allRecords.length} page_settings records for app_uuid ${appUuid}:`, 
+          allRecords.map(r => ({ id: r.id, updated_at: r.updated_at })));
       }
+
+      // Now fetch the single record (most recent if multiple exist)
+      // Use maybeSingle() instead of single() to handle cases where there might be multiple records
+      const result = await supabase
+        .from('page_settings')
+        .select('*')
+        .eq('page_name', 'home')
+        .eq('app_uuid', appUuid)
+        .eq('is_published', true)
+        .order('updated_at', { ascending: false }) // Get most recent if multiple exist
+        .limit(1)
+        .maybeSingle();
+
+      const settingsData = result.data;
+      const settingsError = result.error;
 
       // Safely log fetch result
       try {
@@ -245,6 +279,8 @@ export default function VCStudioLanding() {
           hasError: !!settingsError,
           errorCode: safeErrorCode,
           errorMessage: safeErrorMessage,
+          pageSettingsId: settingsData?.id,
+          app_uuid: settingsData?.app_uuid,
           hero_video_url: settingsData?.hero_video_url,
           hero_video_public_id: settingsData?.hero_video_public_id,
         });
@@ -258,39 +294,13 @@ export default function VCStudioLanding() {
           const errorCode = (settingsError as any)?.code || 'unknown';
           const errorMessage = (settingsError as any)?.message || String(settingsError);
           
-          // If error is about app_uuid column missing, try without that filter
-          if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('page_settings')
-              .select('*')
-              .eq('page_name', 'home')
-              .eq('is_published', true)
-              .single();
-            
-            if (!fallbackError && fallbackData) {
-              // Use fallback data
-              settingsData = fallbackData;
-              settingsError = null;
-              
-              // Set page settings
-              setPageSettings(fallbackData);
-              
-              // Fetch gallery images for fallback
-              const { data: imagesData } = await supabase
-                .from('page_images')
-                .select('*')
-                .eq('page_settings_id', fallbackData.id)
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-              
-              setGalleryImages(imagesData || []);
-              return; // Exit early - we've handled everything
-            }
-            // If fallback also failed, continue to normal error handling
+          // If no rows found, log and return (no fallback needed since we have app_uuid)
+          if (errorCode === 'PGRST116') {
+            console.warn('⚠️ No page settings found for app_uuid:', appUuid);
             return;
           }
           
-          // Other errors - only log if not a missing column error
+          // Other errors - log them
           if (errorCode !== '42703' && !errorMessage?.includes('app_uuid')) {
             // Safely build error object for logging
             try {
@@ -306,7 +316,18 @@ export default function VCStudioLanding() {
               if (errorDetails) errorLog.details = errorDetails;
               if (errorHint) errorLog.hint = errorHint;
               
-              console.error('❌ Error fetching page settings:', errorLog);
+              // Safely serialize errorLog to avoid circular reference issues
+              try {
+                console.error('❌ Error fetching page settings:', JSON.stringify(errorLog, null, 2));
+              } catch (serializeErr) {
+                // If JSON.stringify fails, log individual properties
+                console.error('❌ Error fetching page settings:', {
+                  code: errorLog.code,
+                  message: errorLog.message,
+                  ...(errorLog.details && { details: String(errorLog.details) }),
+                  ...(errorLog.hint && { hint: String(errorLog.hint) })
+                });
+              }
             } catch (logErr) {
               // If logging fails, just log the message string
               console.error('❌ Error fetching page settings:', errorMessage || 'Unknown error');
@@ -315,6 +336,7 @@ export default function VCStudioLanding() {
         } catch (logError) {
           // If even error extraction fails, silently continue
         }
+        return;
       }
 
       if (settingsData) {
@@ -322,45 +344,61 @@ export default function VCStudioLanding() {
         setPageSettings(settingsData);
 
         // Fetch gallery images
+        console.log('🖼️ Fetching gallery images for page_settings_id:', settingsData.id, 'app_uuid:', appUuid);
         const { data: imagesData, error: imagesError } = await supabase
           .from('page_images')
           .select('*')
           .eq('page_settings_id', settingsData.id)
+          .eq('app_uuid', appUuid) // CRITICAL: Filter by app_uuid for multi-tenancy
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
+        console.log('📊 Gallery images query result:', {
+          count: imagesData?.length || 0,
+          hasError: !!imagesError,
+          errorMessage: imagesError ? (imagesError as any)?.message : null,
+          images: imagesData?.map(img => ({
+            id: img.id,
+            title: img.title,
+            public_id: img.public_id,
+            app_uuid: img.app_uuid,
+            is_active: img.is_active
+          }))
+        });
+
         if (imagesError) {
-          // Safely handle images error - check if it's about app_uuid column
+          // Safely handle images error
           try {
             const errorCode = (imagesError as any)?.code || 'unknown';
             const errorMessage = (imagesError as any)?.message || String(imagesError);
             
-            // If error is about app_uuid column missing, try without that filter
-            if (errorCode === '42703' || errorMessage?.includes('app_uuid')) {
-              const { data: fallbackImages } = await supabase
-                .from('page_images')
-                .select('*')
-                .eq('page_settings_id', settingsData.id)
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-              
-              setGalleryImages(fallbackImages || []);
-              return;
-            }
-            
-            // Other errors - log safely
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('Error fetching gallery images:', errorMessage);
-            }
+            // Log error but don't fail completely
+            console.error('❌ Error fetching gallery images:', {
+              code: errorCode,
+              message: errorMessage
+            });
           } catch (err) {
             // If error handling fails, just continue
+            console.error('❌ Error handling failed:', err);
           }
+        }
+
+        if (!imagesData || imagesData.length === 0) {
+          console.warn('⚠️ No gallery images found. Checking if images exist without filters...');
+          // Debug: Check if images exist at all for this page_settings
+          const { data: allImages } = await supabase
+            .from('page_images')
+            .select('id, title, app_uuid, is_active, page_settings_id')
+            .eq('page_settings_id', settingsData.id);
+          console.log('📊 All images for this page_settings (without filters):', allImages);
         }
 
         setGalleryImages(imagesData || []);
       }
     } catch (err) {
       console.error('Error loading page settings:', err);
+    } finally {
+      fetchingPageSettingsRef.current = false; // Reset flag
     }
   };
 
@@ -490,49 +528,38 @@ export default function VCStudioLanding() {
       return;
     }
 
-    // Commented out Supabase submission - can be re-enabled later
-    // try {
-    //   setEnquiryStatus('loading');
-    //   const { error } = await supabase
-    //     .from('enquiries')
-    //     .insert([
-    //       {
-    //         app_uuid: appUuid, // Required: Links enquiry to the current app
-    //         name: enquiryForm.name,
-    //         email: enquiryForm.email,
-    //         subject: enquiryForm.subject,
-    //         message: enquiryForm.message,
-    //         enquiry_type: 'general',
-    //         status: 'new',
-    //         priority: 'medium'
-    //       }
-    //     ]);
+    try {
+      setEnquiryStatus('loading');
+      
+      const res = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: enquiryForm.name,
+          email: enquiryForm.email,
+          subject: enquiryForm.subject,
+          message: enquiryForm.message,
+          enquiry_type: 'general',
+        }),
+      });
 
-    //   if (error) {
-    //     console.error('Error submitting enquiry:', {
-    //       message: (error as any).message || 'Unknown error',
-    //       details: (error as any).details || null,
-    //       hint: (error as any).hint || null,
-    //       code: (error as any).code || null
-    //     });
-    //     throw error;
-    //   }
+      const data = await res.json();
 
-    //   setEnquiryStatus('success');
-    //   setEnquiryForm({ name: '', email: '', subject: '', message: '' });
-    //   setTimeout(() => setEnquiryStatus('idle'), 5000);
-    // } catch (err: any) {
-    //   console.error('Error submitting enquiry:', err);
-    //   setEnquiryStatus('error');
-    //   setTimeout(() => setEnquiryStatus('idle'), 5000);
-    // }
+      if (!res.ok) {
+        console.error('Error submitting enquiry:', data.error || 'Unknown error');
+        throw new Error(data.error || 'Failed to submit enquiry');
+      }
 
-    setEnquiryStatus('success');
-    setEnquiryForm({ name: '', email: '', subject: '', message: '' });
-    setTimeout(() => {
-      setEnquiryStatus('idle');
-      window.location.href = '#contact';
-    }, 10000);
+      setEnquiryStatus('success');
+      setEnquiryForm({ name: '', email: '', subject: '', message: '' });
+      setTimeout(() => setEnquiryStatus('idle'), 5000);
+    } catch (err: any) {
+      console.error('Error submitting enquiry:', err);
+      setEnquiryStatus('error');
+      setTimeout(() => setEnquiryStatus('idle'), 5000);
+    }
   };
 
   return (
@@ -579,16 +606,20 @@ export default function VCStudioLanding() {
       <section id="hero" className="relative px-4 sm:px-6 lg:px-8 min-h-screen flex items-center justify-center">
         {/* Video Background Container */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <VideoPlayer
-            cloudinaryUrl={pageSettings?.hero_video_url || ""}
-            publicId={pageSettings?.hero_video_public_id || "dog"}
-            autoplay={true}
-            loop={true}
-            muted={true}
-            controls={false}
-            className="!rounded-none !border-0 !shadow-none !bg-transparent"
-            aspectRatio="16:9"
-          />
+          {pageSettings?.hero_video_url && pageSettings?.hero_video_public_id ? (
+            <VideoPlayer
+              cloudinaryUrl={pageSettings.hero_video_url}
+              publicId={pageSettings.hero_video_public_id}
+              autoplay={true}
+              loop={true}
+              muted={true}
+              controls={false}
+              className="!rounded-none !border-0 !shadow-none !bg-transparent"
+              aspectRatio="16:9"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-color to-secondary-color" />
+          )}
         </div>
 
         {/* Content - now on top of video */}
@@ -635,9 +666,9 @@ export default function VCStudioLanding() {
               </div>
             </div>
             {pageSettings?.info_highlight_text && (
-              <div className="mt-8 p-6 bg-semantic-info-bg rounded-lg border border-accent-primary/30">
-                <p className="text-brand-text">
-                  <span className="text-accent-primary font-semibold">Stage 1 Focus:</span> {pageSettings.info_highlight_text}
+              <div className="mt-8 p-6 bg-accent-primary/10 rounded-lg border border-accent-primary/30">
+                <p className="text-accent-primary text-center text-2xl font-semibold">
+                  {pageSettings.info_highlight_text}
                 </p>
               </div>
             )}
@@ -843,30 +874,30 @@ export default function VCStudioLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-section-emphasis border-t border-section-border py-8 px-4 sm:px-6 lg:px-8">
+      <footer className="border-t border-section-border py-8 px-4 sm:px-6 lg:px-8 bg-section-emphasis">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
-              <h3 className="font-bold text-xl mb-4 text-white">VC Studio</h3>
-              <p className="text-white text-sm">Systematic business transformation methodology</p>
+              <h3 className="font-bold text-xl mb-4 text-black">VC Studio</h3>
+              <p className="text-black text-sm">Systematic business transformation methodology</p>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4 text-white">Company</h4>
-              <ul className="space-y-2 text-white text-sm">
+              <h4 className="font-bold text-lg mb-4 text-black">Company</h4>
+              <ul className="space-y-2 text-black text-sm">
                 <li><a href="#info" className="hover:text-accent-primary transition">About</a></li>
                 <li><Link href="/blog" className="hover:text-accent-primary transition">Blog</Link></li>
                 <li><a href="#contact" className="hover:text-accent-primary transition">Contact</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4 text-white">Legal</h4>
-              <ul className="space-y-2 text-white text-sm">
+              <h4 className="font-bold text-lg mb-4 text-black">Legal</h4>
+              <ul className="space-y-2 text-black text-sm">
                 <li><Link href="/privacy-policy" className="hover:text-accent-primary transition">Privacy Policy</Link></li>
                 <li><Link href="/terms-of-service" className="hover:text-accent-primary transition">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-section-border pt-8 text-center text-white text-sm">
+          <div className="border-t border-section-border pt-8 text-center text-black text-sm">
             <p>&copy; 2025 VC Studio. Powered by ITS Group. All rights reserved.</p>
           </div>
         </div>

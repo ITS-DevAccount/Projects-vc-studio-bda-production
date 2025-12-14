@@ -50,31 +50,43 @@ export default function VideoPlayer({
   const [showControls, setShowControls] = useState(false);
 
   // Calculate video URL from props
-  const calculateVideoUrl = (url: string, pubId: string) => {
+  const calculateVideoUrl = (url: string, pubId: string): string | null => {
+    // Return null if either input is empty/invalid
+    if (!url || !pubId || url.trim() === '' || pubId.trim() === '') {
+      return null;
+    }
+    
+    // Check for default demo values (shouldn't be used in production)
+    if (url.includes('/demo/') || pubId === 'dog') {
+      return null;
+    }
+    
     const isFullVideoUrl = url.match(/\.(mp4|mov|avi|webm|mkv)$/i);
     return isFullVideoUrl ? url : `${url}/q_auto,f_auto/${pubId}`;
   };
 
-  // Initialize with proper URL
-  const [videoUrl, setVideoUrl] = useState(() => calculateVideoUrl(cloudinaryUrl, publicId));
+  // Initialize with proper URL (may be null if inputs are invalid)
+  const [videoUrl, setVideoUrl] = useState<string | null>(() => calculateVideoUrl(cloudinaryUrl, publicId));
 
   // Update video URL whenever props change
   useEffect(() => {
     const newVideoUrl = calculateVideoUrl(cloudinaryUrl, publicId);
 
-    // Debug logging
-    console.log('VideoPlayer - Props changed:', {
-      cloudinaryUrl,
-      publicId,
-      isFullVideoUrl: !!cloudinaryUrl.match(/\.(mp4|mov|avi|webm|mkv)$/i),
-      constructedVideoUrl: newVideoUrl,
-    });
+    // Debug logging (only if we have valid inputs)
+    if (cloudinaryUrl && publicId) {
+      console.log('VideoPlayer - Props changed:', {
+        cloudinaryUrl,
+        publicId,
+        isFullVideoUrl: !!cloudinaryUrl.match(/\.(mp4|mov|avi|webm|mkv)$/i),
+        constructedVideoUrl: newVideoUrl,
+      });
+    }
 
     if (newVideoUrl !== videoUrl) {
       setVideoUrl(newVideoUrl);
 
-      // Reload video when URL changes
-      if (videoRef.current) {
+      // Reload video when URL changes (only if URL is valid)
+      if (videoRef.current && newVideoUrl) {
         videoRef.current.load();
         if (autoplay) {
           videoRef.current.play().catch(err => console.log('Autoplay prevented:', err));
@@ -173,8 +185,21 @@ export default function VideoPlayer({
             playsInline
             poster={poster}
             aria-label={title}
-            onError={() => {
-              console.error('Video failed to load:', videoUrl);
+            onError={(e) => {
+              // Only log errors for valid URLs (not empty/invalid ones)
+              if (videoUrl) {
+                const video = e.currentTarget;
+                const error = video.error;
+                if (error) {
+                  console.error('Video failed to load:', {
+                    videoUrl: videoUrl,
+                    errorCode: error.code,
+                    errorMessage: error.message,
+                  });
+                } else {
+                  console.error('Video failed to load:', videoUrl);
+                }
+              }
             }}
             onLoadedData={() => {
               console.log('Video loaded successfully:', videoUrl);
@@ -202,8 +227,21 @@ export default function VideoPlayer({
               playsInline
               poster={poster}
               aria-label={title}
-              onError={() => {
-                console.error('Video failed to load:', videoUrl);
+              onError={(e) => {
+                // Only log errors for valid URLs (not empty/invalid ones)
+                if (videoUrl) {
+                  const video = e.currentTarget;
+                  const error = video.error;
+                  if (error) {
+                    console.error('Video failed to load:', {
+                      videoUrl: videoUrl,
+                      errorCode: error.code,
+                      errorMessage: error.message,
+                    });
+                  } else {
+                    console.error('Video failed to load:', videoUrl);
+                  }
+                }
               }}
               onLoadedData={() => {
                 console.log('Video loaded successfully:', videoUrl);

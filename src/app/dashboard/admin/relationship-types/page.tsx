@@ -263,21 +263,6 @@ export default function RelationshipTypesPage() {
                 </p>
               </div>
 
-              {!formData.is_bidirectional && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Reverse Label <span className="text-brand-text-muted font-normal">(e.g., "Buyer")</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.reverse_label}
-                    onChange={(e) => setFormData({ ...formData, reverse_label: e.target.value })}
-                    className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
-                    placeholder="Buyer"
-                  />
-                </div>
-              )}
-
               <div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -293,6 +278,24 @@ export default function RelationshipTypesPage() {
                 </p>
               </div>
             </div>
+
+            {formData.is_bidirectional && (
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Reverse Label <span className="text-brand-text-muted font-normal">(e.g., "Buyer" for "Seller")</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.reverse_label}
+                  onChange={(e) => setFormData({ ...formData, reverse_label: e.target.value })}
+                  className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
+                  placeholder="Buyer"
+                />
+                <p className="text-xs text-brand-text-muted mt-1">
+                  The label for the reverse direction of this bidirectional relationship
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button

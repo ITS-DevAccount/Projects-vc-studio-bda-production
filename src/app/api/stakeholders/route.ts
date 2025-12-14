@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAppUuid } from '@/lib/server/getAppUuid';
 import type { AuthError, SupabaseClient, User } from '@supabase/supabase-js';
 
 function getAccessToken(req: NextRequest): string | undefined {
@@ -35,7 +36,18 @@ async function listStakeholdersServer(params: {
 
   let query = supabase
     .from('stakeholders')
-    .select('id, reference, name, stakeholder_type_id, primary_role_id, email, status, is_verified, created_at', { count: 'exact' });
+    .select(`
+      id, 
+      reference, 
+      name, 
+      stakeholder_type_id, 
+      primary_role_id, 
+      email, 
+      status, 
+      is_verified, 
+      created_at,
+      stakeholder_type:stakeholder_type_id(id, code, label)
+    `, { count: 'exact' });
 
   if (q) query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%`);
   if (type) query = query.eq('stakeholder_type_id', type);
@@ -142,6 +154,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Stakeholder name and stakeholder_type_id are required' }, { status: 400 });
     }
 
+    // Get app_uuid for multi-tenancy
+    const appUuid = await getAppUuid(accessToken);
+    console.log('[STAKEHOLDERS API] Using app_uuid:', appUuid);
+    console.log('[STAKEHOLDERS API] Role codes being assigned:', roleCodes);
+    console.log('[STAKEHOLDERS API] Primary role ID:', primaryRoleId);
+
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -234,6 +252,7 @@ export async function POST(req: NextRequest) {
       p_invite_email: portalAccess?.enabled ? authEmail : stakeholderInput?.invite_email ?? null,
       p_is_user: portalAccess?.enabled ? true : stakeholderInput?.is_user ?? false,
       p_created_by: createdByUserId,
+      p_app_uuid: appUuid, // Pass app_uuid to RPC function
     };
 
     console.log('RPC payload:', rpcPayload);

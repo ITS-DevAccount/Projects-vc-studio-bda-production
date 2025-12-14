@@ -69,7 +69,14 @@ export default function RolesPage() {
       });
       if (!res.ok) throw new Error('Failed to load roles');
       const data = await res.json();
-      setRoles(data || []);
+      // Normalize roles data - add default values for fields that may not exist if migrations haven't run
+      const normalizedRoles = (data || []).map((role: any) => ({
+        ...role,
+        scope: role.scope || 'general',
+        specific_stakeholder_id: role.specific_stakeholder_id || null,
+        app_uuid: role.app_uuid || null,
+      }));
+      setRoles(normalizedRoles);
 
       // Fetch stakeholders for the specific stakeholder dropdown
       const stakeholdersRes = await fetch('/api/stakeholders?pageSize=1000', {

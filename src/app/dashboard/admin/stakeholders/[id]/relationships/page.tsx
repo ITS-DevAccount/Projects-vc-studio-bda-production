@@ -33,7 +33,7 @@ interface Relationship {
   start_date: string;
   from_stakeholder?: { name: string };
   to_stakeholder?: { name: string };
-  relationship_type?: { label: string; code: string };
+  relationship_type?: { label: string; code: string; reverse_label: string | null; is_bidirectional: boolean };
 }
 
 export default function ManageRelationshipsPage() {
@@ -240,6 +240,33 @@ export default function ManageRelationshipsPage() {
     setEditingId(null);
   };
 
+  // Compute relationship descriptions
+  const getRelationshipDescriptions = () => {
+    if (!stakeholder || !formData.to_stakeholder_id || !formData.relationship_type_id) {
+      return { forward: '', reverse: '' };
+    }
+
+    const selectedStakeholder = stakeholders.find(s => s.id === formData.to_stakeholder_id);
+    const selectedType = relationshipTypes.find(t => t.id === formData.relationship_type_id);
+
+    if (!selectedStakeholder || !selectedType) {
+      return { forward: '', reverse: '' };
+    }
+
+    // Forward description: Stakeholder 1 - Relationship Type - Stakeholder 2
+    const forwardDescription = `${stakeholder.name} - ${selectedType.label} - ${selectedStakeholder.name}`;
+
+    // Reverse description: Stakeholder 2 - Reverse Label (or same label if bidirectional) - Stakeholder 1
+    const reverseLabel = selectedType.is_bidirectional 
+      ? (selectedType.reverse_label || selectedType.label)
+      : (selectedType.reverse_label || selectedType.label);
+    const reverseDescription = `${selectedStakeholder.name} - ${reverseLabel} - ${stakeholder.name}`;
+
+    return { forward: forwardDescription, reverse: reverseDescription };
+  };
+
+  const relationshipDescriptions = getRelationshipDescriptions();
+
   if (authLoading || loadingData) {
     return (
       <div className="min-h-screen bg-brand-background flex items-center justify-center">
@@ -318,6 +345,35 @@ export default function ManageRelationshipsPage() {
                 </select>
               </div>
 
+              {/* Relationship Descriptions - Read-only text boxes */}
+              {(formData.to_stakeholder_id && formData.relationship_type_id) && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-brand-text">
+                      Relationship Description (Forward)
+                    </label>
+                    <textarea
+                      readOnly
+                      value={relationshipDescriptions.forward}
+                      rows={2}
+                      className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg text-brand-text-muted cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-brand-text">
+                      Relationship Description (Reverse)
+                    </label>
+                    <textarea
+                      readOnly
+                      value={relationshipDescriptions.reverse}
+                      rows={2}
+                      className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg text-brand-text-muted cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2 text-brand-text">Strength (1-10)</label>
@@ -377,6 +433,29 @@ export default function ManageRelationshipsPage() {
                 const otherStakeholder = isFrom ? rel.to_stakeholder : rel.from_stakeholder;
                 const relType = rel.relationship_type;
                 
+                // Determine which label to show based on direction
+                let displayLabel = relType?.label || 'Unknown';
+                if (!isFrom && relType) {
+                  // When viewing from "to" stakeholder's perspective, show reverse label if available
+                  if (relType.is_bidirectional && relType.reverse_label) {
+                    displayLabel = relType.reverse_label;
+                  } else if (relType.reverse_label) {
+                    displayLabel = relType.reverse_label;
+                  }
+                }
+                
+                // Build relationship descriptions
+                const forwardDescription = stakeholder && otherStakeholder && relType
+                  ? `${stakeholder.name} - ${relType.label} - ${otherStakeholder.name}`
+                  : '';
+                
+                const reverseLabel = relType?.is_bidirectional 
+                  ? (relType.reverse_label || relType.label)
+                  : (relType?.reverse_label || relType?.label || '');
+                const reverseDescription = stakeholder && otherStakeholder && relType
+                  ? `${otherStakeholder.name} - ${reverseLabel} - ${stakeholder.name}`
+                  : '';
+                
                 return (
                   <div key={rel.id} className="p-4 bg-section-subtle border border-section-border rounded-lg">
                     <div className="flex items-start justify-between">
@@ -386,7 +465,7 @@ export default function ManageRelationshipsPage() {
                             {isFrom ? '→' : '←'} {otherStakeholder?.name || 'Unknown'}
                           </span>
                           <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                            {relType?.label || 'Unknown'}
+                            {displayLabel}
                           </span>
                           <span className={`px-2 py-1 rounded text-xs ${
                             rel.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -397,8 +476,20 @@ export default function ManageRelationshipsPage() {
                             {rel.status}
                           </span>
                         </div>
+                        {forwardDescription && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs text-brand-text-muted">
+                              <span className="font-semibold">Forward:</span> {forwardDescription}
+                            </p>
+                            {reverseDescription && (
+                              <p className="text-xs text-brand-text-muted">
+                                <span className="font-semibold">Reverse:</span> {reverseDescription}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         {rel.strength && (
-                          <p className="text-sm text-brand-text-muted">Strength: {rel.strength}/10</p>
+                          <p className="text-sm text-brand-text-muted mt-2">Strength: {rel.strength}/10</p>
                         )}
                         <p className="text-xs text-brand-text-muted mt-1">Reference: {rel.reference}</p>
                       </div>

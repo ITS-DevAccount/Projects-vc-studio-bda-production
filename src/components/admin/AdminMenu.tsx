@@ -16,6 +16,7 @@ const menuItems: MenuItem[] = [
   { id: 'workflows', label: 'Workflows', href: '/dashboard/admin/workflows' },
   { id: 'monitoring', label: 'Monitoring', href: '/dashboard/admin/monitoring' },
   { id: 'ai-prompts', label: 'AI Prompts', href: '/dashboard/admin/prompts' },
+  { id: 'llm-interfaces', label: 'LLM Interfaces', href: '/dashboard/admin/llm-interfaces' },
   { id: 'json-tools', label: 'JSON Tools', href: '/dashboard/admin/json-tools' },
 ]
 
@@ -58,6 +59,9 @@ export default function AdminMenu() {
     
     // AI Prompts section
     if (href === '/dashboard/admin/prompts' && pathname.startsWith('/dashboard/admin/prompts')) return true
+    
+    // LLM Interfaces section
+    if (href === '/dashboard/admin/llm-interfaces' && pathname.startsWith('/dashboard/admin/llm-interfaces')) return true
     
     // JSON Tools section - matches json-tools, json-editor, and json-viewer routes
     if (href === '/dashboard/admin/json-tools' && (

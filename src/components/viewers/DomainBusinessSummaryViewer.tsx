@@ -45,9 +45,12 @@ export interface DomainBusinessSummaryViewerProps {
  * Renders business information as beautiful structured cards
  */
 export default function DomainBusinessSummaryViewer({ data, config = {} }: DomainBusinessSummaryViewerProps) {
+  // Ensure config is always an object (handle null case)
+  const safeConfig = config || {};
+  
   // Extract prefill data (actual business info)
   // Hide schema by default if configured
-  const fieldRendering = config.field_rendering || {};
+  const fieldRendering = safeConfig.field_rendering || {};
   const hideSchema = fieldRendering.hide_schema !== false; // Default to true
 
   const businessData = data.prefill || data;
@@ -58,10 +61,10 @@ export default function DomainBusinessSummaryViewer({ data, config = {} }: Domai
     : businessData;
 
   // Get sections from config or use defaults
-  const sections = config.sections || getDefaultSections();
+  const sections = safeConfig.sections || getDefaultSections();
   
   // Get layout config
-  const layout = config.layout || {};
+  const layout = safeConfig.layout || {};
   const columns = layout.columns || 2;
   const spacing = layout.spacing || 'large';
   const responsive = layout.responsive !== false; // Default to true

@@ -77,7 +77,7 @@ export const ServiceTaskConfigSchema = z.object({
 })
 
 export interface AIAgentTaskConfig {
-  aiProvider: 'anthropic' | 'openai'
+  aiProvider: 'anthropic' | 'openai' | 'deepseek' | 'gemini'
   model: string
   systemPrompt?: string
   temperature?: number
@@ -86,7 +86,7 @@ export interface AIAgentTaskConfig {
 }
 
 export const AIAgentTaskConfigSchema = z.object({
-  aiProvider: z.enum(['anthropic', 'openai']),
+  aiProvider: z.enum(['anthropic', 'openai', 'deepseek', 'gemini']),
   model: z.string(),
   systemPrompt: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),

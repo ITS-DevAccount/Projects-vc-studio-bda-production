@@ -5,11 +5,20 @@
 
 import { useState, useEffect } from 'react';
 import { PromptTemplate } from '@/lib/ai/types';
+import { supabase } from '@/lib/supabase/client';
 
 interface PromptTemplateFormProps {
   prompt?: PromptTemplate;
   onSubmit: (data: Partial<PromptTemplate>) => Promise<void>;
   onCancel: () => void;
+}
+
+interface LLMInterface {
+  id: string;
+  provider: string;
+  name: string;
+  default_model: string;
+  is_active: boolean;
 }
 
 const STANDARD_TEMPLATE = {
@@ -19,6 +28,7 @@ const STANDARD_TEMPLATE = {
   category: 'FLM' as const,
   system_prompt: 'You are an expert business analyst working within the Value Chain Evolution Framework (VCEF). Your role is to [DESCRIBE ROLE]. You must output [FORMAT].',
   user_prompt_template: 'Analyse the following input:\n\n{{input}}\n\nProvide your analysis covering:\n\n1. [ASPECT 1]\n2. [ASPECT 2]\n3. [ASPECT 3]\n\nOutput format:\n```json\n{\n  "field1": "...",\n  "field2": "..."\n}\n```',
+  default_llm_interface_id: undefined as string | undefined,
   default_model: 'claude-sonnet-4-5-20250929',
   temperature: 0.7,
   max_tokens: 4096,
@@ -35,12 +45,41 @@ export default function PromptTemplateForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
+  const [llmInterfaces, setLlmInterfaces] = useState<LLMInterface[]>([]);
+  const [loadingInterfaces, setLoadingInterfaces] = useState(true);
 
   useEffect(() => {
     // Extract variables from template
     const vars = extractVariables(formData.user_prompt_template);
     setDetectedVariables(vars);
   }, [formData.user_prompt_template, formData.system_prompt]);
+
+  useEffect(() => {
+    // Load available LLM interfaces
+    async function loadLLMInterfaces() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const res = await fetch('/api/llm-interfaces', {
+          headers: {
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setLlmInterfaces(data.interfaces || []);
+        }
+      } catch (err) {
+        console.error('Error loading LLM interfaces:', err);
+      } finally {
+        setLoadingInterfaces(false);
+      }
+    }
+
+    loadLLMInterfaces();
+  }, []);
 
   const extractVariables = (text: string): string[] => {
     const regex = /\{\{\s*(\w+)\s*\}\}/g;
@@ -206,20 +245,53 @@ export default function PromptTemplateForm({
         <h3 className="text-lg font-semibold text-gray-900">Model Configuration</h3>
 
         <div>
+          <label htmlFor="default_llm_interface_id" className="block text-sm font-medium text-gray-700 mb-1">
+            LLM Interface (Optional)
+          </label>
+          <select
+            id="default_llm_interface_id"
+            value={formData.default_llm_interface_id || ''}
+            onChange={(e) => setFormData({ 
+              ...formData, 
+              default_llm_interface_id: e.target.value || undefined,
+              // Update default_model if interface has one
+              default_model: e.target.value 
+                ? llmInterfaces.find(i => i.id === e.target.value)?.default_model || formData.default_model
+                : formData.default_model
+            })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={loadingInterfaces}
+          >
+            <option value="">Use default for provider</option>
+            {llmInterfaces
+              .filter(i => i.is_active)
+              .map((interfaceItem) => (
+                <option key={interfaceItem.id} value={interfaceItem.id}>
+                  {interfaceItem.name} ({interfaceItem.provider}) - {interfaceItem.default_model}
+                </option>
+              ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Select a configured LLM interface, or leave empty to use default provider settings
+          </p>
+        </div>
+
+        <div>
           <label htmlFor="default_model" className="block text-sm font-medium text-gray-700 mb-1">
             Default Model *
           </label>
-          <select
+          <input
+            type="text"
             id="default_model"
             value={formData.default_model}
             onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="e.g., claude-sonnet-4-5-20250929, gpt-4, deepseek-chat, gemini-pro"
             required
-          >
-            <option value="claude-haiku-4-5-20251001">Haiku (Fast, Low Cost)</option>
-            <option value="claude-sonnet-4-5-20250929">Sonnet (Balanced - Recommended)</option>
-            <option value="claude-opus-4-1-20250514">Opus (Complex Reasoning)</option>
-          </select>
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Model name (will be overridden by selected LLM interface if provided)
+          </p>
         </div>
 
         <div>

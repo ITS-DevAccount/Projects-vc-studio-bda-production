@@ -33,15 +33,25 @@ export function AppProvider({ children }: AppProviderProps) {
     async function loadAppContext() {
       try {
         // Get app_code from environment variable
-        const appCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO'
+        const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'
+        
+        console.log('🔍 Loading app context for app_code:', appCode)
 
-        // Query applications table to get app context
+        // Query applications table: SELECT id as app_uuid FROM applications WHERE app_code = $1 LIMIT 1
         const { data, error } = await supabase
           .from('applications')
-          .select('*')
+          .select('id, app_code, app_name')
           .eq('app_code', appCode)
-          .eq('is_active', true)
+          .limit(1)
           .maybeSingle()
+        
+        console.log('📊 Applications query result:', { 
+          hasData: !!data, 
+          hasError: !!error,
+          app_uuid: data?.id,
+          app_code: data?.app_code,
+          errorMessage: error?.message 
+        })
 
         if (error) {
           const supabaseError = error as PostgrestError
@@ -49,33 +59,14 @@ export function AppProvider({ children }: AppProviderProps) {
             supabaseError?.message ?? 'Unknown error',
             {
               code: supabaseError?.code ?? 'unknown',
-              details: supabaseError?.details ?? null
+              details: supabaseError?.details ?? null,
+              appCode
             }
           )
 
-          // Try to get any active record as fallback
-          const { data: anyData, error: anyError } = await supabase
-            .from('applications')
-            .select('*')
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle()
-
-          if (!anyError && anyData) {
-            console.log('Using fallback applications record:', anyData)
-            setAppContext({
-              app_uuid: anyData.id,
-              site_code: anyData.app_code,
-              domain_code: anyData.domain_type || 'BDA',
-              site_name: anyData.app_name || 'VC Studio',
-              is_active_app: anyData.is_active || true,
-              isLoading: false,
-            })
-            return
-          }
-
-          // If still no data, use defaults
-          console.warn('No applications found, using defaults. app_uuid will be empty.')
+          // CRITICAL: Do NOT use fallback - fail gracefully instead
+          // Fallback could pick wrong app_uuid (e.g., BuildBid instead of VC Studio)
+          console.error('Failed to load app context. app_uuid will be empty. Check NEXT_PUBLIC_APP_CODE and database connection.')
           setAppContext(prev => ({ ...prev, isLoading: false }))
           return
         }
@@ -85,14 +76,14 @@ export function AppProvider({ children }: AppProviderProps) {
           setAppContext({
             app_uuid: data.id,
             site_code: data.app_code,
-            domain_code: data.domain_type || 'BDA',
+            domain_code: 'BDA',
             site_name: data.app_name || 'VC Studio',
-            is_active_app: data.is_active || true,
+            is_active_app: true,
             isLoading: false,
           })
         } else {
           // No record found
-          console.warn('No active application record found for app_code:', appCode)
+          console.warn('No application record found for app_code:', appCode)
           setAppContext(prev => ({ ...prev, isLoading: false }))
         }
       } catch (err: any) {
@@ -103,6 +94,35 @@ export function AppProvider({ children }: AppProviderProps) {
 
     loadAppContext()
   }, [])
+
+  // Show loading screen while initializing app_uuid
+  if (appContext.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading application...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if app_uuid is empty after loading
+  if (!appContext.app_uuid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+          <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Application Error</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Failed to initialize application context. Please check your NEXT_PUBLIC_APP_CODE environment variable.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            Expected app_code: {process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return <AppContext.Provider value={appContext}>{children}</AppContext.Provider>
 }

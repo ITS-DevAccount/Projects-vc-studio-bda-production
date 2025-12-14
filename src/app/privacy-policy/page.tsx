@@ -88,7 +88,14 @@ export default function PrivacyPolicy() {
         backgroundColor: '#ffffff',
       });
 
-      document.body.removeChild(pdfContainer);
+      // Safely remove the container if it still exists
+      try {
+        if (pdfContainer && pdfContainer.parentNode === document.body) {
+          document.body.removeChild(pdfContainer);
+        }
+      } catch (err) {
+        console.warn('Error removing PDF container:', err);
+      }
 
       // Calculate PDF dimensions
       const imgWidth = 210; // A4 width in mm

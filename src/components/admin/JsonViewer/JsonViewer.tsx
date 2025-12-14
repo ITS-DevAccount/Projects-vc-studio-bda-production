@@ -83,7 +83,17 @@ export default function JsonViewer() {
       element.style.display = 'none'
       document.body.appendChild(element)
       element.click()
-      document.body.removeChild(element)
+      // Safely remove the element if it still exists
+      // Use setTimeout to ensure click completes before removal
+      setTimeout(() => {
+        try {
+          if (element && element.parentNode === document.body) {
+            document.body.removeChild(element)
+          }
+        } catch (err) {
+          console.warn('Error removing download element:', err);
+        }
+      }, 100);
     }
   }
 

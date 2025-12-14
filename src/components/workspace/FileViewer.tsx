@@ -65,7 +65,17 @@ export default function FileViewer({
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      // Safely remove the element if it still exists
+      // Use setTimeout to ensure click completes before removal
+      setTimeout(() => {
+        try {
+          if (a && a.parentNode === document.body) {
+            document.body.removeChild(a);
+          }
+        } catch (err) {
+          console.warn('Error removing download element:', err);
+        }
+      }, 100);
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download error:', err);

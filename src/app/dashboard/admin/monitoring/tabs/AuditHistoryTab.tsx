@@ -91,7 +91,17 @@ export default function AuditHistoryTab() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // Safely remove the element if it still exists
+      // Use setTimeout to ensure click completes before removal
+      setTimeout(() => {
+        try {
+          if (a && a.parentNode === document.body) {
+            document.body.removeChild(a);
+          }
+        } catch (err) {
+          console.warn('Error removing download element:', err);
+        }
+      }, 100);
     } catch (err: any) {
       console.error('Error exporting audit trail:', err);
       alert('Failed to export audit trail');

@@ -75,13 +75,16 @@ const DEFAULT_SETTINGS: SiteSettings = {
  * Fetches active site_settings and provides theme configuration
  */
 export function useTheme() {
-  const { site_code } = useApp();
+  const { site_code, app_uuid, isLoading: appContextLoading } = useApp();
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSettings();
+    // Wait for app context to load before fetching settings
+    if (!appContextLoading && app_uuid) {
+      fetchSettings();
+    }
 
     // Subscribe to changes in site_settings
     const subscription = supabase
@@ -94,7 +97,9 @@ export function useTheme() {
           table: 'site_settings',
         },
         () => {
-          fetchSettings();
+          if (!appContextLoading && app_uuid) {
+            fetchSettings();
+          }
         }
       )
       .subscribe();
@@ -102,21 +107,37 @@ export function useTheme() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [site_code]);
+  }, [site_code, app_uuid, appContextLoading]);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Try to fetch with site_code first (new schema), fall back to is_active (old schema)
-      let query = supabase.from('site_settings').select('*');
+      // Always filter by app_uuid to ensure we get the correct app's settings
+      if (!app_uuid) {
+        console.warn('No app_uuid available, cannot fetch site settings');
+        setSettings(DEFAULT_SETTINGS);
+        return;
+      }
 
-      // Try filtering by site_code if the field exists, otherwise use is_active
-      const { data, error: fetchError } = await query
-        .or(`site_code.eq.${site_code},is_active.eq.true`)
+      console.log('🔍 Fetching site settings for app_uuid:', app_uuid);
+
+      const { data, error: fetchError } = await supabase
+        .from('site_settings')
+        .select('*')
+        .eq('app_uuid', app_uuid)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
+
+      console.log('📊 Site Settings Fetch Result:', {
+        hasData: !!data,
+        hasError: !!fetchError,
+        siteSettingsId: data?.id,
+        site_name: data?.site_name,
+      });
 
       if (fetchError) {
         if (fetchError.code === 'PGRST116') {

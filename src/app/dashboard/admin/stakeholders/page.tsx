@@ -8,11 +8,18 @@ import { supabase } from '@/lib/supabase/client';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
+interface StakeholderType {
+  id: string;
+  code: string;
+  label: string;
+}
+
 interface StakeholderRow {
   id: string;
   reference: string;
   name: string;
   stakeholder_type_id: string;
+  stakeholder_type?: StakeholderType;
   email: string | null;
   status: string;
   is_verified: boolean;
@@ -32,8 +39,10 @@ export default function StakeholdersRegistryPage() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StakeholderRow[]>([]);
   const [count, setCount] = useState(0);
+  const [stakeholderTypes, setStakeholderTypes] = useState<StakeholderType[]>([]);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
+  const [type, setType] = useState('');
   const [verified, setVerified] = useState('');
   const [sort, setSort] = useState('created_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
@@ -43,19 +52,43 @@ export default function StakeholdersRegistryPage() {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
     if (status) sp.set('status', status);
+    if (type) sp.set('type', type);
     if (verified) sp.set('verified', verified);
     if (sort) sp.set('sort', sort);
     if (order) sp.set('order', order);
     sp.set('page', String(page));
     sp.set('pageSize', String(PAGE_SIZE));
     return sp.toString();
-  }, [q, status, verified, sort, order, page]);
+  }, [q, status, type, verified, sort, order, page]);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/auth/login');
     }
   }, [authLoading, user, router]);
+
+  // Load stakeholder types
+  useEffect(() => {
+    async function loadTypes() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const res = await fetch('/api/stakeholder-types', {
+          headers: {
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStakeholderTypes(data || []);
+        }
+      } catch (err) {
+        console.error('Error loading stakeholder types:', err);
+      }
+    }
+    if (user) loadTypes();
+  }, [user]);
 
   useEffect(() => {
     let ignore = false;
@@ -104,10 +137,17 @@ export default function StakeholdersRegistryPage() {
           </div>
         </div>
 
-      <div className="grid gap-3 mb-4 md:grid-cols-4">
+      <div className="grid gap-3 mb-4 md:grid-cols-5">
         <input className="px-3 py-2 bg-section-subtle border border-section-border rounded"
                placeholder="Search name or email"
                value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+        <select className="px-3 py-2 bg-section-subtle border border-section-border rounded"
+                value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
+          <option value="">All types</option>
+          {stakeholderTypes.map((st) => (
+            <option key={st.id} value={st.id}>{st.label}</option>
+          ))}
+        </select>
         <select className="px-3 py-2 bg-section-subtle border border-section-border rounded"
                 value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All statuses</option>
@@ -152,13 +192,16 @@ export default function StakeholdersRegistryPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="p-6 text-center text-brand-text-muted">Loading…</td></tr>
+              <tr><td colSpan={8} className="p-6 text-center text-brand-text-muted">Loading…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={7} className="p-6 text-center text-brand-text-muted">No stakeholders found</td></tr>
+              <tr><td colSpan={8} className="p-6 text-center text-brand-text-muted">No stakeholders found</td></tr>
             ) : rows.map((r) => (
               <tr key={r.id} className="hover:bg-section-subtle/50">
                 <td className="p-3 border-b border-section-border">{r.reference}</td>
                 <td className="p-3 border-b border-section-border">{r.name}</td>
+                <td className="p-3 border-b border-section-border">
+                  {r.stakeholder_type?.label || '-'}
+                </td>
                 <td className="p-3 border-b border-section-border">{r.email || '-'}</td>
                 <td className="p-3 border-b border-section-border">{r.status}</td>
                 <td className="p-3 border-b border-section-border">{r.is_verified ? 'Yes' : 'No'}</td>

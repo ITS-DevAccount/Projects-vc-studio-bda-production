@@ -19,11 +19,28 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: prompt, error } = await supabase
+    // Get app_uuid for filtering
+    let app_uuid: string | undefined;
+    try {
+      const { getAppContext } = await import('@/lib/server/getAppUuid');
+      const appContext = await getAppContext();
+      app_uuid = appContext.app_uuid;
+    } catch (error) {
+      console.warn('Could not get app_uuid for prompt query:', error);
+      // Continue without app_uuid filtering (for backwards compatibility)
+    }
+
+    let query = supabase
       .from('prompt_templates')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+
+    // Filter by app_uuid if available (security check)
+    if (app_uuid) {
+      query = query.eq('app_uuid', app_uuid);
+    }
+
+    const { data: prompt, error } = await query.single();
 
     if (error) {
       console.error('Error fetching prompt:', error);
@@ -62,22 +79,29 @@ export async function PUT(
     const body = await request.json();
 
     // Update prompt template
+    const updateData: any = {
+      prompt_name: body.prompt_name,
+      description: body.description,
+      category: body.category,
+      system_prompt: body.system_prompt,
+      user_prompt_template: body.user_prompt_template,
+      default_model: body.default_model,
+      temperature: body.temperature,
+      max_tokens: body.max_tokens,
+      input_schema: body.input_schema,
+      output_schema: body.output_schema,
+      output_format: body.output_format,
+      is_active: body.is_active
+    };
+
+    // Include default_llm_interface_id if provided
+    if (body.default_llm_interface_id !== undefined) {
+      updateData.default_llm_interface_id = body.default_llm_interface_id || null;
+    }
+
     const { data: prompt, error } = await supabase
       .from('prompt_templates')
-      .update({
-        prompt_name: body.prompt_name,
-        description: body.description,
-        category: body.category,
-        system_prompt: body.system_prompt,
-        user_prompt_template: body.user_prompt_template,
-        default_model: body.default_model,
-        temperature: body.temperature,
-        max_tokens: body.max_tokens,
-        input_schema: body.input_schema,
-        output_schema: body.output_schema,
-        output_format: body.output_format,
-        is_active: body.is_active
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

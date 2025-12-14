@@ -55,7 +55,8 @@ export default function ViewerRegistry({ viewerCode, data, config: providedConfi
   }
   
   // Use provided config if available, otherwise use fetched config
-  const config = providedConfig || fetchedConfig;
+  // Ensure config is always an object, never null
+  const config = providedConfig || fetchedConfig || {};
 
   // Determine which viewer component to use
   // Default to JSON_TREE_VIEWER if viewer_code is missing or not found

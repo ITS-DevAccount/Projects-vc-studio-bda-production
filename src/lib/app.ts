@@ -5,7 +5,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
  * Default: VC_STUDIO
  */
 export const getAppCode = (): string => {
-    return process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO';
+    return process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO';
 };
 
 /**

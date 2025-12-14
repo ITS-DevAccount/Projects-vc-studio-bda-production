@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
@@ -22,20 +22,34 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export default function BrandingSettings() {
   const { settings: currentSettings, refreshSettings } = useTheme();
-  const { site_code } = useApp();
+  const { site_code, app_uuid } = useApp();
   const [settings, setSettings] = useState(currentSettings);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const justSavedRef = useRef(false);
 
   useEffect(() => {
-    loadSettings();
-  }, [site_code]);
+    if (app_uuid && app_uuid.trim() !== '') {
+      loadSettings();
+    }
+  }, [app_uuid]);
 
   // Sync local settings with theme settings when they change
+  // But don't overwrite if we just saved (to prevent race condition)
   useEffect(() => {
+    if (justSavedRef.current) {
+      justSavedRef.current = false;
+      return; // Don't overwrite state we just set from save operation
+    }
     if (currentSettings && currentSettings.id) {
-      setSettings(currentSettings);
+      // Only sync if IDs match or local settings has no ID
+      setSettings((prev) => {
+        if (!prev.id || prev.id === currentSettings.id) {
+          return currentSettings;
+        }
+        return prev; // Keep current state if IDs don't match
+      });
     }
   }, [currentSettings]);
 
@@ -43,32 +57,20 @@ export default function BrandingSettings() {
     try {
       setLoading(true);
       
-      // Try to load by site_code first, fall back to is_active if that fails
-      let query = supabase.from('site_settings').select('*');
-      
-      // Try filtering by site_code if available, otherwise use is_active
-      const { data, error } = await query
-        .or(`site_code.eq.${site_code},is_active.eq.true`)
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('*')
+        .eq('app_uuid', app_uuid)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
         .limit(1)
         .single();
-
+      
       if (error && error.code !== 'PGRST116') {
-        // If site_code query fails, try with is_active as fallback
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('site_settings')
-          .select('*')
-          .eq('is_active', true)
-          .limit(1)
-          .maybeSingle();
-          
-        if (fallbackError) {
-          throw fallbackError;
-        }
-        
-        if (fallbackData) {
-          setSettings(fallbackData);
-        }
-      } else if (data) {
+        throw error;
+      }
+      
+      if (data) {
         setSettings(data);
       }
     } catch (err) {
@@ -163,6 +165,12 @@ export default function BrandingSettings() {
           );
           throw updateError;
         }
+
+        // Immediately update state with returned data
+        if (resultData && resultData[0]) {
+          justSavedRef.current = true;
+          setSettings(resultData[0]);
+        }
       } else {
         // Insert new
         console.log('Inserting new setting');
@@ -189,15 +197,20 @@ export default function BrandingSettings() {
           );
           throw insertError;
         }
+
+        // Immediately update state with returned data (including new ID)
+        if (resultData && resultData[0]) {
+          justSavedRef.current = true;
+          setSettings(resultData[0]);
+        }
       }
 
       console.log('Save successful, refreshing settings...');
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
 
-      // Refresh theme
+      // Refresh theme (state already updated with resultData above)
       refreshSettings();
-      await loadSettings();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save settings';
       console.error('Error saving settings:', message, err);
@@ -208,7 +221,9 @@ export default function BrandingSettings() {
   };
 
   const handleReset = () => {
-    loadSettings();
+    if (app_uuid && app_uuid.trim() !== '') {
+      loadSettings();
+    }
   };
 
   const ColorPicker = ({ label, field, value }: { label: string; field: string; value: string }) => (
@@ -398,6 +413,21 @@ export default function BrandingSettings() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-brand-text mb-2">
+                    Favicon URL
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.favicon_url || ''}
+                    onChange={(e) => handleChange('favicon_url', e.target.value)}
+                    placeholder="https://res.cloudinary.com/your-cloud/image/upload/favicon.ico"
+                    className="w-full px-4 py-3 bg-section-subtle border border-section-border rounded-lg focus:border-accent-primary focus:outline-none text-brand-text"
+                  />
+                  <p className="mt-1 text-xs text-brand-text-muted">
+                    Upload favicon to Cloudinary and paste the full URL (supports .ico, .png, .svg)
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -506,6 +536,20 @@ export default function BrandingSettings() {
                       />
                     ) : (
                       <div className="text-sm text-brand-text-muted">No logo configured</div>
+                    )}
+                  </div>
+
+                  {/* Favicon Preview */}
+                  <div className="p-4 bg-section-subtle rounded-lg border border-section-border">
+                    <p className="text-xs text-brand-text-muted mb-2">Favicon</p>
+                    {settings.favicon_url ? (
+                      <img
+                        src={settings.favicon_url}
+                        alt="Favicon"
+                        className="w-8 h-8"
+                      />
+                    ) : (
+                      <div className="text-sm text-brand-text-muted">No favicon configured</div>
                     )}
                   </div>
 

@@ -47,6 +47,7 @@ export interface ExecutionContext {
   workflowInstanceId?: string;
   taskId?: string;
   modelOverride?: string;
+  llmInterfaceId?: string; // Override LLM interface for this execution
 }
 
 export interface ValidationResult {
@@ -117,3 +118,52 @@ export const MODEL_COSTS = {
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },
   'claude-opus-4-1-20250514': { input: 15.00, output: 75.00 }
 };
+
+// LLM Provider types
+export type LLMProvider = 'anthropic' | 'openai' | 'deepseek' | 'gemini';
+
+// Common LLM Client interface
+export interface LLMClient {
+  provider: LLMProvider;
+  selectModel(complexity: ModelComplexity): string;
+  executeRaw(
+    systemPrompt: string,
+    userPrompt: string,
+    model?: string,
+    temperature?: number,
+    maxTokens?: number
+  ): Promise<PromptResponse>;
+  
+  executePromptForJson(
+    systemPrompt: string,
+    userPrompt: string,
+    model?: string,
+    temperature?: number,
+    maxTokens?: number
+  ): Promise<PromptResponse>;
+}
+
+// LLM Interface configuration from database
+export interface LLMInterface {
+  id: string;
+  app_uuid: string;
+  provider: LLMProvider;
+  name: string;
+  api_key_enc: string; // Encrypted - will be decrypted server-side
+  base_url?: string;
+  default_model: string;
+  is_active: boolean;
+  is_default: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// LLM Client configuration (decrypted, ready to use)
+export interface LLMClientConfig {
+  apiKey: string;
+  baseUrl?: string;
+  defaultModel?: string;
+  maxRetries?: number;
+  timeout?: number;
+}

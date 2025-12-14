@@ -61,8 +61,8 @@ export default function PageEditor() {
   const appUuid = useAppUuid();
   const [settings, setSettings] = useState<PageSettings>({
     page_name: 'home',
-    hero_video_url: 'https://res.cloudinary.com/demo/video/upload',
-    hero_video_public_id: 'dog',
+    hero_video_url: '',
+    hero_video_public_id: '',
     hero_title: 'Value Chain Studio',
     hero_subtitle: 'Systematic business transformation through Value Chain Excellence Framework',
     hero_description: 'Map your business value creation, connect stakeholders, and deploy AI-enabled operations with proven methodology',

@@ -20,11 +20,27 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const active = searchParams.get('active');
 
+    // Get app_uuid for filtering
+    let app_uuid: string | undefined;
+    try {
+      const { getAppContext } = await import('@/lib/server/getAppUuid');
+      const appContext = await getAppContext();
+      app_uuid = appContext.app_uuid;
+    } catch (error) {
+      console.warn('Could not get app_uuid for prompts query:', error);
+      // Continue without app_uuid filtering (for backwards compatibility)
+    }
+
     // Build query
     let query = supabase
       .from('prompt_templates')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Filter by app_uuid if available
+    if (app_uuid) {
+      query = query.eq('app_uuid', app_uuid);
+    }
 
     if (category) {
       query = query.eq('category', category);
@@ -62,15 +78,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get VC Studio app_uuid
-    const { data: app } = await supabase
-      .from('applications')
-      .select('id')
-      .eq('app_code', 'VC_STUDIO')
-      .single();
-
-    if (!app) {
-      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    // Get current app_uuid
+    const { getAppContext } = await import('@/lib/server/getAppUuid');
+    let app_uuid: string;
+    try {
+      const appContext = await getAppContext();
+      app_uuid = appContext.app_uuid;
+    } catch (error) {
+      console.error('Failed to get app_uuid:', error);
+      return NextResponse.json(
+        { error: 'Failed to determine application context' },
+        { status: 500 }
+      );
     }
 
     const body = await request.json();
@@ -79,13 +98,14 @@ export async function POST(request: NextRequest) {
     const { data: prompt, error } = await supabase
       .from('prompt_templates')
       .insert({
-        app_id: app.id,
+        app_uuid: app_uuid,
         prompt_code: body.prompt_code,
         prompt_name: body.prompt_name,
         description: body.description,
         category: body.category,
         system_prompt: body.system_prompt,
         user_prompt_template: body.user_prompt_template,
+        default_llm_interface_id: body.default_llm_interface_id || null,
         default_model: body.default_model || 'claude-sonnet-4-5-20250929',
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4096,

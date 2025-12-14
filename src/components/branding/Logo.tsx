@@ -91,6 +91,29 @@ export default function Logo({
 
       // Only render image if we have a valid source
       if (logoSrc) {
+        // If favicon is configured, show favicon instead of logo
+        if (settings.favicon_url) {
+          const faviconSize = variant === 'icon-only' ? 40 : variant === 'compact' ? 32 : 48;
+          return (
+            <div className={`flex flex-col ${className}`}>
+              <img
+                src={settings.favicon_url}
+                alt={settings.site_name}
+                className="object-contain"
+                style={{
+                  width: `${faviconSize}px`,
+                  height: `${faviconSize}px`,
+                }}
+              />
+              {showTagline && settings.site_tagline && variant !== 'icon-only' && (
+                <p className="text-xs text-gray-600 mt-1 max-w-md">
+                  {settings.site_tagline}
+                </p>
+              )}
+            </div>
+          );
+        }
+
         // Use configured dimensions, but allow variant to scale them proportionally
         const getDimensions = () => {
           if (variant === 'icon-only') {
@@ -144,16 +167,27 @@ export default function Logo({
       console.log('Logo: No logo_public_id or logo_url set, showing fallback');
     }
 
-    // Fallback: Icon + Site Name
+    // Fallback: Icon + Site Name (use favicon if available, otherwise Zap icon)
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <div
-          className={`${variant === 'icon-only' ? 'w-10 h-10' : 'w-8 h-8'} bg-gradient-to-br rounded-lg flex items-center justify-center shadow-md`}
+          className={`${variant === 'icon-only' ? 'w-10 h-10' : 'w-8 h-8'} bg-gradient-to-br rounded-lg flex items-center justify-center shadow-md overflow-hidden`}
           style={{
-            backgroundImage: `linear-gradient(to bottom right, ${settings.primary_color}, ${settings.secondary_color})`,
+            backgroundImage: settings.favicon_url 
+              ? 'none' 
+              : `linear-gradient(to bottom right, ${settings.primary_color}, ${settings.secondary_color})`,
+            backgroundColor: settings.favicon_url ? 'transparent' : undefined,
           }}
         >
-          <Zap className="w-5 h-5 text-white" />
+          {settings.favicon_url ? (
+            <img 
+              src={settings.favicon_url} 
+              alt={settings.site_name}
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <Zap className="w-5 h-5 text-white" />
+          )}
         </div>
         {variant !== 'icon-only' && (
           <div className="flex flex-col">

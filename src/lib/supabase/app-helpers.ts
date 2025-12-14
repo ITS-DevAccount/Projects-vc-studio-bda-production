@@ -6,46 +6,58 @@
 import { supabase } from './client'
 
 /**
- * Get the current app's UUID from site_settings
- * Uses NEXT_PUBLIC_SITE_CODE environment variable to determine which app
+ * Get the current app's UUID from applications table
+ * Uses NEXT_PUBLIC_APP_CODE environment variable to determine which app
+ * Query: SELECT id as app_uuid FROM applications WHERE app_code = $1 LIMIT 1
  */
 export async function getCurrentAppUuid(): Promise<string | null> {
-  const siteCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO'
+  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'
 
   const { data, error } = await supabase
-    .from('site_settings')
-    .select('app_uuid')
-    .eq('site_code', siteCode)
-    .eq('is_active_app', true)
-    .single()
+    .from('applications')
+    .select('id')
+    .eq('app_code', appCode)
+    .limit(1)
+    .maybeSingle()
 
   if (error) {
     console.error('Error fetching app_uuid:', error)
     return null
   }
 
-  return data?.app_uuid || null
+  return data?.id || null
 }
 
 /**
- * Get complete app context (uuid, codes, name)
+ * Get complete app context (uuid, codes, name) from applications table
  */
 export async function getAppContext() {
-  const siteCode = process.env.NEXT_PUBLIC_SITE_CODE || 'VC_STUDIO'
+  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'
 
   const { data, error } = await supabase
-    .from('site_settings')
-    .select('app_uuid, site_code, domain_code, site_name, is_active_app')
-    .eq('site_code', siteCode)
-    .eq('is_active_app', true)
-    .single()
+    .from('applications')
+    .select('id, app_code, app_name')
+    .eq('app_code', appCode)
+    .limit(1)
+    .maybeSingle()
 
   if (error) {
     console.error('Error fetching app context:', error)
     return null
   }
 
-  return data
+  if (!data) {
+    return null
+  }
+
+  // Return in format compatible with existing code
+  return {
+    app_uuid: data.id,
+    site_code: data.app_code,
+    app_code: data.app_code,
+    site_name: data.app_name,
+    app_name: data.app_name,
+  }
 }
 
 /**

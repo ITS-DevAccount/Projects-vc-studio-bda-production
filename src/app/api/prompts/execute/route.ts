@@ -7,6 +7,8 @@ import { getPromptLibrary } from '@/lib/ai/prompt-library';
 
 // POST /api/prompts/execute - Execute a prompt (for testing)
 export async function POST(request: NextRequest) {
+  let body: any = null;
+  
   try {
     const supabase = await createServerClient();
 
@@ -16,8 +18,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { promptCode, inputData, modelOverride } = body;
+    body = await request.json();
+    const { promptCode, inputData, modelOverride, llmInterfaceId } = body;
 
     if (!promptCode || !inputData) {
       return NextResponse.json(
@@ -31,16 +33,27 @@ export async function POST(request: NextRequest) {
     const response = await promptLibrary.executePrompt(
       promptCode,
       inputData,
-      { modelOverride }
+      { modelOverride, llmInterfaceId }
     );
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error in POST /api/prompts/execute:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Log full error details for debugging
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      body: body
+    });
+    
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
       },
       { status: 500 }
     );

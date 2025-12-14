@@ -43,7 +43,7 @@ async function listRelationshipsServer(params: any, appUuid: string, accessToken
       app_uuid,
       from_stakeholder:from_stakeholder_id(name),
       to_stakeholder:to_stakeholder_id(name),
-      relationship_type:relationship_type_id(label, code)
+      relationship_type:relationship_type_id(label, code, reverse_label, is_bidirectional)
     `, { count: 'exact' })
     .eq('app_uuid', appUuid); // SECURITY: Filter by app_uuid
 

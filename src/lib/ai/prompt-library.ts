@@ -2,7 +2,7 @@
 // Phase A: AI Interface Foundation
 
 import { createServerClient } from '@/lib/supabase/server';
-import { ClaudeClient, getClaudeClient } from './claude-client';
+import { getLLMClient } from './llm-client-factory';
 import { getSchemaValidator } from './schema-validator';
 import {
   PromptTemplate,
@@ -10,30 +10,38 @@ import {
   RenderedPrompt,
   ExecutionContext,
   PromptResponse,
-  ValidationResult
+  ValidationResult,
+  LLMClient,
+  LLMProvider
 } from './types';
 
 export class PromptLibrary {
   private supabase: any;
-  private claudeClient: ClaudeClient;
   private validator: any;
+  private app_uuid?: string;
 
-  constructor(supabaseClient: any, claudeClient?: ClaudeClient) {
+  constructor(supabaseClient: any, app_uuid?: string) {
     this.supabase = supabaseClient;
-    this.claudeClient = claudeClient || getClaudeClient();
     this.validator = getSchemaValidator();
+    this.app_uuid = app_uuid;
   }
 
   /**
    * Get prompt template by code
    */
   async getPromptTemplate(promptCode: string): Promise<PromptTemplate | null> {
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('prompt_templates')
       .select('*')
       .eq('prompt_code', promptCode)
-      .eq('is_active', true)
-      .single();
+      .eq('is_active', true);
+
+    // Filter by app_uuid if provided
+    if (this.app_uuid) {
+      query = query.eq('app_uuid', this.app_uuid);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
       console.error('Error fetching prompt template:', error);
@@ -162,15 +170,48 @@ export class PromptLibrary {
       };
     }
 
+    // Use override from context, or fall back to template's default
+    const llmInterfaceId = context.llmInterfaceId || template.default_llm_interface_id;
+
+    // Load LLM interface if specified (get full interface including default_model)
+    // Do this before creating execution log so we can log the correct model
+    let provider: LLMProvider = 'anthropic'; // Default fallback
+    let interfaceDefaultModel: string | undefined;
+    
+    if (llmInterfaceId) {
+      const { data: llmInterface, error: interfaceError } = await this.supabase
+        .from('llm_interfaces')
+        .select('provider, default_model')
+        .eq('id', llmInterfaceId)
+        .single();
+
+      if (interfaceError) {
+        console.error('Error loading LLM interface:', interfaceError);
+        throw new Error(`Failed to load LLM interface: ${interfaceError.message}`);
+      }
+
+      if (llmInterface) {
+        provider = llmInterface.provider as LLMProvider;
+        interfaceDefaultModel = llmInterface.default_model || undefined;
+      } else {
+        throw new Error(`LLM interface with ID ${llmInterfaceId} not found`);
+      }
+    }
+
+    // Determine which model will be used (for logging)
+    // Use interface's default_model if available, otherwise use prompt template's model
+    const modelToUse = context.modelOverride || interfaceDefaultModel || rendered.model;
+
     // Create execution log record (pending)
     const executionId = await this.createExecutionLog({
       prompt_template_id: template.id,
+      llm_interface_id: llmInterfaceId || undefined,
       stakeholder_id: context.stakeholderId,
       workflow_instance_id: context.workflowInstanceId,
       task_id: context.taskId,
       input_data: variables,
       rendered_prompt: `${rendered.systemPrompt}\n\n${rendered.userPrompt}`,
-      model_used: context.modelOverride || rendered.model,
+      model_used: modelToUse,
       temperature: rendered.temperature,
       max_tokens: rendered.maxTokens,
       status: 'running',
@@ -178,12 +219,24 @@ export class PromptLibrary {
     });
 
     try {
+      // Get LLM client based on prompt template configuration
+      // Note: LLM interfaces are shared across all apps (not app-specific)
+      let llmClient: LLMClient;
+
+      // Get LLM client from factory (interfaces are shared across all apps)
+      llmClient = await getLLMClient(
+        provider,
+        llmInterfaceId
+      );
+
       // Execute prompt
-      const model = context.modelOverride || rendered.model;
+      // Use interface's default_model if available, otherwise use prompt template's model
+      // modelOverride always takes precedence
+      const model = context.modelOverride || interfaceDefaultModel || rendered.model;
       let response: PromptResponse;
 
       if (template.output_format === 'json') {
-        response = await this.claudeClient.executePromptForJson(
+        response = await llmClient.executePromptForJson(
           rendered.systemPrompt,
           rendered.userPrompt,
           model,
@@ -191,7 +244,7 @@ export class PromptLibrary {
           rendered.maxTokens
         );
       } else {
-        response = await this.claudeClient.executeRaw(
+        response = await llmClient.executeRaw(
           rendered.systemPrompt,
           rendered.userPrompt,
           model,
@@ -209,27 +262,32 @@ export class PromptLibrary {
         }
       }
 
-      // Update execution log
-      await this.updateExecutionLog(executionId, {
-        output_data: response.data,
-        raw_response: response.rawResponse,
-        status: response.success ? 'completed' : 'failed',
-        error_message: response.error,
-        tokens_input: response.tokensUsed.input,
-        tokens_output: response.tokensUsed.output,
-        cost_estimate: response.costEstimate,
-        duration_ms: response.durationMs,
-        completed_at: new Date().toISOString()
-      });
+      // Update execution log (include llm_interface_id if available)
+      if (executionId) {
+        await this.updateExecutionLog(executionId, {
+          llm_interface_id: llmInterfaceId || undefined,
+          output_data: response.data,
+          raw_response: response.rawResponse,
+          status: response.success ? 'completed' : 'failed',
+          error_message: response.error,
+          tokens_input: response.tokensUsed.input,
+          tokens_output: response.tokensUsed.output,
+          cost_estimate: response.costEstimate,
+          duration_ms: response.durationMs,
+          completed_at: new Date().toISOString()
+        });
+      }
 
       return response;
     } catch (error) {
-      // Update execution log with error
-      await this.updateExecutionLog(executionId, {
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error',
-        completed_at: new Date().toISOString()
-      });
+      // Update execution log with error (if log was created)
+      if (executionId) {
+        await this.updateExecutionLog(executionId, {
+          status: 'failed',
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          completed_at: new Date().toISOString()
+        });
+      }
 
       return {
         success: false,
@@ -247,18 +305,25 @@ export class PromptLibrary {
    * Create execution log record
    */
   private async createExecutionLog(data: Partial<PromptExecution>): Promise<string> {
-    const { data: execution, error } = await this.supabase
-      .from('prompt_executions')
-      .insert(data)
-      .select('id')
-      .single();
+    try {
+      const { data: execution, error } = await this.supabase
+        .from('prompt_executions')
+        .insert(data)
+        .select('id')
+        .single();
 
-    if (error) {
-      console.error('Error creating execution log:', error);
-      throw error;
+      if (error) {
+        console.error('Error creating execution log:', error);
+        // Don't throw - return empty string so execution can continue
+        // Logging failures shouldn't break prompt execution
+        return '';
+      }
+
+      return execution?.id || '';
+    } catch (err) {
+      console.error('Unexpected error creating execution log:', err);
+      return '';
     }
-
-    return execution.id;
   }
 
   /**
@@ -296,7 +361,20 @@ export class PromptLibrary {
 /**
  * Get PromptLibrary instance
  */
-export async function getPromptLibrary(): Promise<PromptLibrary> {
+export async function getPromptLibrary(app_uuid?: string): Promise<PromptLibrary> {
   const supabase = await createServerClient();
-  return new PromptLibrary(supabase);
+  
+  // If app_uuid not provided, try to get it from app context
+  if (!app_uuid) {
+    try {
+      const { getAppContext } = await import('@/lib/server/getAppUuid');
+      const appContext = await getAppContext();
+      app_uuid = appContext.app_uuid;
+    } catch (error) {
+      console.warn('Could not get app_uuid for PromptLibrary:', error);
+      // Continue without app_uuid filtering (for backwards compatibility)
+    }
+  }
+  
+  return new PromptLibrary(supabase, app_uuid);
 }

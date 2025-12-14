@@ -56,22 +56,19 @@ export async function GET(req: NextRequest) {
       queryClient = supabase;
     }
 
-    // Build query to fetch ALL roles
-    // For admin roles page, we want to show all roles regardless of app_uuid
-    // Note: This is appropriate for admin interfaces where full visibility is needed
+    // Build query to fetch roles for the current app only
+    // SECURITY: Filter by app_uuid to ensure multi-tenancy isolation
+    // Note: specific_stakeholder_id column may not exist if migration hasn't run
     let query = queryClient
       .from('roles')
-      .select('id, code, label, description, scope, is_active, created_at, app_uuid, specific_stakeholder_id')
+      .select('id, code, label, description, scope, is_active, created_at, app_uuid')
+      .eq('app_uuid', appUuid) // SECURITY: Only show roles for current app
       .order('label', { ascending: true });
 
     // Optional: Filter by active status if requested
     if (activeOnly) {
       query = query.eq('is_active', true);
     }
-
-    // Note: Removed app_uuid filter to show all roles in admin interface
-    // If multi-tenancy filtering is needed, uncomment the line below:
-    // query = query.eq('app_uuid', appUuid);
 
     const { data, error } = await query;
 
