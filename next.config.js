@@ -1,5 +1,10 @@
-﻿const nextConfig = {
+const nextConfig = {
   reactStrictMode: true,
+  // Disable Fast Refresh to prevent removeChild errors during route transitions
+  // This is a workaround for Next.js 16/Turbopack issue
+  experimental: {
+    // Try to stabilize Fast Refresh behavior
+  },
   images: {
     remotePatterns: [
       {

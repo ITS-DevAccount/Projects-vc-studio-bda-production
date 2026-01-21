@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import { getCurrentAppUuid } from '@/lib/supabase/app-helpers';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
@@ -136,7 +137,83 @@ export async function POST(req: NextRequest) {
 
     // No public.users entry for stakeholders
 
-    return NextResponse.json({ ok: true, auth_user_id: authUserId, email: finalEmail });
+    // Auto-create workspace if stakeholder doesn't have one and role has a template
+    let workspaceCreated = false;
+    let workspaceId = null;
+
+    try {
+      // Get the app UUID
+      const appUuid = await getCurrentAppUuid();
+
+      if (appUuid) {
+        // Check if stakeholder already has a workspace
+        const { data: existingWorkspace } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('owner_stakeholder_id', stakeholderId)
+          .eq('app_uuid', appUuid)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (!existingWorkspace) {
+          // Get stakeholder with primary role
+          const { data: stakeholderWithRole } = await supabase
+            .from('stakeholders')
+            .select(`
+              id,
+              name,
+              primary_role_id,
+              roles!inner(
+                id,
+                code,
+                workspace_template_id
+              )
+            `)
+            .eq('id', stakeholderId)
+            .single();
+
+          const role = Array.isArray(stakeholderWithRole?.roles) ? stakeholderWithRole.roles[0] : stakeholderWithRole?.roles;
+          
+          if (stakeholderWithRole && role?.workspace_template_id) {
+            console.log(`[Create User] Auto-creating workspace for stakeholder ${stakeholderId} with template ${role.workspace_template_id}`);
+
+            // Call provision_workspace RPC to create workspace
+            const { data: workspaceData, error: workspaceError } = await supabase.rpc('provision_workspace', {
+              p_workspace_name: `${stakeholderWithRole.name}'s Workspace`,
+              p_owner_stakeholder_id: stakeholderId,
+              p_app_uuid: appUuid,
+              p_primary_role_code: role.code,
+              p_template_id: role.workspace_template_id,
+              p_description: `Workspace for ${stakeholderWithRole.name}`,
+            });
+
+            if (workspaceError) {
+              console.error('[Create User] Failed to create workspace:', workspaceError);
+              // Don't fail the whole operation, just log the error
+            } else if (workspaceData?.success) {
+              workspaceCreated = true;
+              workspaceId = workspaceData.workspace_id;
+              console.log(`[Create User] Workspace created successfully: ${workspaceId}`);
+            }
+          } else {
+            console.log(`[Create User] Stakeholder's role has no workspace template, skipping auto-creation`);
+          }
+        } else {
+          console.log(`[Create User] Stakeholder already has a workspace, skipping auto-creation`);
+        }
+      }
+    } catch (workspaceErr: any) {
+      console.error('[Create User] Error in workspace auto-creation:', workspaceErr);
+      // Don't fail the whole operation
+    }
+
+    return NextResponse.json({
+      ok: true,
+      auth_user_id: authUserId,
+      email: finalEmail,
+      workspace_created: workspaceCreated,
+      workspace_id: workspaceId,
+    });
   } catch (e: any) {
     console.error('API error in POST /api/stakeholders/create-user:', e);
     return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });

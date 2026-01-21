@@ -33,10 +33,10 @@ export async function GET(_request: Request) {
 
     console.log('[API /dashboard/menu-items] User authenticated:', user.email);
 
-    // Get stakeholder record with core_config
+    // Get stakeholder record
     const { data: stakeholder, error: stakeholderError } = await supabase
       .from('stakeholders')
-      .select('id, core_config')
+      .select('id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -49,6 +49,100 @@ export async function GET(_request: Request) {
     }
 
     console.log('[API /dashboard/menu-items] Stakeholder found:', stakeholder.id);
+
+    // Simple flow: stakeholder → workspace → template → dashboard config
+    // Get workspaces where stakeholder has access (via ownership or access_control)
+    const { data: accessRecords, error: accessError } = await supabase
+      .from('workspace_access_control')
+      .select('workspace_id')
+      .eq('stakeholder_id', stakeholder.id)
+      .eq('invitation_status', 'accepted');
+
+    if (accessError) {
+      console.error('[API /dashboard/menu-items] Error fetching access records:', accessError);
+      return NextResponse.json(
+        { error: 'Failed to fetch workspace access' },
+        { status: 500 }
+      );
+    }
+
+    const workspaceIds = accessRecords?.map(r => r.workspace_id) || [];
+
+    if (workspaceIds.length === 0) {
+      console.error('[API /dashboard/menu-items] No workspace access found');
+      return NextResponse.json(
+        { error: 'No workspace found for this stakeholder' },
+        { status: 404 }
+      );
+    }
+
+    // Get first accessible workspace with template and dashboard config
+    const { data: workspaceData, error: workspaceError } = await supabase
+      .from('workspaces')
+      .select(`
+        id,
+        name,
+        created_from_template_id,
+        template:workspace_templates!created_from_template_id(
+          id,
+          template_name,
+          dashboard_config_id,
+          dashboard_config:workspace_dashboard_configurations!dashboard_config_id(
+            id,
+            config_name,
+            dashboard_config
+          )
+        )
+      `)
+      .eq('status', 'active')
+      .in('id', workspaceIds)
+      .limit(1)
+      .maybeSingle();
+
+    console.log('[API /dashboard/menu-items] Workspace query:', {
+      hasWorkspace: !!workspaceData,
+      workspaceId: workspaceData?.id,
+      hasTemplate: !!workspaceData?.template,
+      error: workspaceError
+    });
+
+    if (workspaceError || !workspaceData) {
+      console.error('[API /dashboard/menu-items] No workspace found:', workspaceError);
+      return NextResponse.json(
+        { error: 'No workspace found for this stakeholder' },
+        { status: 404 }
+      );
+    }
+
+    const template = Array.isArray(workspaceData.template) ? workspaceData.template[0] : workspaceData.template;
+
+    if (!template?.dashboard_config) {
+      console.error('[API /dashboard/menu-items] Workspace has no dashboard configuration');
+      return NextResponse.json(
+        { error: 'Workspace template has no dashboard configuration' },
+        { status: 404 }
+      );
+    }
+
+    // Get dashboard config from template (can be object or array)
+    const dashboardConfigRecord = Array.isArray(template.dashboard_config)
+      ? template.dashboard_config[0]
+      : template.dashboard_config;
+    let coreConfig = dashboardConfigRecord.dashboard_config;
+
+    if (typeof coreConfig === 'string') {
+      try {
+        coreConfig = JSON.parse(coreConfig);
+      } catch (e) {
+        console.error('[API /dashboard/menu-items] Failed to parse dashboard config:', e);
+        return NextResponse.json(
+          { error: 'Invalid dashboard configuration format' },
+          { status: 500 }
+        );
+      }
+    }
+
+    console.log('[API /dashboard/menu-items] Using dashboard config from workspace template');
 
     // Get stakeholder roles and app_uuid (stakeholders are global, app_uuid comes from stakeholder_roles)
     const { data: stakeholderRoles, error: rolesError } = await supabase
@@ -67,117 +161,23 @@ export async function GET(_request: Request) {
       } : null
     });
 
-    // Extract core_config - handle both JSON string and object
-    let coreConfig = stakeholder.core_config as any;
+    // Workspace dashboard config has direct structure (no role_configurations)
+    console.log('[API /dashboard/menu-items] Dashboard config structure:', Object.keys(coreConfig || {}));
 
-    console.log('[API /dashboard/menu-items] Core config exists:', !!coreConfig);
-    console.log('[API /dashboard/menu-items] Core config type:', typeof coreConfig);
-    
-    if (typeof coreConfig === 'string') {
-      try {
-        coreConfig = JSON.parse(coreConfig);
-        console.log('[API /dashboard/menu-items] Parsed core_config from string');
-      } catch (e) {
-        console.error('[API /dashboard/menu-items] Failed to parse core_config JSON:', e);
-        return NextResponse.json(
-          { error: 'Invalid core_config format' },
-          { status: 500 }
-        );
-      }
-    }
-    console.log('[API /dashboard/menu-items] Role configurations:', coreConfig?.role_configurations ? Object.keys(coreConfig.role_configurations) : 'none');
-    console.log('[API /dashboard/menu-items] Full role_configurations:', JSON.stringify(coreConfig?.role_configurations, null, 2));
-
-    if (!coreConfig || !coreConfig.role_configurations) {
-      console.error('[API /dashboard/menu-items] No role_configurations in core_config');
+    if (!coreConfig || !coreConfig.menu_items) {
+      console.error('[API /dashboard/menu-items] Dashboard config missing menu_items');
       return NextResponse.json(
-        { error: 'No dashboard configuration found' },
+        { error: 'Dashboard configuration is invalid' },
         { status: 404 }
       );
     }
 
-    // Get menu items for current role
-    // First, check what roles are available in the config
-    const availableRoleConfigs = Object.keys(coreConfig?.role_configurations || {});
-    console.log('[API /dashboard/menu-items] Available role configs:', availableRoleConfigs);
-    
-    // Get role from stakeholder_roles or try to match from __meta.roles
-    let role = stakeholderRoles?.role_type || null;
-    console.log('[API /dashboard/menu-items] Role from stakeholder_roles:', role);
-    
-    // If we have __meta.roles, we can use those to help find the right config
-    const metaRoles = coreConfig?.__meta?.roles || [];
-    console.log('[API /dashboard/menu-items] Meta roles:', metaRoles);
-    
-    // Try to find matching role config
-    let roleConfig = null;
-    
-    // Strategy 1: Direct match with role from stakeholder_roles
-    if (role && coreConfig.role_configurations?.[role]) {
-      roleConfig = coreConfig.role_configurations[role];
-      console.log('[API /dashboard/menu-items] Found role config by direct match:', role);
-    }
-    // Strategy 2: Try combining meta roles (e.g., "individual" + "investor" = "individual_investor")
-    else if (metaRoles.length > 0) {
-      const combinedRole = metaRoles.join('_');
-      if (coreConfig.role_configurations?.[combinedRole]) {
-        roleConfig = coreConfig.role_configurations[combinedRole];
-        role = combinedRole;
-        console.log('[API /dashboard/menu-items] Found role config by combining meta roles:', combinedRole);
-      }
-      // Strategy 3: Try each meta role individually
-      else {
-        for (const metaRole of metaRoles) {
-          if (coreConfig.role_configurations?.[metaRole]) {
-            roleConfig = coreConfig.role_configurations[metaRole];
-            role = metaRole;
-            console.log('[API /dashboard/menu-items] Found role config by meta role:', metaRole);
-            break;
-          }
-        }
-      }
-    }
-    // Strategy 4: Try 'default' fallback
-    if (!roleConfig && coreConfig.role_configurations?.['default']) {
-      roleConfig = coreConfig.role_configurations['default'];
-      role = 'default';
-      console.log('[API /dashboard/menu-items] Using default role config');
-    }
-    // Strategy 5: Use first available role config as last resort
-    if (!roleConfig && availableRoleConfigs.length > 0) {
-      role = availableRoleConfigs[0];
-      roleConfig = coreConfig.role_configurations[role];
-      console.log('[API /dashboard/menu-items] Using first available role config:', role);
-    }
-    
-    if (roleConfig) {
-      console.log('[API /dashboard/menu-items] Selected role:', role);
-      console.log('[API /dashboard/menu-items] Role config menu_items:', roleConfig.menu_items);
-      console.log('[API /dashboard/menu-items] Role config menu_items type:', Array.isArray(roleConfig.menu_items) ? 'array' : typeof roleConfig.menu_items);
-      console.log('[API /dashboard/menu-items] Role config menu_items length:', Array.isArray(roleConfig.menu_items) ? roleConfig.menu_items.length : 'N/A');
-    } else {
-      console.warn('[API /dashboard/menu-items] No role config found after all strategies');
-    }
-
-    if (!roleConfig) {
-      console.warn('[API /dashboard/menu-items] No role config found, returning defaults');
-      return NextResponse.json({
-        menu_items: [],
-        dashboard_name: 'Dashboard',
-        workspace_layout: {
-          sidebar_width: '250px',
-          theme: 'light',
-          show_notifications: true,
-          default_component: 'file_explorer'
-        },
-        widgets: [],
-        role: role,
-        stakeholder_id: stakeholder.id
-      });
-    }
+    // Get role for component registry lookup
+    const role = stakeholderRoles?.role_type || 'default';
+    console.log('[API /dashboard/menu-items] Using role:', role);
 
     // Handle menu_items - can be array of strings or array of objects
-    let menuItems = roleConfig.menu_items || [];
+    let menuItems = coreConfig.menu_items || [];
 
     // Fetch component metadata from components_registry (single source of truth)
     const componentCodes = menuItems.map((item: any) => {
@@ -236,7 +236,7 @@ export async function GET(_request: Request) {
     console.log('[API /dashboard/menu-items] Processed menu items:', menuItems.length, 'items');
 
     // Ensure workspace_layout always has default values
-    const workspaceLayout = roleConfig.workspace_layout || {};
+    const workspaceLayout = coreConfig.workspace_layout || {};
     const defaultWorkspaceLayout = {
       sidebar_width: '250px',
       theme: 'light',
@@ -246,12 +246,12 @@ export async function GET(_request: Request) {
 
     return NextResponse.json({
       menu_items: menuItems,
-      dashboard_name: roleConfig.dashboard_name || 'Dashboard',
+      dashboard_name: workspaceData.name || 'Dashboard',
       workspace_layout: {
         ...defaultWorkspaceLayout,
         ...workspaceLayout
       },
-      widgets: roleConfig.widgets || [],
+      widgets: coreConfig.widgets || [],
       role: role,
       stakeholder_id: stakeholder.id
     });

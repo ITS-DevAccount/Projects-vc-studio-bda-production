@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useFileSystem } from '@/contexts/FileSystemContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import FileViewer from './FileViewer';
 import Breadcrumb from './Breadcrumb';
 
@@ -26,6 +27,7 @@ interface Node {
 
 export default function FileExplorer() {
   const { currentParentId, navigateToFolder, refreshTrigger } = useFileSystem();
+  const { currentWorkspace } = useWorkspace();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,16 +35,34 @@ export default function FileExplorer() {
 
   useEffect(() => {
     fetchNodes(currentParentId);
-  }, [currentParentId, refreshTrigger]);
+  }, [currentParentId, refreshTrigger, currentWorkspace]);
 
   const fetchNodes = async (parentId: string | null) => {
     setLoading(true);
     setError(null);
 
     try {
-      const url = parentId
-        ? `/api/nodes/${parentId}`
-        : `/api/nodes?parent_id=null`;
+      // Build URL with workspace filter if workspace is selected
+      let url: string;
+      const params = new URLSearchParams();
+
+      if (parentId) {
+        url = `/api/nodes/${parentId}`;
+      } else {
+        params.set('parent_id', 'null');
+        url = `/api/nodes`;
+      }
+
+      // Add workspace_id filter if a workspace is currently selected
+      if (currentWorkspace?.id) {
+        params.set('workspace_id', currentWorkspace.id);
+      }
+
+      // Append query parameters if any
+      const queryString = params.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
 
       const response = await fetch(url);
 

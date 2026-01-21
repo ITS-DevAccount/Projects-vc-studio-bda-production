@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProviderWrapper } from "@/components/providers/AuthProviderWrapper";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AppProvider } from "@/contexts/AppContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "VC Studio",
@@ -29,13 +30,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AppProvider>
-          <ThemeProvider>
-            <AuthProviderWrapper>
-              {children}
-            </AuthProviderWrapper>
-          </ThemeProvider>
-        </AppProvider>
+        <ErrorBoundary>
+          <AppProvider>
+            <ThemeProvider>
+              <AuthProviderWrapper>
+                {children}
+              </AuthProviderWrapper>
+            </ThemeProvider>
+          </AppProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

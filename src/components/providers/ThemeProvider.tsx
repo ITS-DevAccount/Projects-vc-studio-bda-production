@@ -16,6 +16,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { settings, loading } = useTheme();
 
+  // Effect for CSS variables and document title (safe, no DOM node creation/removal)
   useEffect(() => {
     if (typeof window === 'undefined' || loading) return;
 
@@ -52,50 +53,22 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Apply border radius
     root.style.setProperty('--border-radius', settings.border_radius);
 
-    // Update favicon if configured
-    if (settings.favicon_url) {
-      // Find existing favicon link tag (if any)
-      const existingFavicon = document.querySelector("link[rel='icon']") as HTMLLinkElement;
-      
-      if (existingFavicon) {
-        // Update existing favicon href
-        existingFavicon.href = settings.favicon_url;
-        // Update type if needed
-        if (settings.favicon_url.endsWith('.svg')) {
-          existingFavicon.type = 'image/svg+xml';
-        } else if (settings.favicon_url.endsWith('.png')) {
-          existingFavicon.type = 'image/png';
-        } else {
-          existingFavicon.type = 'image/x-icon';
-        }
-      } else {
-        // Create new favicon link tag only if it doesn't exist
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        // Determine MIME type based on file extension
-        if (settings.favicon_url.endsWith('.svg')) {
-          link.type = 'image/svg+xml';
-        } else if (settings.favicon_url.endsWith('.png')) {
-          link.type = 'image/png';
-        } else {
-          link.type = 'image/x-icon'; // Default for .ico
-        }
-        link.href = settings.favicon_url;
-        document.head.appendChild(link);
-      }
-      
-      console.log('[ThemeProvider] Favicon updated:', settings.favicon_url);
-    }
-    // Note: We don't remove favicons when none configured - let Next.js handle default favicon
-
     // Update document title
-    if (settings.site_name) {
+    if (settings.site_name && document.title !== undefined) {
       const titleSuffix = document.title.includes(' - ')
         ? ' - ' + document.title.split(' - ')[1]
         : '';
       document.title = settings.site_name + titleSuffix;
     }
   }, [settings, loading]);
+
+  // TEMPORARILY DISABLED: Favicon updates causing React Fast Refresh conflicts in Next.js 16/Turbopack
+  // The error "Cannot read properties of null (reading 'removeChild')" occurs during route transitions
+  // TODO: Re-enable with a safer implementation that doesn't conflict with React's reconciliation
+  // For now, favicon will be handled by Next.js metadata in layout.tsx
+  // useEffect(() => {
+  //   // Favicon updates disabled to prevent React Fast Refresh errors
+  // }, [settings.favicon_url, loading]);
 
   return <>{children}</>;
 }

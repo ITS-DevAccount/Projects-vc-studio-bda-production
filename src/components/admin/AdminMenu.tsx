@@ -11,13 +11,14 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'content', label: 'Content', href: '/dashboard/admin/content' },
-  { id: 'enquiries', label: 'Enquiries', href: '/dashboard/admin/enquiries' },
   { id: 'community', label: 'Community', href: '/dashboard/admin' },
   { id: 'workflows', label: 'Workflows', href: '/dashboard/admin/workflows' },
+  { id: 'workspace-templates', label: 'Workspace Templates', href: '/dashboard/admin/workspace-templates' },
   { id: 'monitoring', label: 'Monitoring', href: '/dashboard/admin/monitoring' },
   { id: 'ai-prompts', label: 'AI Prompts', href: '/dashboard/admin/prompts' },
   { id: 'llm-interfaces', label: 'LLM Interfaces', href: '/dashboard/admin/llm-interfaces' },
   { id: 'json-tools', label: 'JSON Tools', href: '/dashboard/admin/json-tools' },
+  { id: 'vc-model', label: 'VC Model', href: '/dashboard/admin/vc-model' },
 ]
 
 export default function AdminMenu() {
@@ -30,30 +31,35 @@ export default function AdminMenu() {
       pathname.startsWith('/dashboard/admin/stakeholders') ||
       pathname.startsWith('/dashboard/admin/roles') ||
       pathname.startsWith('/dashboard/admin/relationship-types') ||
-      pathname.startsWith('/dashboard/admin/stakeholder-types')
+      pathname.startsWith('/dashboard/admin/stakeholder-types') ||
+      pathname.startsWith('/dashboard/admin/workspaces')
     )) return true
     
-    // Content section - matches content, pages, blog-posts, and cta-buttons routes
+    // Content section - matches content, pages, blog-posts, cta-buttons, enquiries/display, branding, and page editor routes
     if (href === '/dashboard/admin/content' && (
       pathname.startsWith('/dashboard/admin/content') ||
       pathname.startsWith('/dashboard/admin/pages') ||
       pathname.startsWith('/dashboard/admin/blog-posts') ||
-      pathname.startsWith('/dashboard/admin/cta-buttons')
+      pathname.startsWith('/dashboard/admin/cta-buttons') ||
+      pathname.startsWith('/dashboard/admin/enquiries/display') ||
+      pathname.startsWith('/dashboard/settings/branding') ||
+      pathname.startsWith('/dashboard/pages/editor')
     )) return true
-    
-    // Enquiries section
-    if (href === '/dashboard/admin/enquiries' && pathname.startsWith('/dashboard/admin/enquiries')) return true
-    
-    // Workflows section - matches workflows and all workflow-related routes
+
+    // Workflows section - matches workflows, workflow-designer, workflow-instances, function-registry, registry, services, and service-logs routes
     if (href === '/dashboard/admin/workflows' && (
       pathname.startsWith('/dashboard/admin/workflows') ||
-      pathname.startsWith('/dashboard/admin/workflow') ||
+      pathname.startsWith('/dashboard/admin/workflow-designer') ||
+      pathname.startsWith('/dashboard/admin/workflow-instances') ||
       pathname.startsWith('/dashboard/admin/function-registry') ||
       pathname.startsWith('/dashboard/admin/registry') ||
       pathname.startsWith('/dashboard/admin/services') ||
       pathname.startsWith('/dashboard/admin/service-logs')
     )) return true
-    
+
+    // Workspace Templates section
+    if (href === '/dashboard/admin/workspace-templates' && pathname.startsWith('/dashboard/admin/workspace-templates')) return true
+
     // Monitoring section
     if (href === '/dashboard/admin/monitoring' && pathname.startsWith('/dashboard/admin/monitoring')) return true
     
@@ -69,6 +75,9 @@ export default function AdminMenu() {
       pathname.startsWith('/dashboard/admin/json-editor') ||
       pathname.startsWith('/dashboard/admin/json-viewer')
     )) return true
+    
+    // VC Model section
+    if (href === '/dashboard/admin/vc-model' && pathname.startsWith('/dashboard/admin/vc-model')) return true
     
     return false
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getCurrentAppUuid } from '@/lib/supabase/app-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -144,10 +145,58 @@ export async function POST(request: NextRequest) {
     // This would integrate with your email service (SendGrid, Resend, etc.)
     // For now, we'll just return success
 
+    // Auto-create workspace if role has a template
+    let workspaceCreated = false;
+    let workspaceId = null;
+
+    try {
+      // Get the app UUID
+      const appUuid = await getCurrentAppUuid();
+
+      if (appUuid && result?.stakeholder_out_id) {
+        // Look up if the primary role has a workspace template
+        const { data: roleWithTemplate } = await supabase
+          .from('roles')
+          .select('id, code, workspace_template_id')
+          .eq('id', primaryRole.id)
+          .single();
+
+        if (roleWithTemplate?.workspace_template_id) {
+          console.log(`[Onboarding] Auto-creating workspace for stakeholder ${result.stakeholder_out_id} with template ${roleWithTemplate.workspace_template_id}`);
+
+          // Call provision_workspace RPC to create workspace
+          const { data: workspaceData, error: workspaceError } = await supabase.rpc('provision_workspace', {
+            p_workspace_name: `${name}'s Workspace`,
+            p_owner_stakeholder_id: result.stakeholder_out_id,
+            p_app_uuid: appUuid,
+            p_primary_role_code: primary_role_code || role_codes[0],
+            p_template_id: roleWithTemplate.workspace_template_id,
+            p_description: `Workspace for ${name}`,
+          });
+
+          if (workspaceError) {
+            console.error('[Onboarding] Failed to create workspace:', workspaceError);
+            // Don't fail the whole onboarding, just log the error
+          } else if (workspaceData?.success) {
+            workspaceCreated = true;
+            workspaceId = workspaceData.workspace_id;
+            console.log(`[Onboarding] Workspace created successfully: ${workspaceId}`);
+          }
+        } else {
+          console.log(`[Onboarding] Role ${primary_role_code} has no workspace template, skipping auto-creation`);
+        }
+      }
+    } catch (workspaceErr: any) {
+      console.error('[Onboarding] Error in workspace auto-creation:', workspaceErr);
+      // Don't fail the whole onboarding
+    }
+
     return NextResponse.json({
       success: true,
       stakeholder_id: result?.stakeholder_out_id,
       is_new: result?.is_new,
+      workspace_created: workspaceCreated,
+      workspace_id: workspaceId,
       message: 'Registration successful! Please check your email to verify your account.',
     });
   } catch (error: any) {

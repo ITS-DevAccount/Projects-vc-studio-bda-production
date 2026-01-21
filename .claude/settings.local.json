@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(npx supabase:*)",
+      "Bash(node diagnose_workspace_access.js:*)",
+      "Bash(grep:*)",
+      "Bash(node test_api_query.js:*)",
+      "Bash(node test_fix.js:*)"
+    ]
+  }
+}

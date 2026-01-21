@@ -1,5 +1,6 @@
 -- Sprint 1d.7: FLM Building Workflow - Seed Core FLM Prompts
 -- Phase C: FLM Assembly
+-- Uses ON CONFLICT (app_id, prompt_code) to update existing prompts or insert new ones
 
 DO $$
 DECLARE
@@ -7,6 +8,10 @@ DECLARE
 BEGIN
   -- Get app ID
   SELECT id INTO v_app_id FROM applications WHERE app_code = 'VC_STUDIO';
+  
+  IF v_app_id IS NULL THEN
+    RAISE EXCEPTION 'VC_STUDIO application not found';
+  END IF;
 
   -- Prompt 1: BVS_TO_DBS
   INSERT INTO prompt_templates (
@@ -74,8 +79,19 @@ Output format:
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    input_schema = EXCLUDED.input_schema,
+    output_schema = EXCLUDED.output_schema,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 2: DBS_TO_L0
   INSERT INTO prompt_templates (
@@ -155,8 +171,17 @@ Output as structured JSON with clear sections.',
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 3: L0_TO_L1
   INSERT INTO prompt_templates (
@@ -227,8 +252,17 @@ Output as structured JSON array of pillar definitions.',
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 4: L1_TO_L2
   INSERT INTO prompt_templates (
@@ -311,8 +345,17 @@ Output as structured JSON with capabilities grouped by L1 pillar.',
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 5: FLM_TO_BLUEPRINT
   INSERT INTO prompt_templates (
@@ -378,8 +421,17 @@ Output as well-structured Markdown.',
     'markdown',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 6: FLM_TO_ONE_PAGER
   INSERT INTO prompt_templates (
@@ -442,8 +494,17 @@ Output as structured JSON for layout purposes.',
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
   -- Prompt 7: FLM_TO_PITCH_DECK
   INSERT INTO prompt_templates (
@@ -505,7 +566,16 @@ Output as structured JSON array of slides.',
     'json',
     true
   ) ON CONFLICT (app_id, prompt_code) DO UPDATE SET
+    prompt_name = EXCLUDED.prompt_name,
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    system_prompt = EXCLUDED.system_prompt,
     user_prompt_template = EXCLUDED.user_prompt_template,
-    system_prompt = EXCLUDED.system_prompt;
+    default_model = EXCLUDED.default_model,
+    temperature = EXCLUDED.temperature,
+    max_tokens = EXCLUDED.max_tokens,
+    output_format = EXCLUDED.output_format,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
 
 END $$;

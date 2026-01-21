@@ -109,6 +109,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists (PostgreSQL doesn't support CREATE TRIGGER IF NOT EXISTS)
+DROP TRIGGER IF EXISTS trigger_update_llm_interfaces_updated_at ON llm_interfaces;
+
 CREATE TRIGGER trigger_update_llm_interfaces_updated_at
     BEFORE UPDATE ON llm_interfaces
     FOR EACH ROW

@@ -188,21 +188,24 @@ export default function VCStudioLanding() {
   const { settings: siteSettings } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Update favicon dynamically from site settings
-  useEffect(() => {
-    if (siteSettings?.favicon_url) {
-      // Remove existing favicon links
-      const existingLinks = document.querySelectorAll("link[rel~='icon']");
-      existingLinks.forEach(link => link.remove());
-      
-      // Add new favicon link
-      const newLink = document.createElement('link');
-      newLink.rel = 'icon';
-      newLink.type = 'image/svg+xml';
-      newLink.href = siteSettings.favicon_url;
-      document.getElementsByTagName('head')[0].appendChild(newLink);
-    }
-  }, [siteSettings?.favicon_url]);
+  // DISABLED: Update favicon dynamically from site settings
+  // This was causing React Fast Refresh errors during route transitions
+  // The removeChild error occurs because React tries to clean up DOM nodes
+  // that were removed by this code, but the parent is already null
+  // Favicon is now handled by Next.js metadata in layout.tsx
+  // 
+  // REMOVED CODE:
+  // useEffect(() => {
+  //   if (siteSettings?.favicon_url) {
+  //     const existingLinks = document.querySelectorAll("link[rel~='icon']");
+  //     existingLinks.forEach(link => link.remove());
+  //     const newLink = document.createElement('link');
+  //     newLink.rel = 'icon';
+  //     newLink.type = 'image/svg+xml';
+  //     newLink.href = siteSettings.favicon_url;
+  //     document.getElementsByTagName('head')[0].appendChild(newLink);
+  //   }
+  // }, [siteSettings?.favicon_url]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [pageSettings, setPageSettings] = useState<PageSettings | null>(null);
   const [galleryImages, setGalleryImages] = useState<PageImage[]>([]);
@@ -577,7 +580,7 @@ export default function VCStudioLanding() {
               <a href="#info" className="text-brand-text-light hover:text-accent-primary transition font-medium">About</a>
               <a href="#blogs" className="text-brand-text-light hover:text-accent-primary transition font-medium">Resources</a>
               <a href="#contact" className="text-brand-text-light hover:text-accent-primary transition font-medium">Contact</a>
-              <Link href="/auth/login" className="text-brand-text-light hover:text-accent-primary transition font-medium">Sign In</Link>
+              <Link href="/auth/login" prefetch={false} className="text-brand-text-light hover:text-accent-primary transition font-medium">Sign In</Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -596,7 +599,7 @@ export default function VCStudioLanding() {
               <a href="#info" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">About</a>
               <a href="#blogs" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Resources</a>
               <a href="#contact" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Contact</a>
-              <Link href="/auth/login" className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Sign In</Link>
+              <Link href="/auth/login" prefetch={false} className="block px-2 py-2 hover:bg-section-subtle rounded text-brand-text-light">Sign In</Link>
             </div>
           )}
         </div>

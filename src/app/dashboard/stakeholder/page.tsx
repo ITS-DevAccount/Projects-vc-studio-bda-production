@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { FileSystemProvider } from '@/contexts/FileSystemContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 
 // Import workspace components
 import FileExplorer from '@/components/workspace/FileExplorer';
@@ -15,6 +16,7 @@ import FileUploader from '@/components/workspace/FileUploader';
 import FolderCreator from '@/components/workspace/FolderCreator';
 import WorkflowTasksWidget from '@/components/workspace/WorkflowTasksWidget';
 import VCModelPyramid from '@/components/workspace/VCModelPyramid';
+import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 
 // Component map for dynamic loading
 const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
@@ -64,53 +66,93 @@ export default function StakeholderDashboardPage() {
 
   const fetchDashboardConfig = async () => {
     try {
-      console.log('[Dashboard] Fetching menu items...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Dashboard] Fetching menu items...');
+      }
+
       const response = await fetch('/api/dashboard/menu-items');
 
-      console.log('[Dashboard] API response status:', response.status);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Dashboard] API response status:', response.status);
+      }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[Dashboard] API error:', response.status, errorData);
+        let errorData: any = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If response is not JSON, use status text
+          errorData = { error: response.statusText || 'Unknown error' };
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Dashboard] API error:', response.status, errorData);
+        }
 
         if (response.status === 401) {
-          console.log('[Dashboard] Unauthorized - redirecting to login');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Dashboard] Unauthorized - redirecting to login');
+          }
           router.push('/auth/login');
           return;
         }
-        throw new Error(`Failed to load dashboard configuration: ${errorData.error || 'Unknown error'}`);
+
+        const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(`Failed to load dashboard configuration: ${errorMessage}`);
       }
 
       const data: DashboardConfig = await response.json();
-      console.log('[Dashboard] Config loaded:', data);
-      console.log('[Dashboard] Menu items count:', data.menu_items?.length || 0);
-      console.log('[Dashboard] Menu items:', data.menu_items);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Dashboard] Config loaded:', data);
+        console.log('[Dashboard] Menu items count:', data.menu_items?.length || 0);
+        console.log('[Dashboard] Menu items:', data.menu_items);
+      }
+
       setConfig(data);
 
       // Get stakeholder name
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: stakeholder } = await supabase
-          .from('stakeholders')
-          .select('name')
-          .eq('auth_user_id', user.id)
-          .single();
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Dashboard] Error fetching user:', userError.message);
+          }
+        } else if (user) {
+          const { data: stakeholder, error: stakeholderError } = await supabase
+            .from('stakeholders')
+            .select('name')
+            .eq('auth_user_id', user.id)
+            .single();
 
-        if (stakeholder) {
-          setStakeholderName(stakeholder.name);
+          if (stakeholderError) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[Dashboard] Error fetching stakeholder:', stakeholderError.message);
+            }
+          } else if (stakeholder) {
+            setStakeholderName(stakeholder.name);
+          }
+        }
+      } catch (authErr: any) {
+        // Non-critical error - continue without stakeholder name
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Dashboard] Error fetching stakeholder name:', authErr.message);
         }
       }
 
       // Set default component
-      const defaultItem = data.menu_items.find(item => item.is_default);
+      const defaultItem = data.menu_items?.find(item => item.is_default);
       const defaultComponent = defaultItem?.component_id ||
                              data.workspace_layout?.default_component ||
                              'file_explorer';
       setActiveComponent(defaultComponent);
 
     } catch (err: any) {
-      console.error('Error loading dashboard:', err);
-      setError(err.message);
+      const errorMessage = err?.message || 'An unexpected error occurred while loading the dashboard';
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Dashboard] Error loading dashboard:', err);
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -171,8 +213,9 @@ export default function StakeholderDashboardPage() {
   // const showNotifications = workspaceLayout.show_notifications !== false;
 
   return (
-    <FileSystemProvider>
-      <div className="flex h-screen bg-gray-50">
+    <WorkspaceProvider>
+      <FileSystemProvider>
+        <div className="flex h-screen bg-gray-50">
       {/* Sidebar: Menu Items */}
       <aside
         className="bg-white border-r border-gray-200 flex flex-col"
@@ -185,9 +228,10 @@ export default function StakeholderDashboardPage() {
           <p className="text-sm text-gray-500 mt-1">
             {stakeholderName}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 mb-3">
             Role: {config.role}
           </p>
+          <WorkspaceSwitcher />
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -196,7 +240,9 @@ export default function StakeholderDashboardPage() {
               .sort((a, b) => a.position - b.position)
               .map((item) => {
                 const hasComponent = COMPONENT_MAP[item.component_id] !== undefined;
-                console.log('[Dashboard] Rendering menu item:', item.component_id, 'hasComponent:', hasComponent);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('[Dashboard] Rendering menu item:', item.component_id, 'hasComponent:', hasComponent);
+                }
                 return (
                   <button
                     key={item.component_id}
@@ -255,8 +301,9 @@ export default function StakeholderDashboardPage() {
           )}
         </div>
       </main>
-    </div>
-    </FileSystemProvider>
+        </div>
+      </FileSystemProvider>
+    </WorkspaceProvider>
   );
 }
 

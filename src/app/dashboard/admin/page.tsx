@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Network, UserCheck } from 'lucide-react';
+import { Users, Shield, Network, UserCheck, Briefcase } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
 
@@ -48,6 +48,13 @@ export default function CommunityDashboard() {
       description: 'Configure which roles are available for each stakeholder type',
       icon: UserCheck,
       href: '/dashboard/admin/stakeholder-types'
+    },
+    {
+      id: 'workspaces',
+      label: 'Workspaces',
+      description: 'Create and manage workspaces for stakeholders',
+      icon: Briefcase,
+      href: '/dashboard/admin/workspaces'
     },
   ]
 

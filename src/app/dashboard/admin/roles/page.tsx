@@ -25,6 +25,13 @@ interface Stakeholder {
   reference: string;
 }
 
+interface WorkspaceTemplate {
+  id: string;
+  template_code: string;
+  template_name: string;
+  applicable_roles: string[];
+}
+
 export default function RolesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -32,6 +39,7 @@ export default function RolesPage() {
   const [saving, setSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [templates, setTemplates] = useState<WorkspaceTemplate[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +50,7 @@ export default function RolesPage() {
     is_active: true,
     scope: 'general' as 'general' | 'specific',
     specific_stakeholder_id: '',
+    workspace_template_id: '',
   });
 
   useEffect(() => {
@@ -88,6 +97,17 @@ export default function RolesPage() {
         const stakeholdersData = await stakeholdersRes.json();
         setStakeholders(stakeholdersData.data || []);
       }
+
+      // Fetch workspace templates
+      const templatesRes = await fetch('/api/workspaces/templates', {
+        headers: {
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        },
+      });
+      if (templatesRes.ok) {
+        const templatesData = await templatesRes.json();
+        setTemplates(templatesData.data || []);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -104,6 +124,7 @@ export default function RolesPage() {
       is_active: role.is_active,
       scope: role.scope || 'general',
       specific_stakeholder_id: role.specific_stakeholder_id || '',
+      workspace_template_id: (role as any).workspace_template_id || '',
     });
     setShowCreateForm(false);
   };
@@ -118,6 +139,7 @@ export default function RolesPage() {
       is_active: true,
       scope: 'general',
       specific_stakeholder_id: '',
+      workspace_template_id: '',
     });
   };
 
@@ -131,6 +153,7 @@ export default function RolesPage() {
       is_active: true,
       scope: 'general',
       specific_stakeholder_id: '',
+      workspace_template_id: '',
     });
   };
 
@@ -153,11 +176,13 @@ export default function RolesPage() {
       const submitData: any = {
         ...formData,
         // Convert empty string to null for UUID field
-        specific_stakeholder_id: formData.scope === 'general' || !formData.specific_stakeholder_id 
-          ? null 
+        specific_stakeholder_id: formData.scope === 'general' || !formData.specific_stakeholder_id
+          ? null
           : formData.specific_stakeholder_id,
         // Ensure description is null if empty
         description: formData.description || null,
+        // Convert empty string to null for workspace_template_id
+        workspace_template_id: formData.workspace_template_id || null,
       };
 
       const res = await fetch(url, {
@@ -325,6 +350,27 @@ export default function RolesPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Workspace Template</label>
+              <select
+                value={formData.workspace_template_id}
+                onChange={(e) => setFormData({ ...formData, workspace_template_id: e.target.value })}
+                className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
+              >
+                <option value="">No template (manual workspace creation)</option>
+                {templates
+                  .filter(t => !formData.code || t.applicable_roles.includes(formData.code))
+                  .map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.template_name} ({template.template_code})
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-brand-text-muted mt-1">
+                When a user with this role is onboarded, a workspace will be automatically created using this template
+              </p>
             </div>
 
             <div>

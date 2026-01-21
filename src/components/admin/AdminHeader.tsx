@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { LogOut, Settings } from 'lucide-react'
+import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher'
 
 export default function AdminHeader() {
   const [email, setEmail] = useState('')
@@ -28,11 +29,14 @@ export default function AdminHeader() {
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">VC Studio Admin</h1>
-            <p className="text-sm text-gray-600">{email}</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">VC Studio Admin</h1>
+              <p className="text-sm text-gray-600">{email}</p>
+            </div>
+            <WorkspaceSwitcher />
           </div>
-          
+
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard/admin"
