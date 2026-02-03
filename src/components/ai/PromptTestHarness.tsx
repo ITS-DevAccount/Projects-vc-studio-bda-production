@@ -98,10 +98,8 @@ export default function PromptTestHarness({
           const interfaces = result.interfaces || result || [];
           setLlmInterfaces(Array.isArray(interfaces) ? interfaces : []);
           
-          // Set default to prompt's interface or first default interface
-          if (selectedPrompt?.default_llm_interface_id) {
-            setSelectedLLMInterfaceId(selectedPrompt.default_llm_interface_id);
-          } else if (Array.isArray(interfaces) && interfaces.length > 0) {
+          // Set default to first default interface if available
+          if (Array.isArray(interfaces) && interfaces.length > 0) {
             const defaultInterface = interfaces.find((i: LLMInterface) => i.is_default && i.is_active);
             if (defaultInterface) {
               setSelectedLLMInterfaceId(defaultInterface.id);
@@ -134,10 +132,6 @@ export default function PromptTestHarness({
         });
         setVariables(initialVars);
         
-        // Set default LLM interface from prompt template
-        if (prompt.default_llm_interface_id) {
-          setSelectedLLMInterfaceId(prompt.default_llm_interface_id);
-        }
       }
     }
   }, [selectedPromptCode, prompts]);
@@ -348,7 +342,7 @@ export default function PromptTestHarness({
             <div className="space-y-4">
               <div>
                 <label htmlFor="llmInterface" className="block text-sm font-medium text-gray-700 mb-1">
-                  LLM Interface *
+                  LLM Interface (optional)
                 </label>
                 <select
                   id="llmInterface"
@@ -357,7 +351,7 @@ export default function PromptTestHarness({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loadingInterfaces}
                 >
-                  <option value="">-- Select LLM Interface --</option>
+                  <option value="">Use default (no interface)</option>
                   {Array.isArray(llmInterfaces) && llmInterfaces
                     .filter(i => i.is_active)
                     .map((interfaceItem) => (
@@ -368,7 +362,7 @@ export default function PromptTestHarness({
                     ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Select which LLM interface to use for this test. The prompt template's default interface is pre-selected if available.
+                  Select an interface to use for this test, or leave empty to use defaults.
                 </p>
               </div>
               
@@ -447,14 +441,11 @@ export default function PromptTestHarness({
           <div className="flex justify-end">
             <button
               onClick={handleExecute}
-              disabled={loading || Object.values(variables).some((v) => !v) || !selectedLLMInterfaceId}
+              disabled={loading || Object.values(variables).some((v) => !v)}
               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? 'Executing...' : 'Execute Prompt'}
             </button>
-            {!selectedLLMInterfaceId && (
-              <p className="text-sm text-red-600 mt-2">Please select an LLM interface to test</p>
-            )}
           </div>
 
           {/* Results */}

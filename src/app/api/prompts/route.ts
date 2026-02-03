@@ -20,27 +20,11 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const active = searchParams.get('active');
 
-    // Get app_uuid for filtering
-    let app_uuid: string | undefined;
-    try {
-      const { getAppContext } = await import('@/lib/server/getAppUuid');
-      const appContext = await getAppContext();
-      app_uuid = appContext.app_uuid;
-    } catch (error) {
-      console.warn('Could not get app_uuid for prompts query:', error);
-      // Continue without app_uuid filtering (for backwards compatibility)
-    }
-
     // Build query
     let query = supabase
       .from('prompt_templates')
       .select('*')
       .order('created_at', { ascending: false });
-
-    // Filter by app_uuid if available
-    if (app_uuid) {
-      query = query.eq('app_uuid', app_uuid);
-    }
 
     if (category) {
       query = query.eq('category', category);
@@ -78,34 +62,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get current app_uuid
-    const { getAppContext } = await import('@/lib/server/getAppUuid');
-    let app_uuid: string;
+    const body = await request.json();
+
+    // prompt_templates requires app_id (global prompts still need a valid app row)
+    let app_id: string | null = null;
     try {
+      const { getAppContext } = await import('@/lib/server/getAppUuid');
       const appContext = await getAppContext();
-      app_uuid = appContext.app_uuid;
+      app_id = appContext.app_uuid || null;
     } catch (error) {
-      console.error('Failed to get app_uuid:', error);
+      console.warn('Could not get app context for prompt insert:', error);
+    }
+
+    if (!app_id) {
+      const { data: appRow, error: appError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('app_code', 'VC_STUDIO')
+        .limit(1)
+        .single();
+
+      if (appError) {
+        console.error('Failed to resolve app_id for prompt insert:', appError);
+        return NextResponse.json(
+          { error: 'Failed to determine application context' },
+          { status: 500 }
+        );
+      }
+
+      app_id = appRow?.id || null;
+    }
+
+    if (!app_id) {
       return NextResponse.json(
-        { error: 'Failed to determine application context' },
+        { error: 'Application context not found' },
         { status: 500 }
       );
     }
-
-    const body = await request.json();
 
     // Create prompt template
     const { data: prompt, error } = await supabase
       .from('prompt_templates')
       .insert({
-        app_uuid: app_uuid,
+        app_id,
         prompt_code: body.prompt_code,
         prompt_name: body.prompt_name,
         description: body.description,
         category: body.category,
         system_prompt: body.system_prompt,
         user_prompt_template: body.user_prompt_template,
-        default_llm_interface_id: body.default_llm_interface_id || null,
         default_model: body.default_model || 'claude-sonnet-4-5-20250929',
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4096,

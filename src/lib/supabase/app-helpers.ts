@@ -11,7 +11,7 @@ import { supabase } from './client'
  * Query: SELECT id as app_uuid FROM applications WHERE app_code = $1 LIMIT 1
  */
 export async function getCurrentAppUuid(): Promise<string | null> {
-  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'
+  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'BUILDBID'
 
   const { data, error } = await supabase
     .from('applications')
@@ -32,7 +32,7 @@ export async function getCurrentAppUuid(): Promise<string | null> {
  * Get complete app context (uuid, codes, name) from applications table
  */
 export async function getAppContext() {
-  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'VC_STUDIO'
+  const appCode = process.env.NEXT_PUBLIC_APP_CODE || 'BUILDBID'
 
   const { data, error } = await supabase
     .from('applications')

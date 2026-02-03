@@ -76,10 +76,10 @@ export async function getDashboardPath(userId: string): Promise<string> {
       }
     }
 
-    // If user not found (or error occurred), check stakeholders
+      // If user not found (or error occurred), check stakeholders
     // BUT FIRST: Check if user might be an admin by checking stakeholders with admin type
     if (!user) {
-      console.log('[DashboardRouter] User not found in users table, checking if admin stakeholder...')
+      console.log('[DashboardRouter] User not found in users table, checking stakeholders...')
       
       // Check if there's a stakeholder with admin type
       // Use session.user.id directly since queryUserId is defined later
@@ -89,11 +89,27 @@ export async function getDashboardPath(userId: string): Promise<string> {
         .eq('auth_user_id', session.user.id)
         .maybeSingle()
       
+      // Check if they have an active workspace first - if so, they should go to the workspace dashboard
+      // This allows admin users to also have workspaces (e.g. for testing)
       if (adminStakeholder) {
+        console.log('[DashboardRouter] Checking for active workspace for stakeholder:', adminStakeholder.id)
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('id, primary_role_code')
+          .eq('owner_stakeholder_id', adminStakeholder.id)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle()
+          
+        if (workspace) {
+          console.log('[DashboardRouter] Found active workspace, routing to stakeholder dashboard. Role:', workspace.primary_role_code)
+          return '/dashboard/stakeholder'
+        }
+
         const stakeholderType = (adminStakeholder.stakeholder_type as any)?.code
         console.log('[DashboardRouter] Found stakeholder, type:', stakeholderType)
         
-        // If stakeholder type is 'admin', route to admin dashboard
+        // If stakeholder type is 'admin' (and no workspace found), route to admin dashboard
         if (stakeholderType === 'admin') {
           console.log('[DashboardRouter] Admin stakeholder detected, routing to /dashboard/admin')
           return '/dashboard/admin'

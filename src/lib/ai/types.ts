@@ -58,14 +58,12 @@ export interface ValidationResult {
 
 export interface PromptTemplate {
   id: string;
-  app_uuid: string;
   prompt_code: string;
   prompt_name: string;
   description?: string;
   category: 'FLM' | 'AGM' | 'DOCUMENT' | 'ANALYSIS';
   system_prompt?: string;
   user_prompt_template: string;
-  default_llm_interface_id?: string;
   default_model: string;
   temperature: number;
   max_tokens: number;

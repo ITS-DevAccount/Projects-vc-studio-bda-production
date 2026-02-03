@@ -7,6 +7,7 @@ import { Plus, Edit2, Trash2, Save, X, Loader, Folder, Settings } from 'lucide-r
 import { supabase } from '@/lib/supabase/client';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminMenu from '@/components/admin/AdminMenu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface WorkspaceTemplate {
   id: string;
@@ -378,20 +379,22 @@ export default function WorkspaceTemplatesPage() {
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="block text-sm font-medium mb-2">Role *</label>
-                    <select
+                    <Select
                       value={formData.role_code}
-                      onChange={(e) => setFormData({ ...formData, role_code: e.target.value })}
-                      className="w-full px-3 py-2 bg-section-subtle border border-section-border rounded"
-                      required
+                      onValueChange={(value) => setFormData({ ...formData, role_code: value })}
                       disabled={!!editingId}
                     >
-                      <option value="">Select role...</option>
-                      {roles.map(role => (
-                        <option key={role.id} value={role.code}>
-                          {role.label} ({role.code})
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select role..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles.map((role) => (
+                          <SelectItem key={role.id} value={role.code}>
+                            {role.label} ({role.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>

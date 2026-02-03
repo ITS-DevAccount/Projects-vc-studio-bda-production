@@ -1,42 +1,42 @@
 table,files
-applications,"src/lib/app.ts; src/lib/supabase/app-helpers.ts; src/lib/server/getAppUuid.ts; src/contexts/AppContext.tsx; src/app/api/applications/route.ts; src/app/api/cta-buttons/route.ts; src/app/api/services/route.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/services/[serviceId]/test/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/scripts/migrate-stakeholders-to-workspaces.ts"
-blog_posts,"src/app/page.tsx; src/hooks/useAppData.ts; src/app/blog/[id]/page.tsx; src/components/admin/content/BlogPostsSection.tsx"
-components_registry,"src/app/api/dashboard/menu-items/route.ts; src/hooks/useViewerConfig.ts"
-cta_buttons,"src/app/api/cta-buttons/route.ts; src/app/api/cta-buttons/[id]/route.ts"
-enquiries,"src/app/api/enquiries/route.ts; src/app/dashboard/admin/enquiries/display/page.tsx"
-flm_artefacts,"src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/route.ts; src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/[artefactId]/route.ts; src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/[artefactId]/confirm/route.ts"
-flm_models,"src/app/api/vc-models/[vcModelId]/flm/route.ts"
-flm_source_documents,"(referenced in docs but no direct .from hit in code)"
-function_calls_log,"src/app/api/function-calls-log/route.ts"
-instance_tasks,"src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/instances/stats/route.ts; src/app/api/monitoring/bottlenecks/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/lib/workers/service-task-worker.ts"
-llm_interfaces,"src/lib/ai/prompt-library.ts; src/lib/ai/llm-client-factory.ts; src/app/api/llm-interfaces/route.ts; src/app/api/llm-interfaces/[id]/route.ts; src/app/api/llm-interfaces/[id]/test/route.ts; src/app/api/llm-interfaces/migrate-env/route.ts"
-page_cta_placements,"src/app/api/page-settings/[id]/cta-placements/route.ts; src/app/api/page-settings/[id]/cta-placements/[placement_id]/route.ts"
-page_images,"src/app/page.tsx; src/hooks/useAppData.ts; src/app/dashboard/pages/editor/page.tsx"
-page_settings,"src/app/page.tsx; src/hooks/useAppData.ts; src/app/dashboard/pages/editor/page.tsx"
-policies,"src/app/api/policies/[policyType]/route.ts"
-prompt_executions,"src/lib/ai/prompt-library.ts"
-prompt_templates,"src/lib/ai/prompt-library.ts; src/app/api/prompts/route.ts; src/app/api/prompts/[id]/route.ts; src/app/dashboard/admin/prompts/library/page.tsx; src/app/dashboard/admin/prompts/test/page.tsx"
-relationship_types,"src/app/api/onboarding/route.ts"
-relationships,"src/app/api/relationships/route.ts"
-roles,"src/app/api/admin/workspace-templates/[template_id]/route.ts; src/app/api/stakeholders/[id]/roles/update/route.ts; src/app/api/stakeholder-types/[id]/roles/route.ts; src/app/api/roles/route.ts; src/app/api/roles/[id]/route.ts; src/app/api/onboarding/route.ts"
-service_configurations,"src/lib/workers/service-task-worker.ts; src/app/api/services/route.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/services/[serviceId]/test/route.ts"
-service_task_queue,"src/lib/workers/service-task-worker.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/workers/service-tasks/route.ts"
-site_settings,"src/hooks/useAppData.ts; src/hooks/useTheme.ts; src/app/dashboard/settings/branding/page.tsx"
-stakeholder_roles,"src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/[id]/roles/update/route.ts; src/app/api/stakeholders/[id]/roles/route.ts"
-stakeholder_types,"src/app/api/stakeholder-types/[id]/route.ts; src/app/api/onboarding/route.ts"
-stakeholders,"src/app/api/vc-models/route.ts; src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/route.ts; src/app/api/stakeholders/create-user/route.ts; src/app/api/workspaces/[workspace_id]/route.ts; src/app/api/workspaces/[workspace_id]/access/route.ts; src/app/api/workspaces/[workspace_id]/access/[access_id]/route.ts; src/app/api/workspaces/[workspace_id]/configurations/route.ts; src/app/api/workspaces/route.ts; src/app/api/workspaces/templates/route.ts; src/app/api/admin/workspace-templates/route.ts; src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/services/route.ts; src/app/api/workers/service-tasks/route.ts; src/app/dashboard/stakeholder/page.tsx; src/components/admin/JsonViewer/JsonViewer.tsx; src/components/admin/JsonTools/StakeholderSearch.tsx; src/lib/utils/workspace-helpers.ts"
-users,"src/app/api/stakeholders/route.ts"
-vc_models,"src/app/api/vc-models/route.ts; src/app/api/vc-models/[vcModelId]/route.ts"
-vc_model_collaborators,"(referenced in docs but no direct .from hit in code)"
-workflow_execution_queue,"src/lib/workers/service-task-worker.ts"
-workflow_history,"src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/app/api/monitoring/audit/export/route.ts"
-workflow_instances,"src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/instances/stats/route.ts; src/app/api/monitoring/cycle-time/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/workflows/instances/create/route.ts"
-workflow_templates,"src/app/api/workflows/instances/create/route.ts"
-workspace_access_control,"src/app/api/dashboard/menu-items/route.ts; src/app/api/workspaces/[workspace_id]/access/route.ts; src/app/api/workspaces/[workspace_id]/access/[access_id]/route.ts; src/app/api/workspaces/[workspace_id]/configurations/route.ts; src/lib/utils/workspace-helpers.ts"
-workspace_business_services_configurations,"src/app/api/admin/workspace-templates/route.ts"
-workspace_configurations,"src/app/api/workspaces/[workspace_id]/configurations/route.ts"
-workspace_dashboard_configurations,"src/app/api/admin/workspace-templates/route.ts"
-workspace_file_structure_templates,"src/app/api/admin/workspace-templates/route.ts"
-workspace_templates,"src/app/api/admin/workspace-templates/route.ts; src/app/api/admin/workspace-templates/[template_id]/route.ts; src/app/api/workspaces/templates/route.ts"
-workspaces,"src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/create-user/route.ts; src/app/api/workspaces/[workspace_id]/route.ts; src/app/api/workspaces/route.ts; src/lib/utils/workspace-helpers.ts"
-workspace-files,"src/components/workspace/FileViewer.tsx"
+applications,src/lib/app.ts; src/lib/supabase/app-helpers.ts; src/lib/server/getAppUuid.ts; src/contexts/AppContext.tsx; src/app/api/applications/route.ts; src/app/api/cta-buttons/route.ts; src/app/api/services/route.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/services/[serviceId]/test/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/scripts/migrate-stakeholders-to-workspaces.ts
+blog_posts,src/app/page.tsx; src/hooks/useAppData.ts; src/app/blog/[id]/page.tsx; src/components/admin/content/BlogPostsSection.tsx
+components_registry,src/app/api/dashboard/menu-items/route.ts; src/hooks/useViewerConfig.ts
+cta_buttons,src/app/api/cta-buttons/route.ts; src/app/api/cta-buttons/[id]/route.ts
+enquiries,src/app/api/enquiries/route.ts; src/app/dashboard/admin/enquiries/display/page.tsx
+flm_artefacts,src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/route.ts; src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/[artefactId]/route.ts; src/app/api/vc-models/[vcModelId]/flm/[flmId]/artefacts/[artefactId]/confirm/route.ts
+flm_models,src/app/api/vc-models/[vcModelId]/flm/route.ts
+flm_source_documents,(referenced in docs but no direct .from hit in code)
+function_calls_log,src/app/api/function-calls-log/route.ts
+instance_tasks,src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/instances/stats/route.ts; src/app/api/monitoring/bottlenecks/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/lib/workers/service-task-worker.ts
+llm_interfaces,src/lib/ai/prompt-library.ts; src/lib/ai/llm-client-factory.ts; src/app/api/llm-interfaces/route.ts; src/app/api/llm-interfaces/[id]/route.ts; src/app/api/llm-interfaces/[id]/test/route.ts; src/app/api/llm-interfaces/migrate-env/route.ts
+page_cta_placements,src/app/api/page-settings/[id]/cta-placements/route.ts; src/app/api/page-settings/[id]/cta-placements/[placement_id]/route.ts
+page_images,src/app/page.tsx; src/hooks/useAppData.ts; src/app/dashboard/pages/editor/page.tsx
+page_settings,src/app/page.tsx; src/hooks/useAppData.ts; src/app/dashboard/pages/editor/page.tsx
+policies,src/app/api/policies/[policyType]/route.ts
+prompt_executions,src/lib/ai/prompt-library.ts
+prompt_templates,src/lib/ai/prompt-library.ts; src/app/api/prompts/route.ts; src/app/api/prompts/[id]/route.ts; src/app/dashboard/admin/prompts/library/page.tsx; src/app/dashboard/admin/prompts/test/page.tsx
+relationship_types,src/app/api/onboarding/route.ts
+relationships,src/app/api/relationships/route.ts
+roles,src/app/api/admin/workspace-templates/[template_id]/route.ts; src/app/api/stakeholders/[id]/roles/update/route.ts; src/app/api/stakeholder-types/[id]/roles/route.ts; src/app/api/roles/route.ts; src/app/api/roles/[id]/route.ts; src/app/api/onboarding/route.ts
+service_configurations,src/lib/workers/service-task-worker.ts; src/app/api/services/route.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/services/[serviceId]/test/route.ts
+service_task_queue,src/lib/workers/service-task-worker.ts; src/app/api/services/[serviceId]/route.ts; src/app/api/workers/service-tasks/route.ts
+site_settings,src/hooks/useAppData.ts; src/hooks/useTheme.ts; src/app/dashboard/settings/branding/page.tsx
+stakeholder_roles,src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/[id]/roles/update/route.ts; src/app/api/stakeholders/[id]/roles/route.ts
+stakeholder_types,src/app/api/stakeholder-types/[id]/route.ts; src/app/api/onboarding/route.ts
+stakeholders,src/app/api/vc-models/route.ts; src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/route.ts; src/app/api/stakeholders/create-user/route.ts; src/app/api/workspaces/[workspace_id]/route.ts; src/app/api/workspaces/[workspace_id]/access/route.ts; src/app/api/workspaces/[workspace_id]/access/[access_id]/route.ts; src/app/api/workspaces/[workspace_id]/configurations/route.ts; src/app/api/workspaces/route.ts; src/app/api/workspaces/templates/route.ts; src/app/api/admin/workspace-templates/route.ts; src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/services/route.ts; src/app/api/workers/service-tasks/route.ts; src/app/dashboard/stakeholder/page.tsx; src/components/admin/JsonViewer/JsonViewer.tsx; src/components/admin/JsonTools/StakeholderSearch.tsx; src/lib/utils/workspace-helpers.ts
+users,src/app/api/stakeholders/route.ts
+vc_models,src/app/api/vc-models/route.ts; src/app/api/vc-models/[vcModelId]/route.ts
+vc_model_collaborators,(referenced in docs but no direct .from hit in code)
+workflow_execution_queue,src/lib/workers/service-task-worker.ts
+workflow_history,src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/compliance/generate/route.ts; src/app/api/monitoring/audit/export/route.ts
+workflow_instances,src/app/api/monitoring/audit/[instanceId]/route.ts; src/app/api/monitoring/instances/route.ts; src/app/api/monitoring/instances/[instanceId]/route.ts; src/app/api/monitoring/instances/stats/route.ts; src/app/api/monitoring/cycle-time/route.ts; src/app/api/monitoring/audit/export/route.ts; src/app/api/workflows/instances/create/route.ts
+workflow_templates,src/app/api/workflows/instances/create/route.ts
+workspace_access_control,src/app/api/dashboard/menu-items/route.ts; src/app/api/workspaces/[workspace_id]/access/route.ts; src/app/api/workspaces/[workspace_id]/access/[access_id]/route.ts; src/app/api/workspaces/[workspace_id]/configurations/route.ts; src/lib/utils/workspace-helpers.ts
+workspace_business_services_configurations,src/app/api/admin/workspace-templates/route.ts
+workspace_configurations,src/app/api/workspaces/[workspace_id]/configurations/route.ts
+workspace_dashboard_configurations,src/app/api/admin/workspace-templates/route.ts
+workspace_file_structure_templates,src/app/api/admin/workspace-templates/route.ts
+workspace_templates,src/app/api/admin/workspace-templates/route.ts; src/app/api/admin/workspace-templates/[template_id]/route.ts; src/app/api/workspaces/templates/route.ts
+workspaces,src/app/api/dashboard/menu-items/route.ts; src/app/api/stakeholders/create-user/route.ts; src/app/api/workspaces/[workspace_id]/route.ts; src/app/api/workspaces/route.ts; src/lib/utils/workspace-helpers.ts
+workspace-files,src/components/workspace/FileViewer.tsx

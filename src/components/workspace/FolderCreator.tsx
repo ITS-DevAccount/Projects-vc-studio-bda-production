@@ -8,7 +8,13 @@ import { useState } from 'react';
 import { useFileSystem } from '@/contexts/FileSystemContext';
 import Breadcrumb from './Breadcrumb';
 
-export default function FolderCreator() {
+interface FolderCreatorProps {
+  compact?: boolean;
+  onClose?: () => void;
+  onComplete?: () => void;
+}
+
+export default function FolderCreator({ compact = false, onClose, onComplete }: FolderCreatorProps) {
   const { currentParentId, triggerRefresh } = useFileSystem();
   const [folderName, setFolderName] = useState('');
   const [description, setDescription] = useState('');
@@ -57,6 +63,8 @@ export default function FolderCreator() {
 
       // Trigger file explorer refresh
       triggerRefresh();
+      onComplete?.();
+      onClose?.();
 
       // Reset success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
@@ -76,14 +84,17 @@ export default function FolderCreator() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        {/* Breadcrumb Navigation */}
-        <div className="mb-6">
-          <Breadcrumb />
-        </div>
+    <div className={compact ? 'w-full' : 'max-w-2xl mx-auto'}>
+      <div className={`bg-white rounded-lg ${compact ? 'p-4' : 'shadow-lg p-6'}`}>
+        {!compact && (
+          <div className="mb-6">
+            <Breadcrumb />
+          </div>
+        )}
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Folder</h2>
+        <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-gray-800 mb-6`}>
+          Create New Folder
+        </h2>
 
         {/* Folder Name Input */}
         <div className="mb-4">

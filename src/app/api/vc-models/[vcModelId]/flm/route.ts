@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import type { ApiResponse, FLMModel } from '@/lib/types/vc-model';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ vcMo
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json<ApiResponse<null>>({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get FLM Model for this VC Model (RLS will enforce access control)
@@ -33,13 +34,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ vcMo
 
     if (error) {
       console.error('Error fetching FLM Model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(flmModel || null);
+    return NextResponse.json<ApiResponse<FLMModel | null>>({ data: flmModel || null });
   } catch (e: any) {
     console.error('API error in GET /api/vc-models/[vcModelId]/flm:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json<ApiResponse<null>>({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ vcM
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json<ApiResponse<null>>({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get request body
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ vcM
 
     if (error) {
       console.error('Error creating FLM Model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: error.message }, { status: 500 });
     }
 
     // Fetch the created FLM Model
@@ -80,12 +81,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ vcM
 
     if (fetchError) {
       console.error('Error fetching created FLM Model:', fetchError);
-      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: fetchError.message }, { status: 500 });
     }
 
-    return NextResponse.json(flmModel, { status: 201 });
+    return NextResponse.json<ApiResponse<FLMModel>>({ data: flmModel }, { status: 201 });
   } catch (e: any) {
     console.error('API error in POST /api/vc-models/[vcModelId]/flm:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json<ApiResponse<null>>({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }

@@ -56,6 +56,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const accessToken = getAccessToken(req);
+    if (id === 'me') {
+      const supabase = await createServerClient(accessToken);
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const { data: contextData, error: contextError } = await supabase.rpc('current_stakeholder_context');
+      if (contextError || !contextData || contextData.length === 0) {
+        return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
+      }
+      return NextResponse.json({ stakeholder: contextData[0] });
+    }
     const stakeholder = await getStakeholderServer(id, accessToken);
     return NextResponse.json(stakeholder);
   } catch (e: any) {

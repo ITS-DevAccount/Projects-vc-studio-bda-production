@@ -19,26 +19,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get app_uuid for filtering
-    let app_uuid: string | undefined;
-    try {
-      const { getAppContext } = await import('@/lib/server/getAppUuid');
-      const appContext = await getAppContext();
-      app_uuid = appContext.app_uuid;
-    } catch (error) {
-      console.warn('Could not get app_uuid for prompt query:', error);
-      // Continue without app_uuid filtering (for backwards compatibility)
-    }
-
     let query = supabase
       .from('prompt_templates')
       .select('*')
       .eq('id', id);
-
-    // Filter by app_uuid if available (security check)
-    if (app_uuid) {
-      query = query.eq('app_uuid', app_uuid);
-    }
 
     const { data: prompt, error } = await query.single();
 
@@ -93,11 +77,6 @@ export async function PUT(
       output_format: body.output_format,
       is_active: body.is_active
     };
-
-    // Include default_llm_interface_id if provided
-    if (body.default_llm_interface_id !== undefined) {
-      updateData.default_llm_interface_id = body.default_llm_interface_id || null;
-    }
 
     const { data: prompt, error } = await supabase
       .from('prompt_templates')

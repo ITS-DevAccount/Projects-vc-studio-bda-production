@@ -18,12 +18,10 @@ import {
 export class PromptLibrary {
   private supabase: any;
   private validator: any;
-  private app_uuid?: string;
 
-  constructor(supabaseClient: any, app_uuid?: string) {
+  constructor(supabaseClient: any) {
     this.supabase = supabaseClient;
     this.validator = getSchemaValidator();
-    this.app_uuid = app_uuid;
   }
 
   /**
@@ -35,11 +33,6 @@ export class PromptLibrary {
       .select('*')
       .eq('prompt_code', promptCode)
       .eq('is_active', true);
-
-    // Filter by app_uuid if provided
-    if (this.app_uuid) {
-      query = query.eq('app_uuid', this.app_uuid);
-    }
 
     const { data, error } = await query.single();
 
@@ -171,7 +164,7 @@ export class PromptLibrary {
     }
 
     // Use override from context, or fall back to template's default
-    const llmInterfaceId = context.llmInterfaceId || template.default_llm_interface_id;
+    const llmInterfaceId = context.llmInterfaceId;
 
     // Load LLM interface if specified (get full interface including default_model)
     // Do this before creating execution log so we can log the correct model
@@ -361,20 +354,8 @@ export class PromptLibrary {
 /**
  * Get PromptLibrary instance
  */
-export async function getPromptLibrary(app_uuid?: string): Promise<PromptLibrary> {
+export async function getPromptLibrary(): Promise<PromptLibrary> {
   const supabase = await createServerClient();
-  
-  // If app_uuid not provided, try to get it from app context
-  if (!app_uuid) {
-    try {
-      const { getAppContext } = await import('@/lib/server/getAppUuid');
-      const appContext = await getAppContext();
-      app_uuid = appContext.app_uuid;
-    } catch (error) {
-      console.warn('Could not get app_uuid for PromptLibrary:', error);
-      // Continue without app_uuid filtering (for backwards compatibility)
-    }
-  }
-  
-  return new PromptLibrary(supabase, app_uuid);
+
+  return new PromptLibrary(supabase);
 }

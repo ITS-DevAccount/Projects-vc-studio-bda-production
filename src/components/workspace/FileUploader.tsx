@@ -9,7 +9,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useFileSystem } from '@/contexts/FileSystemContext';
 import Breadcrumb from './Breadcrumb';
 
-export default function FileUploader() {
+interface FileUploaderProps {
+  compact?: boolean;
+  onClose?: () => void;
+  onComplete?: () => void;
+  parentId?: string | null;
+  onUploaded?: (nodes: Array<{ id: string; name: string; file_storage_path?: string | null }>) => void;
+}
+
+export default function FileUploader({ compact = false, onClose, onComplete, parentId, onUploaded }: FileUploaderProps) {
   const { currentParentId, triggerRefresh } = useFileSystem();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -17,6 +25,8 @@ export default function FileUploader() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  const uploadParentId = parentId !== undefined ? parentId : currentParentId;
 
   const validateAndAddFiles = (newFiles: FileList | File[]) => {
     const maxSize = 100 * 1024 * 1024; // 100MB
@@ -104,7 +114,7 @@ export default function FileUploader() {
       file_storage_path: storagePath,
       size_bytes: file.size,
       mime_type: file.type || 'application/octet-stream',
-      parent_id: currentParentId,
+      parent_id: uploadParentId,
       description: `Uploaded on ${new Date().toLocaleDateString()}`
     };
 
@@ -114,12 +124,13 @@ export default function FileUploader() {
       body: JSON.stringify(nodeData)
     });
 
+    const responseData = await response.json();
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`${file.name}: ${errorData.error || 'Failed to create node'}`);
+      throw new Error(`${file.name}: ${responseData.error || 'Failed to create node'}`);
     }
 
     setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+    return responseData.node;
   };
 
   const handleUpload = async () => {
@@ -141,20 +152,22 @@ export default function FileUploader() {
         throw new Error('Not authenticated');
       }
 
-      // Get stakeholder
-      const { data: stakeholder } = await supabase
-        .from('stakeholders')
-        .select('id, reference')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (!stakeholder) {
-        throw new Error('Stakeholder not found');
+      // Get stakeholder context (server-side helper)
+      const stakeholderRes = await fetch('/api/stakeholders/me');
+      const stakeholderJson = await stakeholderRes.json();
+      if (!stakeholderRes.ok) {
+        throw new Error(stakeholderJson.error || 'Stakeholder not found');
       }
+      const stakeholder = stakeholderJson.stakeholder;
 
       // Upload all files
       const uploadPromises = files.map(file => uploadFile(file, stakeholder));
-      await Promise.all(uploadPromises);
+      const uploadedNodes = await Promise.all(uploadPromises);
+
+      if (onUploaded) {
+        const safeNodes = uploadedNodes.filter(Boolean);
+        onUploaded(safeNodes);
+      }
 
       setSuccess(`Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}!`);
       setFiles([]);
@@ -162,6 +175,8 @@ export default function FileUploader() {
 
       // Trigger file explorer refresh
       triggerRefresh();
+      onComplete?.();
+      onClose?.();
 
       // Reset file input
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -181,14 +196,17 @@ export default function FileUploader() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        {/* Breadcrumb Navigation */}
-        <div className="mb-6">
-          <Breadcrumb />
-        </div>
+    <div className={compact ? 'w-full' : 'max-w-2xl mx-auto'}>
+      <div className={`bg-white rounded-lg ${compact ? 'p-4' : 'shadow-lg p-6'}`}>
+        {!compact && (
+          <div className="mb-6">
+            <Breadcrumb />
+          </div>
+        )}
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Upload File</h2>
+        <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-gray-800 mb-6`}>
+          Upload File
+        </h2>
 
         {/* Drag & Drop Zone */}
         <div

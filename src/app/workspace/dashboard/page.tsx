@@ -4,24 +4,12 @@
 // Phase 1c: Component Registry & File System
 // Location: /workspace/dashboard
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// Import workspace components
-import FileExplorer from '@/components/workspace/FileExplorer';
-import FileUploader from '@/components/workspace/FileUploader';
-import FolderCreator from '@/components/workspace/FolderCreator';
-import WorkflowTasksWidget from '@/components/workspace/WorkflowTasksWidget';
-import VCModelPyramid from '@/components/workspace/VCModelPyramid';
-
-// Component map for dynamic loading
-const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
-  'file_explorer': FileExplorer,
-  'file_uploader': FileUploader,
-  'folder_creator': FolderCreator,
-  'workflow_tasks': WorkflowTasksWidget,
-  'vc_pyramid': VCModelPyramid,
-};
+import { getComponentMetadata, resolveComponent } from '@/lib/componentRegistry';
+import { DashboardStatusProvider } from '@/contexts/DashboardStatusContext';
+import { DashboardNavMenu } from '@/components/dashboard/DashboardNavMenu';
+import type { RegistryEntry } from '@/lib/types/registry';
 
 interface MenuItem {
   label: string;
@@ -48,6 +36,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [activeComponent, setActiveComponent] = useState<string>('file_explorer');
+  const [componentMetadata, setComponentMetadata] = useState<RegistryEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +65,8 @@ export default function DashboardPage() {
                              data.workspace_layout?.default_component ||
                              'file_explorer';
       setActiveComponent(defaultComponent);
+      const metadata = await getComponentMetadata(defaultComponent);
+      setComponentMetadata(metadata);
 
     } catch (err: any) {
       console.error('Error loading dashboard:', err);
@@ -85,8 +76,10 @@ export default function DashboardPage() {
     }
   };
 
-  const handleMenuClick = (componentId: string) => {
+  const handleMenuClick = async (componentId: string) => {
     setActiveComponent(componentId);
+    const metadata = await getComponentMetadata(componentId);
+    setComponentMetadata(metadata);
   };
 
   if (loading) {
@@ -126,67 +119,43 @@ export default function DashboardPage() {
     );
   }
 
-  const ActiveComponentToRender = COMPONENT_MAP[activeComponent];
-  const sidebarWidth = config.workspace_layout.sidebar_width || '250px';
+  const ActiveComponentToRender = resolveComponent(
+    activeComponent,
+    null,
+    componentMetadata?.widget_component_name
+  );
+  const workspaceLayout = config.workspace_layout ?? {};
+  const menuStyle = workspaceLayout.menu_style ?? 'ring';
+  const needsTopPadding = menuStyle === 'ring';
 
   return (
+    <DashboardStatusProvider activeComponent={activeComponent}>
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar: Menu Items */}
-      <aside
-        className="bg-white border-r border-gray-200 flex flex-col"
-        style={{ width: sidebarWidth }}
-      >
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800">
-            {config.dashboard_name}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Role: {config.role}
-          </p>
-        </div>
-
-        <nav className="flex-1 p-4 overflow-y-auto">
-          {config.menu_items
-            .sort((a, b) => a.position - b.position)
-            .map((item) => (
-              <button
-                key={item.component_id}
-                onClick={() => handleMenuClick(item.component_id)}
-                className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-colors ${
-                  activeComponent === item.component_id
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
-        </nav>
-
-        <div className="p-4 border-t border-gray-200 text-xs text-gray-500">
-          Phase 1c: Component Registry
-        </div>
-      </aside>
+      <DashboardNavMenu
+        menuItems={config.menu_items || []}
+        activeComponent={activeComponent}
+        onMenuClick={handleMenuClick}
+        dashboardName={config.dashboard_name}
+        role={config.role}
+        workspaceLayout={workspaceLayout}
+        footerSlot={
+          <p className="text-xs text-gray-500">Phase 1c: Component Registry</p>
+        }
+      />
 
       {/* Main Workspace: Active Component */}
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main
+        className={`flex-1 overflow-hidden flex flex-col pt-14 ${
+          needsTopPadding ? 'md:pt-28' : 'md:pt-0'
+        }`}
+      >
         <div className="flex-1 overflow-auto p-6">
-          {ActiveComponentToRender ? (
+          <Suspense fallback={<div className="text-gray-600">Loading component...</div>}>
             <ActiveComponentToRender />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-gray-600">
-                  Component '{activeComponent}' not found
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Component map does not include this component
-                </p>
-              </div>
-            </div>
-          )}
+          </Suspense>
         </div>
       </main>
     </div>
+    </DashboardStatusProvider>
   );
 }

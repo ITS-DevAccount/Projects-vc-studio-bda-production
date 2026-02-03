@@ -4,7 +4,7 @@
 // FLMModelDisplay - Main navigation/progress display component
 
 import { useState, useEffect } from 'react';
-import { ChevronRight, Users, FileText, Clock, AlertCircle, CheckCircle, Circle } from 'lucide-react';
+import { ChevronRight, FileText, Clock, AlertCircle, CheckCircle, Circle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import ArtefactStatusBadge from './ArtefactStatusBadge';
 
@@ -17,20 +17,11 @@ interface VCModel {
   description?: string;
 }
 
-interface Collaborator {
-  id: string;
-  stakeholder_id: string;
-  role: 'OWNER' | 'COLLABORATOR' | 'REVIEWER' | 'VIEWER';
-  stakeholder?: {
-    name: string;
-  };
-}
-
 interface FLMModel {
   id: string;
   vc_model_id: string;
   status: string;
-  current_step: 'BVS' | 'L0' | 'L1' | 'L2' | 'BLUEPRINT';
+  current_step: 'BVS' | 'PRELIMINARY_DBS' | 'L0' | 'L1' | 'L2' | 'BLUEPRINT';
   flm_version: number;
   description?: string;
 }
@@ -51,7 +42,6 @@ interface FLMModelDisplayProps {
   stakeholderId: string;
   vcModel?: VCModel;
   flmModel?: FLMModel;
-  collaborators?: Collaborator[];
   artefacts?: Artefact[];
   onStepClick?: (step: string) => void;
   onStartFLM?: () => void;
@@ -74,7 +64,6 @@ export default function FLMModelDisplay({
   stakeholderId,
   vcModel,
   flmModel,
-  collaborators = [],
   artefacts = [],
   onStepClick,
   onStartFLM
@@ -86,38 +75,33 @@ export default function FLMModelDisplay({
     setLoading(false);
   }, []);
 
+  const getCurrentStep = () => {
+    if (!flmModel) return 'BVS';
+    return STEP_ORDER.includes(flmModel.current_step as FLMStep)
+      ? (flmModel.current_step as FLMStep)
+      : 'BVS';
+  };
+
   const getStepStatus = (step: FLMStep): 'completed' | 'current' | 'locked' | 'available' => {
     if (!flmModel) return 'locked';
     
-    const currentStepIndex = STEP_ORDER.indexOf(flmModel.current_step);
-    const stepIndex = STEP_ORDER.indexOf(step);
+    const currentStep = getCurrentStep();
     const artefact = artefacts.find((a) => a.artefact_type === step);
 
     if (artefact?.status === 'CONFIRMED') {
       return 'completed';
     }
     
-    if (flmModel.current_step === step) {
+    if (getCurrentStep() === step) {
       return 'current';
     }
-    
-    // Lock steps that come after the current step
-    if (stepIndex > currentStepIndex) {
-      // Check if previous step is confirmed
-      const previousStep = STEP_ORDER[stepIndex - 1];
-      const previousArtefact = artefacts.find((a) => a.artefact_type === previousStep);
-      if (previousArtefact?.status === 'CONFIRMED') {
-        return 'available';
-      }
-      return 'locked';
-    }
-    
-    return 'available';
+
+    return 'locked';
   };
 
   const handleStepClick = (step: FLMStep) => {
     const status = getStepStatus(step);
-    if (status === 'locked') return;
+    if (status !== 'current') return;
     
     if (onStepClick) {
       onStepClick(step);
@@ -185,35 +169,12 @@ export default function FLMModelDisplay({
                   Status: {vcModel.status}
                 </span>
               </div>
-              {vcModel.description && (
-                <p className="mt-2 text-gray-600">{vcModel.description}</p>
-              )}
-            </div>
-            {collaborators.length > 0 && (
-              <div className="text-right">
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                  <Users className="w-4 h-4" />
-                  <span>{collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {collaborators.slice(0, 3).map((collab) => (
-                    <span
-                      key={collab.id}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                    >
-                      {collab.stakeholder?.name || collab.role}
-                    </span>
-                  ))}
-                  {collaborators.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                      +{collaborators.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
+            {vcModel.description && (
+              <p className="mt-2 text-gray-600">{vcModel.description}</p>
             )}
           </div>
         </div>
+      </div>
       )}
 
       {/* FLM Progress */}
@@ -221,7 +182,7 @@ export default function FLMModelDisplay({
         <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-2">FLM Progress</h2>
           <p className="text-sm text-gray-600">
-            Current step: {STEP_LABELS[flmModel.current_step]} (Version {flmModel.flm_version})
+            Current step: {STEP_LABELS[getCurrentStep()]} (Version {flmModel.flm_version})
           </p>
         </div>
 
@@ -347,7 +308,7 @@ export default function FLMModelDisplay({
               </p>
             </div>
             <button
-              onClick={() => handleStepClick(flmModel.current_step)}
+              onClick={() => handleStepClick(getCurrentStep())}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               Continue FLM

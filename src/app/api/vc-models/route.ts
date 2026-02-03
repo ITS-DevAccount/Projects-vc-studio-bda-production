@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { getAppUuid } from '@/lib/server/getAppUuid';
+import type { ApiResponse, VCModel } from '@/lib/types/vc-model';
 
 function getAccessToken(req: NextRequest): string | undefined {
   const authHeader = req.headers.get('authorization');
@@ -22,18 +23,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get stakeholder ID
-    const { data: stakeholder, error: stakeholderError } = await supabase
-      .from('stakeholders')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single();
+    const appUuid = await getAppUuid(accessToken);
 
-    if (stakeholderError || !stakeholder) {
-      return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
-    }
-
-    // Get VC Models where user is owner or collaborator (RLS will enforce access control)
+    // Get VC Models available to the current user (RLS will enforce access control)
     const { data: vcModels, error } = await supabase
       .from('vc_models')
       .select(`
@@ -44,20 +36,28 @@ export async function GET(req: NextRequest) {
         status,
         version_number,
         is_current_version,
+        stakeholder_id,
         created_at,
-        updated_at
+        updated_at,
+        flm:flm_models(
+          id,
+          status,
+          current_step
+        )
       `)
+      .eq('app_uuid', appUuid)
+      .eq('is_current_version', true)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error listing VC Models:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data: vcModels || [] });
+    return NextResponse.json<ApiResponse<VCModel[]>>({ data: vcModels || [] });
   } catch (e: any) {
     console.error('API error in GET /api/vc-models:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json<ApiResponse<null>>({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (stakeholderError || !stakeholder) {
-      return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
+      return NextResponse.json<ApiResponse<null>>({ error: 'Stakeholder not found' }, { status: 404 });
     }
 
     // Get request body
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     const { model_name, description } = body;
 
     if (!model_name) {
-      return NextResponse.json({ error: 'model_name is required' }, { status: 400 });
+      return NextResponse.json<ApiResponse<null>>({ error: 'model_name is required' }, { status: 400 });
     }
 
     // Get app_uuid
@@ -105,24 +105,29 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Error creating VC Model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: error.message }, { status: 500 });
+    }
+
+    const createdId = typeof result === 'string' ? result : (result as any)?.id || result;
+    if (!createdId) {
+      return NextResponse.json<ApiResponse<null>>({ error: 'VC Model creation failed' }, { status: 500 });
     }
 
     // Fetch the created VC Model
     const { data: vcModel, error: fetchError } = await supabase
       .from('vc_models')
       .select('*')
-      .eq('id', result)
+      .eq('id', createdId)
       .single();
 
     if (fetchError) {
       console.error('Error fetching created VC Model:', fetchError);
-      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>({ error: fetchError.message }, { status: 500 });
     }
 
-    return NextResponse.json(vcModel, { status: 201 });
+    return NextResponse.json<ApiResponse<VCModel>>({ data: vcModel }, { status: 201 });
   } catch (e: any) {
     console.error('API error in POST /api/vc-models:', e);
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json<ApiResponse<null>>({ error: e.message || 'Internal server error' }, { status: 500 });
   }
 }

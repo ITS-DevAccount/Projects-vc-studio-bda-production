@@ -1,8 +1,6 @@
 -- SQL Schema Dump for Supabase Project: ihebxuoyklkaimjtcwwq
 -- Generated: 2025-01-XX
--- This file contains the complete database schema including tables, constraints, indexes, and views
-
--- ============================================================================
+-- This file contains the complete database schema including tables, constraints, indexes, and views-- ============================================================================
 -- EXTENSIONS
 -- ============================================================================
 
@@ -74,9 +72,7 @@ CREATE TABLE IF NOT EXISTS site_settings (
     site_code text,
     domain_code text,
     is_active_app boolean DEFAULT true
-);
-
--- Users and authentication
+);-- Users and authentication
 CREATE TABLE IF NOT EXISTS users (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     auth_user_id uuid UNIQUE REFERENCES auth.users(id),
@@ -132,9 +128,7 @@ CREATE TABLE IF NOT EXISTS stakeholder_types (
     is_user boolean DEFAULT false,
     invite_email text,
     core_config jsonb DEFAULT '{}'::jsonb
-);
-
--- Roles and permissions
+);-- Roles and permissions
 CREATE TABLE IF NOT EXISTS roles (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     code text UNIQUE NOT NULL,
@@ -220,9 +214,7 @@ CREATE TABLE IF NOT EXISTS workflow_definitions (
     updated_at timestamptz DEFAULT now(),
     is_active boolean DEFAULT true,
     instance_name text
-);
-
-CREATE TABLE IF NOT EXISTS instance_tasks (
+);CREATE TABLE IF NOT EXISTS instance_tasks (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     app_code text NOT NULL,
     workflow_instance_id uuid NOT NULL REFERENCES workflow_instances(id),
@@ -298,9 +290,7 @@ CREATE TABLE IF NOT EXISTS function_registry (
     created_by uuid,
     updated_at timestamptz DEFAULT now(),
     updated_by uuid
-);
-
-CREATE TABLE IF NOT EXISTS functions_registry (
+);CREATE TABLE IF NOT EXISTS functions_registry (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     function_code text UNIQUE NOT NULL,
     function_name text NOT NULL,
@@ -324,9 +314,7 @@ CREATE TABLE IF NOT EXISTS functions_registry (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
-);
-
--- Service configurations
+);-- Service configurations
 CREATE TABLE IF NOT EXISTS service_configurations (
     service_config_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     app_id uuid NOT NULL REFERENCES applications(id),
@@ -479,9 +467,7 @@ CREATE TABLE IF NOT EXISTS ai_prompts (
     started_at timestamptz,
     completed_at timestamptz,
     created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS agent_contexts (
+);CREATE TABLE IF NOT EXISTS agent_contexts (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     reference text UNIQUE NOT NULL DEFAULT ((('CTX-'::text || to_char(now(), 'YYYYMMDD'::text)) || '-'::text) || substr((uuid_generate_v4())::text, 1, 8)),
     name text NOT NULL,
@@ -525,9 +511,7 @@ CREATE TABLE IF NOT EXISTS ai_agent_assignments (
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
     app_uuid uuid REFERENCES site_settings(app_uuid)
-);
-
-CREATE TABLE IF NOT EXISTS ai_execution_policies (
+);CREATE TABLE IF NOT EXISTS ai_execution_policies (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     code text UNIQUE NOT NULL,
     name text NOT NULL,
@@ -583,9 +567,7 @@ CREATE TABLE IF NOT EXISTS ai_execution_policies (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz DEFAULT now(),
     app_uuid uuid REFERENCES site_settings(app_uuid)
-);
-
--- Capabilities
+);-- Capabilities
 CREATE TABLE IF NOT EXISTS capabilities (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     code text UNIQUE NOT NULL,
@@ -656,9 +638,7 @@ CREATE TABLE IF NOT EXISTS relationship_types (
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
     app_uuid uuid NOT NULL REFERENCES site_settings(app_uuid)
-);
-
--- Workflows (legacy)
+);-- Workflows (legacy)
 CREATE TABLE IF NOT EXISTS workflows (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     reference text UNIQUE NOT NULL DEFAULT ((('WF-'::text || to_char(now(), 'YYYYMMDD'::text)) || '-'::text) || substr((uuid_generate_v4())::text, 1, 8)),
@@ -680,9 +660,7 @@ CREATE TABLE IF NOT EXISTS workflows (
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
     app_uuid uuid NOT NULL REFERENCES site_settings(app_uuid)
-);
-
-CREATE TABLE IF NOT EXISTS workflow_steps (
+);CREATE TABLE IF NOT EXISTS workflow_steps (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id uuid NOT NULL REFERENCES workflows(id),
     stage_index integer NOT NULL,
@@ -734,9 +712,7 @@ CREATE TABLE IF NOT EXISTS workflow_steps (
     prerequisite_activity_codes text[],
     estimated_days integer,
     created_at timestamp DEFAULT now()
-);
-
--- Workspaces
+);-- Workspaces
 CREATE TABLE IF NOT EXISTS workspaces (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     reference text UNIQUE NOT NULL,
